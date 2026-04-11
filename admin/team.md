@@ -39,6 +39,8 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Jerry
 
 - **Role**: Developer
+- **[Jerry's GitHub Page](https://houjer23.github.io/CSE110lab1/)**
+- 3rd year CS major. I like watching movies, skiing, and sky diving!
 
 ### Benjamin
 
