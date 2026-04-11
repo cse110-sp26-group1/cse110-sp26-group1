@@ -23,6 +23,8 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Anchita
 
 - **Role**: Team Lead
+- **[Anchita's GitHub Page](https://anchita-455.github.io/MyUserPage/)**
+- 3rd year CS major from the Bay Area who enjoys reading, Sudoku, and word searches.
 
 ### Amberly
 
