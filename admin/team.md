@@ -53,6 +53,8 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### James
 
 - **Role**: Developer
+- **[James' GitHub Page](https://james-fleming12.github.io/)**
+- 3rd year CS major trying to make it in academia.
 
 ### Albert
 
