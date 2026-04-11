@@ -47,6 +47,8 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Benjamin
 
 - **Role**: Developer
+- **[Benjamin's GitHub Page](https://bkj05.github.io)**
+- 3rd year CS major. I like to play guitar, soccer and esports(CS). 
 
 ### Jonathan
 
