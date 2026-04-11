@@ -27,7 +27,6 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Amberly
 
 - **Role**: Developer
-- **GitHub**: [Amberly's GitHub](https://github.com/amberly)
 
 ### Michael
 
