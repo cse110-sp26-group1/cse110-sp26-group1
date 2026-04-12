@@ -33,6 +33,8 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Michael
 
 - **Role**: Developer
+- **[Michael's Github Page](https://michaelawad3.github.io/cse110Pages/)**
+- 3rd year CS major from the Bay Area. I like going to the gym, gaming, reading, photography, and just learning new things.
 
 ### Noah
 
