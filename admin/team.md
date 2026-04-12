@@ -63,6 +63,8 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Albert
 
 - **Role**: Developer
+- **[Albert's GitHub Page](https://alberthoangg.github.io/)**
+- 2nd year CE Major from San Diego that likes eating taco stand.
 
 ### Ailyn
 
