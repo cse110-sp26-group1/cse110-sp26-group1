@@ -29,6 +29,8 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Amberly
 
 - **Role**: Developer
+- **[Amberly's GitHub Page](https://akt014.github.io/CSE110/)**
+- 3rd year CS Major from Orange County. I going to new places and milk tea!
 
 ### Michael
 
