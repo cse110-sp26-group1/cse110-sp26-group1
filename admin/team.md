@@ -71,3 +71,5 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Ailyn
 
 - **Role**: Developer
+- **[Ailyn's GitHub Page](https://ailynb006.github.io/Ailyn-s-aboutme/)**
+- 2nd year CS Major from Chula Vista in San Diego County! I love singing opera and eating desserts <3
