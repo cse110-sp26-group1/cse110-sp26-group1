@@ -59,7 +59,7 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Jonathan
 
 - **Role**: Developer
-- **[Jonathan's Github Page](https://github.com/jonathanle17)**
+- **[Jonathan's Github Page](https://jonathanle17.github.io/CSE110Lab1/)**
 - 3rd year CS major from San Diego. I like going to the gym, cooking, and playing every and all types of sports.
 
 ### James
