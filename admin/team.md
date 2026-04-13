@@ -41,6 +41,8 @@ Welcome to **The Opera House**, where creativity and collaboration come together
 ### Noah
 
 - **Role**: Developer
+- **[Noah's GitHub Page](https://github.com/Fresh-Bruh)**
+- 3rd year CS major from San Diego. My favorite activities are hiking, skiing, and playing video games.  
 
 ### Jerry
 
