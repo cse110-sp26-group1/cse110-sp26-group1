@@ -17,15 +17,15 @@ Meet together to work on the 2nd warm up AI experiment.
 - Jonathan
 - James
 - Albert
+- Noah joined late 8:49pm
 
 ### Absent:
 
 - Amormio
-- Noah
 
 ### Time and Place:
 
-April 21, 2026 | 8-6m @ Zoom
+April 21, 2026 | 8-9:12pm @ Zoom
 
 ## Agenda
 
@@ -47,3 +47,4 @@ April 21, 2026 | 8-6m @ Zoom
 
 - Communicated what tasks must be done and how they will be divided. Discussed how to work on the slot machine without git conflicts. 
 
+Meeting adjourned at 9:12PM
