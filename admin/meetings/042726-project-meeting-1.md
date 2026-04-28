@@ -1,10 +1,10 @@
-# The Opera House: 2nd Warmup AI 2nd Meeting Notes
+# The Opera House: 1st Project Meeting
 
 ### Meeting Type: Discussion Meeting
 
 ### Purpose:
 
-Meet together to work on the 2nd warm up AI experiment.
+Meet together to discuss Sprint 1 for the Final Project
 
 ### Present:
 
