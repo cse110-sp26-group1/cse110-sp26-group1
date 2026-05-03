@@ -29,7 +29,6 @@ The product should categorize commonly used features together so that the user c
 
 I wanted to use AI to make a front-end prototype after Powell mentioned it in class
 
-- 
 
 ```
 # Agent Issue Tracker
