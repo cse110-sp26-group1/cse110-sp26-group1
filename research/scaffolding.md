@@ -23,7 +23,6 @@ Inside `cse110-sp26-group1/source`:
 ```
 frontend/
 worker/
-docs/
 tests/
 ```
 
@@ -31,7 +30,6 @@ tests/
 
 - `frontend/` → user interface and client-side logic
 - `worker/` → backend implemented using a Cloudflare Worker
-- `docs/` → architectural decisions, planning, and meeting notes
 - `tests/` → unit and end-to-end testing
 
 ---
