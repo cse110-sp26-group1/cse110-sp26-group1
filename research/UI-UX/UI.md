@@ -52,7 +52,7 @@ Make a front-end prototype please. Please build this with a standard-based HTML,
 
 ```
 
-The results can be viewed (Agent Issue Tracker)[https://akt014.github.io/ait-frontend-prototype/]
+The results can be viewed [Agent Issue Tracker](https://akt014.github.io/ait-frontend-prototype/)
 
 ### Prototype Review
 
