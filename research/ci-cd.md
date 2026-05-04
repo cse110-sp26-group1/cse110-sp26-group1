@@ -27,8 +27,9 @@ To ensure early and consistent quality gates, the pipeline will execute on every
 Our specification explicitly states that **linting and quality checks** must be performed via our CI pipeline. 
 
 ### Tooling Selection
-* **Linters and Formatters:** Use **ESLint** and **Prettier** to perform automated checks on software artifacts.
-* **Documentation Enforcement:** The project spec requires that code documentation be maintained incrementally. Commenting using **JSDocs** must be followed and verified via the pipeline.
+* **Linters**: Use **ESLint** configured for vanilla JavaScript to detect syntax issues and prevent anti-patterns early.
+* **Formatters**: Use **Prettier** to enforce code style consistency before merging any branches.
+* **Documentation Enforcement:** The project spec requires that code documentation (including commenting with **JSDocs**) be maintained. We will integrate automated validation to verify that functional parameters and returns are properly documented before code can be merged into our main branch.
 
 ---
 
@@ -41,7 +42,7 @@ The project emphasizes **early verifiable testing efforts** over late additions,
 | **End-to-End (E2E)** | Emulate full user and agent workflows in a browser. | **Playwright** (Built-in tracing for debugging) | Runs on pre-release or staged deployments to prevent regression. |
 
 ### Enforcing PR Isolation
-To maintain strict software quality standards, work batches above 300 Lines of Code (LoC) MUST follow a pull-request path with review and evaluation by another human on the team. The automated CI checks act as a complementary layer to peer review.
+To maintain strict software quality standards, work batches above 300 Lines of Code (LoC) MUST follow a pull-request path with review and evaluation by another human on the team. The CI quality gate acts as an automated reviewer, complementing peer review and reducing regressions.
 
 ---
 
@@ -62,10 +63,12 @@ Per the technical requirements, the application must deploy seamlessly to **GitH
 
 ## Key Takeaways for Our Team
 * **Process >> Product:** Our pipeline provides the observable quality evidence our TA and Professor are evaluating.
-* **Integrate Early:** Do not defer testing until the end. Set up unit test structures immediately during Week 5's initial planning.
+* **Integrate Early:** Do not defer testing until the end. Set up unit test structures immediately during Week 6's initial planning.
 * **Transparent Automation:** Document all major CI/CD configuration changes as Architectural Decision Records (ADRs) using the MADR format.
 
 ---
 
 ## Sources
 * **CSE 110 Teams #1-5 Sp 26 Project Specification**
+* **GitHub Actions Decision Guide (2026)**: Automation and CI patterns.
+* **Production-Ready CI/CD Guide**: Automated release governance, testing pyramids, and quality gates.
