@@ -1,162 +1,161 @@
-# Functional Requirements Research  
+# Functional Requirements Research
 ## Agent Issue Tracker (AIT)
 
----
+### 1. Overview
 
-## 1. Introduction
+Functional requirements define what the system must do. For the Agent Issue Tracker (AIT), these requirements are derived from existing issue tracking systems such as GitHub Issues, Jira, and Linear, as well as research on software development workflows.
 
-Functional requirements define what a system is expected to do. In the context of an issue tracker, these requirements describe the core actions users can perform and how the system supports workflows such as task tracking, collaboration, and organization.
-
-This research focuses on identifying the essential functional requirements for an AI-enhanced issue tracker (AIT). By analyzing common issue tracking systems and considering the integration of AI, we can determine what features are necessary for both usability and innovation.
+The foundation of AIT is a CRUD-based issue tracking system, extended with AI-assisted features to improve efficiency and reduce friction in development workflows.
 
 ---
 
-## 2. Core Functional Requirements in Issue Tracking Systems
+### 2. Core System Functionality (MVP)
 
-Across widely used tools such as GitHub Issues, Jira, and Linear, several core functions consistently appear.
+The minimum viable product (MVP) focuses on essential issue tracking capabilities.
 
-### Issue Creation
-All issue tracking systems allow users to create issues with structured information. At a minimum, issues include a title and description, with optional metadata such as labels, priority, and assignees.
+#### 2.1 Issue Creation
+The system must allow users to create new issues with structured fields, including:
+- Title
+- Description
+- Priority level (low, medium, high)
+- Tags or labels
+- Timestamp (createdAt)
 
-This function is critical because it serves as the entry point for all work being tracked.
-
----
-
-### Issue Viewing and Navigation
-Users must be able to view a list of issues and access detailed views of each one. This typically includes key information such as status, priority, and assigned team members.
-
-Effective navigation becomes increasingly important as the number of issues grows.
+Structured issue creation is important because research shows that well-defined bug reports improve debugging efficiency and collaboration (Bettenburg et al., 2008).
 
 ---
 
-### Issue Updating
-Issue trackers support continuous updates, allowing users to modify descriptions, change statuses, and update assignments. This reflects the dynamic nature of software development work.
+#### 2.2 Issue Viewing
+Users must be able to:
+- View a list of all issues
+- View detailed information for a specific issue
+
+This enables users to track tasks, bugs, and project progress effectively.
 
 ---
 
-### Issue Deletion or Archiving
-Most systems allow issues to be archived rather than permanently deleted. This preserves historical information while keeping the workspace organized.
+#### 2.3 Issue Updating
+The system must allow users to:
+- Edit issue fields (title, description, priority, tags)
+- Update issue status (e.g., todo, in progress, done)
+- Track last modified time (updatedAt)
+
+Updating issues ensures that information remains accurate throughout the development lifecycle.
 
 ---
 
-## 3. Workflow and Status Tracking
-
-A key function of issue trackers is managing workflows. Issues typically move through stages such as:
-
-- Backlog  
-- Open  
-- In Progress  
-- In Review  
-- Done  
-
-This progression allows teams to track progress and coordinate work. Functional support for status transitions is essential for maintaining visibility into project development.
+#### 2.4 Issue Deletion
+Users must be able to delete issues that are no longer relevant.  
+This maintains data cleanliness and prevents clutter.
 
 ---
 
-## 4. Organization and Search
+### 3. Issue Structure and Data Model
 
-As projects scale, organizing issues becomes necessary. Functional requirements in this area include:
+Each issue should follow a consistent schema:
 
-- Searching issues by keywords  
-- Filtering by status, priority, labels, or assignee  
-- Sorting issues by recency or importance  
+- id (unique identifier)
+- title
+- description
+- priority
+- tags
+- status
+- createdAt
+- updatedAt
 
-These features help users quickly locate relevant tasks and manage large volumes of information.
-
----
-
-## 5. Collaboration Features
-
-Issue trackers are collaborative tools, so they must support interaction between users. Common functional features include:
-
-- Commenting on issues  
-- Assigning tasks to team members  
-- Viewing activity history  
-
-Activity logs are particularly important because they provide transparency into how issues evolve over time.
+A structured format ensures consistency and allows both humans and AI systems to interpret issues effectively.
 
 ---
 
-## 6. AI-Enhanced Functional Requirements
+### 4. Workflow and Status Tracking
 
-Unlike traditional issue trackers, AIT introduces AI into the workflow. This creates new functional requirements that extend beyond standard CRUD operations.
+The system must support basic workflow progression:
 
-### AI Summarization
-AI can generate summaries of long issue descriptions or discussions, helping users quickly understand complex problems.
+- Todo
+- In Progress
+- Done
 
----
-
-### AI Label and Priority Suggestions
-AI can analyze issue content to suggest labels and priority levels. This reduces manual effort and improves consistency.
+Workflow tracking is essential in modern issue trackers such as Jira, where task progression improves transparency and coordination across teams.
 
 ---
 
-### AI Next-Step Recommendations
-AI can recommend actions such as debugging steps or testing strategies. These suggestions guide users without removing human decision-making.
+### 5. Search and Filtering
+
+Users must be able to:
+- Search issues by keywords
+- Filter issues by status, priority, or tags
+
+This functionality becomes critical as the number of issues increases and improves usability and efficiency.
 
 ---
 
-### AI Subtask Generation
-For larger issues, AI can break work into smaller subtasks, making it easier to manage complex tasks.
+### 6. AI-Assisted Features (AIT-Specific)
+
+To align with the project's goal of integrating AI into software workflows, the system should include:
+
+#### 6.1 Description Generation
+- Generate issue descriptions from a short title input
+
+#### 6.2 Metadata Suggestion
+- Suggest priority levels and tags based on issue content
+
+#### 6.3 Summarization
+- Summarize long issue descriptions into concise versions
+
+These features reduce manual effort and improve the quality and consistency of issue data.
 
 ---
 
-## 7. AI Tracking as a Functional Requirement
+### 7. Extended Features (Beyond MVP)
 
-A unique aspect of AIT is the ability to track AI usage. Unlike traditional systems, AIT should support:
+If time allows, the system can include:
 
-- Tracking the number of AI interactions  
-- Estimating token usage and cost  
-- Logging AI-generated actions  
+- Commenting on issues for collaboration  
+- Assigning issues to users  
+- Linking issues to pull requests or commits  
+- AI-driven task breakdown (subtasks generation)  
+- AI-assisted issue classification and deduplication  
 
-This feature ensures transparency and allows users to understand how AI contributes to the workflow.
-
----
-
-## 8. Agent-Readable Issue Formats
-
-To fully support AI integration, issues should be structured in a way that both humans and AI can understand.
-
-This includes:
-- Clearly defined fields (summary, steps, expected behavior)
-- Structured formats that AI can process efficiently
-
-This requirement enables more advanced AI features such as automated analysis and reasoning.
+These features enhance collaboration and automation but are not required for the initial MVP.
 
 ---
 
-## 9. Key Insights / Takeaways
+### 8. Key Insights from Research
 
-- Functional requirements in issue trackers are centered around CRUD operations and workflow management  
-- Organization and search become critical as the number of issues increases  
-- Collaboration features are necessary for team-based development  
-- AI introduces new functional requirements, especially around automation and assistance  
-- Tracking AI usage is a unique and important requirement for AI-native systems  
-- A balance must be maintained between automation and user control  
+- All major issue trackers (GitHub Issues, Jira, Linear) rely on structured issue data and CRUD operations.
+- Workflow tracking is critical for team coordination and progress visibility.
+- Research shows that structured bug reports significantly improve debugging efficiency.
+- AI can enhance issue tracking by reducing friction and automating repetitive tasks.
 
 ---
 
-## 10. Conclusion
+### 9. Conclusion
 
-Functional requirements for AIT should build on the foundation of traditional issue trackers while extending capabilities through AI integration. By combining structured workflows, collaboration tools, and AI-assisted features, AIT can provide a more efficient and modern approach to issue tracking.
+The functional requirements for AIT combine:
+- Core issue tracking capabilities (CRUD)
+- Structured data representation
+- Workflow management
+- AI-assisted enhancements
 
-The key is to enhance productivity without sacrificing clarity, usability, or user control.
+The MVP should prioritize simplicity and usability, while leaving room for advanced AI-driven features as the project evolves.
 
 ---
 
-## 11. Sources
+### 10. References
 
-GitHub Issues Documentation:  
+GitHub Issues Documentation  
 https://docs.github.com/en/issues  
 
-Jira Software Overview:  
-https://www.atlassian.com/software/jira  
+Jira Software Documentation  
+https://support.atlassian.com/jira-software-cloud/docs/what-is-jira-software/  
 
-Jira Workflows:  
-https://www.atlassian.com/software/jira/features/workflows  
-
-Linear:  
-https://linear.app  
-
-Linear Documentation:  
+Linear Documentation  
 https://linear.app/docs  
+
+Bettenburg, N., et al. (2008).  
+"What Makes a Good Bug Report?"  
+https://ieeexplore.ieee.org/document/4659293  
+
+Mockus, A., Fielding, R., & Herbsleb, J. (2002).  
+"Two Case Studies of Open Source Software Development"  
+https://dl.acm.org/doi/10.1145/567793.567795  
