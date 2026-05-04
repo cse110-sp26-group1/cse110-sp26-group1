@@ -36,13 +36,18 @@ May 4, 2026 | 3:30-5:30pm @ Triton Transfer Hub
   - Walk through end-to-end flow from issue creation → completion
 
 - Define first prototype goal:
+
   - What will be built/tested before next meeting
+
+- Repo expectations reminder (commits, setups for ci/cd, linting, testing, ...)
 
 And more from the google doc (link later on)
 
 ### Decisions Made:
 
 ### Upcoming tasks:
+
+- Document necessary decisions (ADR, maybe a backlog)
 
 - Complete first prototype for our meeting with the professor and TA
   - make adjustments based on feedback
