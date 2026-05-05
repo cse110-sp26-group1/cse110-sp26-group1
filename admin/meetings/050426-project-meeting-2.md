@@ -6,13 +6,13 @@
 
 Meet together to discuss Sprint 1 for the Final Project
 
-### Present:
+### Present: Amormio, Anchita, Ailyn, Albert, James, Jerry, Ben, Noah, Jonathan, Michael
 
-### Absent:
+### Absent: Amberly
 
 ### Time and Place:
 
-May 4, 2026 | 3:30-5:30pm @ 123 
+May 4, 2026 | 3:30-5:30pm @ Wong Avery 123 
 
 ## Agenda
 
@@ -41,7 +41,7 @@ May 4, 2026 | 3:30-5:30pm @ 123
 
 - Repo expectations reminder (commits, setups for ci/cd, linting, testing, ...)
 
-And more from the google doc (link later on)
+And more from the google doc: https://docs.google.com/document/d/1nkjU3QtpLkdKqh1ockLQgQD0Qsr5itWTWNbiU9HYTNA/edit?pli=1&tab=t.7k9j1ciq7j1b
 
 ### Decisions Made:
 
@@ -59,7 +59,7 @@ And more from the google doc (link later on)
 ### Meeting Summary:
 
 Standup meeting time: Wednesday 4:30PM to 5:00PM, Friday 4:30PM to 5:00PM
-We will get started on MVP and see how much we get done at Tuesday night
+We will get started on MVP and see how much we get done at Tuesday night <br>
 Discuss Research
 - Noah: illities in general
   - Modifiability/Extensibility/Maintainability
