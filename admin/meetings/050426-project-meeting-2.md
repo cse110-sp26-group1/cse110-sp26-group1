@@ -12,7 +12,7 @@ Meet together to discuss Sprint 1 for the Final Project
 
 ### Time and Place:
 
-May 4, 2026 | 3:30-5:30pm @ Triton Transfer Hub
+May 4, 2026 | 3:30-5:30pm @ 123 
 
 ## Agenda
 
@@ -57,3 +57,46 @@ And more from the google doc (link later on)
   - Integration requirements
 
 ### Meeting Summary:
+
+Standup meeting time: Wednesday 4:30PM to 5:00PM, Friday 4:30PM to 5:00PM
+We will get started on MVP and see how much we get done at Tuesday night
+Discuss Research
+- Noah: illities in general
+  - Modifiability/Extensibility/Maintainability
+  - Usability
+  - Bareboon security
+  - Accessibility on UI settings
+- Ben: Functional requirements
+  - Adding/delete issues
+  - Tracking status
+  - Auto-generation
+- Amorimo: Existing
+  - GERA (slow + hard to addap, chatbot)
+  - LINEAR (keyboard shortcuts + faster UI)
+  - GITHUB ISSUES (students + open source)
+  - Inprogress to done (need to figure out what is happening)
+  - Automation (Slack notification?)
+- Jonathan: CI/CD pipelines
+  - Drafted a model
+  - ESLint (Linters) + Prettier (Formatter)
+- James: LLM interactions with issue trackers
+  - Drafting issues, organizing issues
+- UI/UX and Design
+  - Ailyn: write user stories and persona, toggle features + tracking token usage
+  - Albert: write user stories and persona, slack integration, clean working environment, can become complicated easily (make it simple and user friendly)
+  - Amberly
+- Michael: Code Design standards
+  - Split up code, helps with readability
+  - Name convention, structure
+  - 4 spaces (Win) vs 2 spaces
+  - First Bracket on the fucntion line
+  - AI Coding needs to match style
+- Jerry: LLM Integration
+  - Look at the functionality and decide on models
+- Anchita: Database
+  - Cloudfare + frontend
+- Talk about plan for prototype
+  - Discuss implementation of LLM
+  - Clarify MVP criteria
+  - Decided on technical baseline
+  - Discussed each person's roles
