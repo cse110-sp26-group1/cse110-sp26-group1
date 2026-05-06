@@ -12,7 +12,7 @@ Meet together to discuss Sprint 1 for the Final Project
 
 ### Time and Place:
 
-May 4, 2026 | 3:30-5:30pm @ Wong Avery 123 
+May 4, 2026 | 3:30-5:30pm @ Wong Avery 123
 
 ## Agenda
 
@@ -59,22 +59,24 @@ And more from the google doc: https://docs.google.com/document/d/1nkjU3QtpLkdKqh
 ### Meeting Summary:
 
 Standup meeting time: Wednesday 4:30PM to 5:00PM, Friday 4:30PM to 5:00PM
-We will get started on MVP and see how much we get done at Tuesday night <br>
+We will get started on MVP and see how much we get done at Tuesday night
+
 Discuss Research
+
 - Noah: illities in general
   - Modifiability/Extensibility/Maintainability
   - Usability
-  - Bareboon security
+  - barebone security
   - Accessibility on UI settings
 - Ben: Functional requirements
   - Adding/delete issues
   - Tracking status
   - Auto-generation
-- Amorimo: Existing
-  - GERA (slow + hard to addap, chatbot)
+- Amormio: Existing Tech
+  - JIRA (slow + hard to adapt, chatbot)
   - LINEAR (keyboard shortcuts + faster UI)
   - GITHUB ISSUES (students + open source)
-  - Inprogress to done (need to figure out what is happening)
+  - In progress to done (need to figure out what is happening)
   - Automation (Slack notification?)
 - Jonathan: CI/CD pipelines
   - Drafted a model
@@ -89,7 +91,7 @@ Discuss Research
   - Split up code, helps with readability
   - Name convention, structure
   - 4 spaces (Win) vs 2 spaces
-  - First Bracket on the fucntion line
+  - First Bracket on the function line
   - AI Coding needs to match style
 - Jerry: LLM Integration
   - Look at the functionality and decide on models
