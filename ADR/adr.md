@@ -1,0 +1,33 @@
+# Architectural Decision Record: AI-Integrated Issue Tracker
+
+## 1. Dual-Interface API with a Unified Database
+* **Status:** Accepted
+* **Context:** The system must enable structured collaboration between human users and external AI agents. Humans require a visual interface prioritizing readability, while AI agents need programmatic access to minimal, machine-readable data. 
+* **Decision:** The backend will act as a central coordinator, exposing separate API endpoints specifically tailored for human UI interactions and AI agent programmatic access. Both sets of endpoints will share a single, centralized database as the absolute source of truth.
+* **Alternatives Considered:**
+  * **Beads (Distributed CLI Tracker):** Considered using a local, Dolt-powered tool like Beads. Rejected because it granted too much autonomous power to the AI rather than supporting structured collaboration.
+  * **Standard Issue Tracker:** Considered building a traditional tracker with AI assistance limited to issue creation. Rejected because it completely lacked the infrastructure for external AI agents to read from and write to the system.
+* **Consequences:** The dual-interface API approach will introduce more latency compared to local, CLI-bound tools like Beads. However, it provides a significantly better architecture for team-focused, collaborative environments.
+
+---
+
+## 2. LLM-Driven Data Structuring
+* **Status:** Accepted
+* **Context:** Human input provided via forms is generally unstructured. To reduce friction for humans while ensuring external AI agents receive clean, consistent context, the data must be standardized.
+* **Decision:** The backend will route raw user input through an LLM layer (potentially a free model like Deepseek). This LLM will parse the unstructured text into structured, human-readable fields (such as priority levels and summaries) before the backend stores it in the database. 
+* **Alternatives Considered:** 
+  * Relying strictly on rigid form inputs without an LLM intermediary. Rejected because it forces the user to manually categorize and structure every detail, increasing friction.
+* **Consequences:** 
+  * **Negative:** Introduces recurring API costs and token tracking overhead for the LLM layer.
+  * **Positive:** Generates highly detailed, well-structured context for both humans and agents without demanding additional effort from the human user.
+
+---
+
+## 3. Infrastructure and Tech Stack
+* **Status:** Accepted
+* **Context:** The backend requires a hosting environment and a database solution to manage the dual-interface API and data storage.
+* **Decision:** The project will utilize Cloudflare Workers for the backend environment. Cloudflare D1 will be implemented as the unified database.
+* **Alternatives Considered:** 
+  * **Node.js:** Evaluated as a backend environment but halted due to specific project constraints and limitations.
+  * **Standard SQLite:** Originally considered for the database, but once the decision to use Cloudflare Workers was finalized, adopting Cloudflare's native D1 (which is SQLite-backed) became the more cohesive choice.
+* **Consequences:** The primary trade-off is the loss of local execution. Relying entirely on Cloudflare Workers and D1 means the team cannot easily run or test the environment locally during development.
