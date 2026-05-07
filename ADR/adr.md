@@ -3,11 +3,12 @@
 ## 1. Dual-Interface API with a Unified Database
 * **Status:** Accepted
 * **Context:** The system must enable structured collaboration between human users and external AI agents. Humans require a visual interface prioritizing readability, while AI agents need programmatic access to minimal, machine-readable data. 
-* **Decision:** The backend will act as a central coordinator, exposing separate API endpoints specifically tailored for human UI interactions and AI agent programmatic access. Both sets of endpoints will share a single, centralized database as the absolute source of truth.
+* **Decision:** The backend will act as a central coordinator sharing a single, centralized database as the absolute source of truth. Humans will access the system through a visual interface powered by specific API endpoints. For AI agents, the system will provide a dedicated CLI tool that acts as an intermediary, interacting directly with the backend API to fetch and update structured data.
 * **Alternatives Considered:**
+  * **Direct Agent API Endpoints:** Initially considered exposing raw API endpoints directly for external AI agents to call. This was shifted to an alternative in favor of the CLI approach, which provides a more structured, standardized, and easily integrable entry point for agents.
   * **Beads (Distributed CLI Tracker):** Considered using a local, Dolt-powered tool like Beads. Rejected because it granted too much autonomous power to the AI rather than supporting structured collaboration.
   * **Standard Issue Tracker:** Considered building a traditional tracker with AI assistance limited to issue creation. Rejected because it completely lacked the infrastructure for external AI agents to read from and write to the system.
-* **Consequences:** The dual-interface API approach will introduce more latency compared to local, CLI-bound tools like Beads. However, it provides a significantly better architecture for team-focused, collaborative environments.
+* **Consequences:** The CLI-to-API approach will introduce slightly more latency compared to purely local tools like Beads. However, it provides a significantly better architecture for team-focused, collaborative environments while making it easier for users to plug their personal agents into the system via standard CLI commands.
 
 ---
 
