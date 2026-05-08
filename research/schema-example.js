@@ -23,7 +23,7 @@ const ALLOWED_TAGS = [
     "unknown",
 ];
 
-// USER SCHEMA (UI-facing)
+// USER SCHEMA
 const userIssueSchema = {
     id: { type: "string", required: true },
     title: { type: "string", required: true },
@@ -47,50 +47,46 @@ const userIssueSchema = {
         type: "object",
         required: false,
         properties: {
-            user_reported_issue: { type: "string", required: false },
-            steps_to_reproduce: {
-                type: "array",
-                items: "string",
-                required: false,
-            },
-            expected_behavior: { type: "string", required: false },
-            actual_behavior: { type: "string", required: false },
-            missing_information: {
-                type: "array",
-                items: "string",
-                required: false,
-            },
-            resolution_notes: { type: "string", required: false },
+            entry_point: { type: "string", required: false },
+            error_type: { type: "string", required: false },
+            error_message: { type: "string", required: false },
+            stack_trace: { type: "array", items: "string", required: false },
+            affected_files: { type: "array", items: "string", required: false },
+            // resolution_notes: { type: "string", required: false }, unsure yet
+            // if agent having this field removes need here
         },
     },
 };
 
-// AGENT SCHEMA (agent-facing; superset of user)
+// AGENT SCHEMA
 const agentIssueSchema = {
+    // pass in all data from user schema
     ...userIssueSchema,
 
-    agent_attempted_at: {
-        type: "string",
-        format: "date-time",
-        required: false,
-    },
-
-    // Flattened core context for easier agent consumption
-    user_reported_issue: { type: "string", required: false },
-    steps_to_reproduce: { type: "array", items: "string", required: false },
-    expected_behavior: { type: "string", required: false },
-    actual_behavior: { type: "string", required: false },
-    missing_information: { type: "array", items: "string", required: false },
-    resolution_notes: { type: "string", required: false },
-
+    // directly from user input (just repeating here to show for clarity, but
+    // these will be listed already from the spread operator)
     entry_point: { type: "string", required: false },
     error_type: { type: "string", required: false },
     error_message: { type: "string", required: false },
     stack_trace: { type: "array", items: "string", required: false },
     affected_files: { type: "array", items: "string", required: false },
-    hypothesis: { type: "string", required: false },
-    total_token_usage: { type: "number" },
 
+    // llm infers these fields based on user input
+    expected_behavior: { type: "string", required: false },
+    actual_behavior: { type: "string", required: false },
+    missing_information: { type: "array", items: "string", required: false },
+
+    // llm guesses based on project context and other fields
+    steps_to_reproduce: { type: "array", items: "string", required: false },
+    hypothesis: { type: "string", required: false },
+
+    // agent fills these below
+    total_token_usage: { type: "number" },
+    agent_attempted_at: {
+        type: "string",
+        format: "date-time",
+        required: false,
+    },
     previous_attempts: {
         type: "array",
         required: false,
@@ -108,4 +104,7 @@ const agentIssueSchema = {
             },
         },
     },
+
+    // data to send to human UI so user sees agent fix
+    resolution_notes: { type: "string", required: false },
 };
