@@ -319,10 +319,10 @@ Actual:      Dashboard crashes with white screen
 ---
 
 ## Helpful Links
-[Claude_Guide] (https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/increase-consistency?utm_source=chatgpt.com)
-[Deepseek_Guide] (https://api-docs.deepseek.com/guides/json_mode)
-[Qwen_Guide] (https://qwen.readthedocs.io/en/latest/framework/function_call.html)
-[OpenAI_Guide] (https://developers.openai.com/api/docs/guides/structured-outputs)
+- [Claude_Guide](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/increase-consistency?utm_source=chatgpt.com)
+- [Deepseek_Guide](https://api-docs.deepseek.com/guides/json_mode)
+- [Qwen_Guide](https://qwen.readthedocs.io/en/latest/framework/function_call.html)
+- [OpenAI_Guide](https://developers.openai.com/api/docs/guides/structured-outputs)
 
 ## Summary
 
