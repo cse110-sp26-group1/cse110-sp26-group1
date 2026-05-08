@@ -5,11 +5,9 @@
 
 const ISSUE_STATUSES = ["Open", "In Progress", "Resolved", "Closed"];
 const ISSUE_PRIORITIES = ["Low", "Medium", "High", "Critical"];
-
+const ALLOWED_CATEGORIES = ["Bug", "Feature", "Task"];
 const ALLOWED_TAGS = [
-    "feature",
     "testing",
-    "bug",
     "enhancement",
     "documentation",
     "research",
@@ -25,13 +23,14 @@ const ALLOWED_TAGS = [
 
 // USER SCHEMA
 const userIssueSchema = {
-    id: { type: "string", required: true },
+    id: { type: "string", required: true }, // not inputted by user, we handle this
     title: { type: "string", required: true },
     description: { type: "string", required: true },
     summary: { type: "string", required: false },
 
     status: { type: "string", enum: ISSUE_STATUSES, required: true },
     priority: { type: "string", enum: ISSUE_PRIORITIES, required: true },
+    category: { type: "string", enum: ALLOWED_CATEGORIES, required: true },
 
     tags: {
         type: "array",
@@ -40,18 +39,19 @@ const userIssueSchema = {
         required: true,
     },
 
+    // not inputted by user, we handle this
     created_at: { type: "string", format: "date-time", required: true },
     updated_at: { type: "string", format: "date-time", required: true },
 
     details: {
         type: "object",
-        required: false,
+        required: true,
         properties: {
-            entry_point: { type: "string", required: false },
-            error_type: { type: "string", required: false },
-            error_message: { type: "string", required: false },
-            stack_trace: { type: "array", items: "string", required: false },
-            affected_files: { type: "array", items: "string", required: false },
+            entry_point: { type: "string", required: true },
+            error_type: { type: "string", required: true },
+            error_message: { type: "string", required: true },
+            stack_trace: { type: "array", items: "string", required: true },
+            affected_files: { type: "array", items: "string", required: true },
             // resolution_notes: { type: "string", required: false }, unsure yet
             // if agent having this field removes need here
         },
@@ -65,31 +65,31 @@ const agentIssueSchema = {
 
     // directly from user input (just repeating here to show for clarity, but
     // these will be listed already from the spread operator)
-    entry_point: { type: "string", required: false },
-    error_type: { type: "string", required: false },
-    error_message: { type: "string", required: false },
-    stack_trace: { type: "array", items: "string", required: false },
-    affected_files: { type: "array", items: "string", required: false },
+    entry_point: { type: "string", required: true },
+    error_type: { type: "string", required: true },
+    error_message: { type: "string", required: true },
+    stack_trace: { type: "array", items: "string", required: true },
+    affected_files: { type: "array", items: "string", required: true },
 
     // llm infers these fields based on user input
-    expected_behavior: { type: "string", required: false },
-    actual_behavior: { type: "string", required: false },
-    missing_information: { type: "array", items: "string", required: false },
+    expected_behavior: { type: "string", required: true },
+    actual_behavior: { type: "string", required: true },
+    missing_information: { type: "array", items: "string", required: true },
 
     // llm guesses based on project context and other fields
-    steps_to_reproduce: { type: "array", items: "string", required: false },
-    hypothesis: { type: "string", required: false },
+    steps_to_reproduce: { type: "array", items: "string", required: true },
+    hypothesis: { type: "string", required: true },
 
     // agent fills these below
-    total_token_usage: { type: "number" },
+    total_token_usage: { type: "number", required: true },
     agent_attempted_at: {
         type: "string",
         format: "date-time",
-        required: false,
+        required: true,
     },
     previous_attempts: {
         type: "array",
-        required: false,
+        required: true,
         items: {
             type: "object",
             properties: {
