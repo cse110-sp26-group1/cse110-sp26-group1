@@ -1,4 +1,4 @@
-# The Opera House: Sprint 1 Meeting
+# The Opera House: Sprint 1 Standup Meeting 2
 
 ### Meeting Type: Standup Meeting
 
@@ -16,31 +16,31 @@ May 8, 2026 | 4:30-5:07pm @ Zoom
 
 ## Agenda
 
-- Go over Sprint 1 plans
-- Discuss UI/UX direction and feedback
-- Review prototype goals for each team
-- Discuss CLI and LLM workflow ideas
+-   Go over Sprint 1 plans
+-   Discuss UI/UX direction and feedback
+-   Review prototype goals for each team
+-   Discuss CLI and LLM workflow ideas
 
 ### Decisions Made:
 
-- Keep the first version minimal, then add more features later.
-- Continue with a CLI-focused approach.
-- Use the Miro board to organize and communicate UI/UX ideas.
-- Add a confirmation step when the user does not like what the LLM generated.
+-   Keep the first version minimal, then add more features later.
+-   Continue with a CLI-focused approach.
+-   Use the Miro board to organize and communicate UI/UX ideas.
+-   Add a confirmation step when the user does not like what the LLM generated.
 
 ### Upcoming tasks:
 
-- Finish Sprint 1 by Sunday, May 10, 2026.
-- Learn how to set up Cloudflare and the database as soon as possible.
-- Continue working on individual prototypes.
-- Backend team:
-  - Prototype the user endpoint and agent endpoint.
-  - Work on login features.
-- LLM team:
-  - Help the backend team if available.
-- Design team:
-  - Revise user stories and personas.
-  - Show the full event flow for user interactions, such as what happens when a user clicks a button.
+-   Finish Sprint 1 by Sunday, May 10, 2026.
+-   Learn how to set up Cloudflare and the database as soon as possible.
+-   Continue working on individual prototypes.
+-   Backend team:
+    -   Prototype the user endpoint and agent endpoint.
+    -   Work on login features.
+-   LLM team:
+    -   Help the backend team if available.
+-   Design team:
+    -   Revise user stories and personas.
+    -   Show the full event flow for user interactions, such as what happens when a user clicks a button.
 
 ### Meeting Summary:
 

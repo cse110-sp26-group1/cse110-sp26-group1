@@ -1,4 +1,4 @@
-# The Opera House: Project Meeting
+# The Opera House: Sprint 1 Standup Meeting 1
 
 ### Meeting Type: Standup Meeting
 
@@ -16,22 +16,22 @@ May 6, 2026 | 4:30-5:05pm @ Zoom
 
 ## Agenda
 
-- Do more research on who is actually using our product
-- Discuss whether developers are using a CLI or an actual UI
-- Look into CLI-based examples, such as BEADS
-- Decide what we want the project to look like:
-  - Humans and AI working together
-  - AI doing most of the work
+-   Do more research on who is actually using our product
+-   Discuss whether developers are using a CLI or an actual UI
+-   Look into CLI-based examples, such as BEADS
+-   Decide what we want the project to look like:
+    -   Humans and AI working together
+    -   AI doing most of the work
 
 ### Decisions Made:
 
-- We need to do more research about who is using our product.
-- The majority agreed that the human and AI should be working together.
+-   We need to do more research about who is using our product.
+-   The majority agreed that the human and AI should be working together.
 
 ### Upcoming tasks:
 
-- Do more research on who would actually use our product.
-- Research whether our target developers prefer using a CLI or an actual UI.
+-   Do more research on who would actually use our product.
+-   Research whether our target developers prefer using a CLI or an actual UI.
 
 ### Meeting Summary:
 
