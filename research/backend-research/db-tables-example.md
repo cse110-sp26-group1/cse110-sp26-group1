@@ -135,6 +135,7 @@ WHERE team_members.team_id = 10;
 -   missing_information
 -   steps_to_reproduce
 -   hypothesis
+-   token_usage
 -   resolution_notes
 -   created_at
 -   updated_at
