@@ -11,8 +11,13 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
-	"compatibility_flags": [
-		"nodejs_compat"
+	"compatibility_flags": ["nodejs_compat"],
+	"d1_databases": [
+		{
+			"binding": "issue_tracker_db",
+			"database_name": "issue-tracker-db",
+			"database_id": "9f845578-0391-4e87-a3ee-77d73b8d2bb9"
+		}
 	]
 	/**
 	 * Smart Placement

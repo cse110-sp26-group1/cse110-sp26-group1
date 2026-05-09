@@ -1,0 +1,13 @@
+--------------------------------- EXAMPLES ---------------------------------
+-- users table
+-- CREATE TABLE users (
+--   id INTEGER PRIMARY KEY,
+--   username TEXT NOT NULL
+-- );
+
+-- teams table
+-- CREATE TABLE teams (
+--   id INTEGER PRIMARY KEY,
+--   team_name TEXT NOT NULL
+-- );
+----------------------------------------------------------------------------
