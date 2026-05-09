@@ -1,5 +1,110 @@
 # Sprint 1 Closing / Pre-Sprint 2 Coordination
 
+## UPDATES after Friday's meeting!!!
+
+## UPDATES (mentioned in Friday’s standup meeting)
+
+### Deadlines (IMPORTANT)
+
+-   **Main deadline:** Monday before meeting
+-   **Hard cutoff:** Monday night (after meeting if not finished, so we can keep pace)
+-   Goal is to have:
+    -   usable backend prototype
+    -   usable frontend prototype
+    -   working database schema (D1)
+    -   callable API endpoints
+
+---
+
+### Monday Meeting Plan
+
+-   Review what each team completed
+-   Check integration readiness (frontend ↔ backend ↔ LLM)
+-   Clarify remaining MVP scope and next sprints
+-   Do professor worksheet if there's time (6 pages, possibly split asynchronously before meeting to save time)
+
+---
+
+### MVP Scope Clarifications
+
+-   LLM output review/confirmation flow → **STRETCH GOAL** (one pass for now, so user doesn't get confirmation ability)
+-   CLI interface:
+    -   must stay **minimal**
+    -   should be considered part of **user UI page**, not a separate complex system
+
+---
+
+### Frontend / Design Requirements
+
+Must include:
+
+-   login page
+-   sign up page
+-   issue filtering by team (just another filter option)
+-   toggle CLI (like VSCode terminal that you can close)
+
+Key design requirement:
+
+-   Define clear interaction flows:
+    -   what happens when user clicks buttons
+    -   loading states (especially during LLM processing)
+    -   how issue results appear after AI processing
+
+---
+
+### Backend Requirements
+
+Must be ready by Monday night:
+
+-   working database schema in D1
+-   callable API prototype
+-   real structure for frontend integration
+
+Required tables:
+
+-   users table
+-   teams table
+-   team_members relationship handling
+-   issues table (must support team filtering)
+
+> Refer to [this example](/research/backend-research/db-tables-example.md)
+
+Important clarification:
+
+-   issues should include a `team_id` so we can query issues per team (similar to Jira-style team separation where each team effectively has its own issue space)
+
+Additional requirement:
+
+-   user table must be compatible with Cloudflare authentication system
+
+---
+
+### System / Product Understanding
+
+-   Teams share a scoped issue space
+-   Each user belongs to a team (or multiple teams via mapping)
+-   Issue visibility is filtered by team context
+
+---
+
+### LLM / AI Layer
+
+Current focus:
+
+-   ci/cd setup and possibly help backend if you have time
+
+---
+
+### General Notes
+
+-   Backend + frontend must be usable together by Monday night
+-   Prototype should be “real enough” (real forms + real API + real schema)
+-   Full polish and advanced features come after MVP stabilization
+
+---
+
+## EVERYTHING BELOW WAS INFO PRIOR TO FRIDAY'S MEETING
+
 ## FIRST!!!
 
 -   Read the [ADR](/ADR/adr.md) to make sure you completely understand our project plan moving forward
