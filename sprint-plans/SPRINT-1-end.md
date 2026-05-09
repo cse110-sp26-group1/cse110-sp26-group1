@@ -41,6 +41,7 @@ Must include:
 
 -   login page
 -   sign up page
+-   team management (at least a skeleton in place for how teams are created, how users are invited, and how users within multiple teams select certain issue workspaces)
 
 Key design requirement:
 
