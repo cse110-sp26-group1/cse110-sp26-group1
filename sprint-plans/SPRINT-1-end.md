@@ -2,8 +2,6 @@
 
 ## UPDATES after Friday's meeting!!!
 
-## UPDATES (mentioned in Friday’s standup meeting)
-
 ### Deadlines (IMPORTANT)
 
 -   **Main deadline:** Monday before meeting
@@ -30,7 +28,10 @@
 -   LLM output review/confirmation flow → **STRETCH GOAL** (one pass for now, so user doesn't get confirmation ability)
 -   CLI interface:
     -   must stay **minimal**
-    -   should be considered part of **user UI page**, not a separate complex system
+    -   is a **terminal-based tool used by external agents**, not part of the web UI
+    -   used when a user runs an agent (e.g. Claude in terminal) to interact with our backend API and retrieve structured issue data
+    -   this is separate from the frontend UI entirely (not embedded in the webpage)
+    -   assumes users of the CLI are more technical, so agent-level structured outputs are acceptable
 
 ---
 
@@ -40,8 +41,6 @@ Must include:
 
 -   login page
 -   sign up page
--   issue filtering by team (just another filter option)
--   toggle CLI (like VSCode terminal that you can close)
 
 Key design requirement:
 
@@ -49,6 +48,8 @@ Key design requirement:
     -   what happens when user clicks buttons
     -   loading states (especially during LLM processing)
     -   how issue results appear after AI processing
+-   UI team needs to ensure the **desired end-to-end workflow is fully implemented**
+-   Goal is to deliver a **working and high-quality prototype by Monday**
 
 ---
 
@@ -69,9 +70,15 @@ Required tables:
 
 > Refer to [this example](/research/backend-research/db-tables-example.md)
 
-Important clarification:
+Important clarification (team/workspace model):
 
--   issues should include a `team_id` so we can query issues per team (similar to Jira-style team separation where each team effectively has its own issue space)
+-   teams are basically **separate workspaces / groups of people (like GitHub repo collaborators)**
+-   each team represents a real group like “Group1”, “Group8”, etc.
+-   users log in, join a team, and that team becomes their shared workspace (like a github repo)
+-   only people in that team can see and interact with that team’s issues
+-   so each team has its own isolated issue space, and there is no mixing of issues across teams
+
+-   issues should include a `team_id` so we can query issues per team (each team = its own workspace)
 
 Additional requirement:
 
@@ -81,9 +88,10 @@ Additional requirement:
 
 ### System / Product Understanding
 
--   Teams share a scoped issue space
+-   Teams are scoped **collaborative workspaces**
 -   Each user belongs to a team (or multiple teams via mapping)
--   Issue visibility is filtered by team context
+-   Issue visibility and actions are restricted to team membership only
+-   Each team acts like its own isolated issue tracker space (similar to a GitHub repo)
 
 ---
 
@@ -100,8 +108,6 @@ Current focus:
 -   Backend + frontend must be usable together by Monday night
 -   Prototype should be “real enough” (real forms + real API + real schema)
 -   Full polish and advanced features come after MVP stabilization
-
----
 
 ## EVERYTHING BELOW WAS INFO PRIOR TO FRIDAY'S MEETING
 

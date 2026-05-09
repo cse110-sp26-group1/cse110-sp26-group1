@@ -1,4 +1,6 @@
-# Database Tables
+# Database Tables Example (Revised: Team Workspace Model)
+
+---
 
 ## users
 
@@ -20,6 +22,14 @@ Stores account/login information for each user.
 | 2   | james    |
 | 3   | anchita  |
 
+### Example Query
+
+```sql
+SELECT *
+FROM users
+WHERE id = 1;
+```
+
 ---
 
 ## teams
@@ -30,7 +40,8 @@ Stores account/login information for each user.
 
 ### Purpose
 
-Represents a shared workspace/team.
+Represents a workspace (like a GitHub repo).  
+Each team is a completely isolated issue space.
 
 ### Example
 
@@ -38,6 +49,13 @@ Represents a shared workspace/team.
 | --- | --------- |
 | 10  | Backend   |
 | 11  | Design    |
+
+### Example Query
+
+```sql
+SELECT *
+FROM teams;
+```
 
 ---
 
@@ -49,46 +67,47 @@ Represents a shared workspace/team.
 
 ### Purpose
 
-Maps users to teams.
+Defines which users belong to which workspace (team).
 
-Allows:
-
--   multiple users per team
--   users in multiple teams
+-   A user can be in multiple teams
+-   A team can have multiple users
+-   Defines workspace access control (not just filtering)
 
 ### Example
 
-| user_id | team_id |
-| ------- | ------- |
-| 1       | 10      |
-| 2       | 10      |
-| 3       | 11      |
-| 1       | 11      |
+| user_id | team_id | role  |
+| ------- | ------- | ----- |
+| 1       | 10      | admin |
+| 2       | 10      | dev   |
+| 3       | 11      | dev   |
+| 1       | 11      | dev   |
 
 ### Meaning
 
--   amormio is in Backend
--   james is in Backend
--   anchita is in Design
--   amormio is ALSO in Design
+-   amormio → Backend + Design workspaces
+-   james → Backend workspace
+-   anchita → Design workspace
 
-### Example Query
+### Example Queries
 
-Get all users in Backend team:
+**Get all teams for a user:**
 
 ```sql
-SELECT users.username
+SELECT teams.*
+FROM teams
+JOIN team_members
+ON teams.id = team_members.team_id
+WHERE team_members.user_id = 1;
+```
+
+**Get all users in a team:**
+
+```sql
+SELECT users.*
 FROM users
 JOIN team_members
 ON users.id = team_members.user_id
 WHERE team_members.team_id = 10;
-```
-
-### Result
-
-```txt
-amormio
-james
 ```
 
 ---
@@ -99,48 +118,62 @@ james
 -   team_id
 -   created_by
 -   assigned_to
-
 -   title
 -   description
 -   summary
-
 -   status
 -   priority
 -   category
 -   tags
-
 -   entry_point
 -   error_type
 -   error_message
 -   stack_trace
 -   affected_files
-
 -   expected_behavior
 -   actual_behavior
 -   missing_information
-
 -   steps_to_reproduce
 -   hypothesis
-
 -   resolution_notes
-
 -   created_at
 -   updated_at
 
 ### Purpose
 
-Main issue table shared between human UI and agent workflows.
+Core issue data for a specific team workspace.
 
-### Notes
+### Key Idea
 
--   each issue directly stores `team_id`
--   filtering issues by team becomes simple
+-   Each issue belongs to exactly one team workspace
+-   Users only see issues for teams they belong to
+-   No cross-team visibility
 
-### Example Query
+### Example
+
+| id  | team_id | title              |
+| --- | ------- | ------------------ |
+| 1   | 10      | Fix login bug      |
+| 2   | 11      | Improve UI spacing |
+
+### Example Queries
+
+**Get all issues for a team:**
 
 ```sql
-SELECT * FROM issues
+SELECT *
+FROM issues
 WHERE team_id = 10;
+```
+
+**Get all issues accessible to a user:**
+
+```sql
+SELECT issues.*
+FROM issues
+JOIN team_members
+ON issues.team_id = team_members.team_id
+WHERE team_members.user_id = 1;
 ```
 
 ---
@@ -149,10 +182,8 @@ WHERE team_id = 10;
 
 -   id
 -   issue_id
-
 -   agent_attempted_at
 -   total_token_usage
-
 -   attempt_number
 -   result
 -   notes
@@ -160,6 +191,35 @@ WHERE team_id = 10;
 
 ### Purpose
 
-Stores logs/history for AI agent attempts separately from the main issue table.
+Tracks AI agent execution history per issue.
 
-Allows multiple attempts per issue.
+### Example
+
+| id  | issue_id | result  |
+| --- | -------- | ------- |
+| 1   | 2        | failed  |
+| 2   | 2        | success |
+
+### Example Query
+
+```sql
+SELECT *
+FROM agent_attempts
+WHERE issue_id = 2;
+```
+
+---
+
+## Key Relationship Model
+
+users → team_members → teams → issues → agent_attempts
+
+---
+
+## Core Concept Summary
+
+-   Team = isolated workspace
+-   Users belong to teams via `team_members`
+-   Issues are scoped to one team only
+-   All access is controlled through team membership
+-   Agent attempts store AI execution history per issue
