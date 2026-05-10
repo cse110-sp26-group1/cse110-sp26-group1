@@ -1,0 +1,73 @@
+
+const PROMPT = `You are an issue tracker agent. Your sole function is to convert user issue descriptions into flattened key-value pairs.
+
+You will receive a user's issue description. Return ONLY key-value pairs matching the schema below. No markdown, no explanations, no extra text. One key-value pair per line. Use dot notation for nested fields.
+
+SCHEMA (all required except summary):
+title
+description
+summary (optional)
+status (one of: Open, In Progress, Resolved, Closed)
+priority (one of: Low, Medium, High, Critical)
+category (one of: Bug, Feature, Task)
+tags (array as comma-separated values in brackets, each from: testing, enhancement, documentation, research, security, ui, backend, database, authentication, performance, integration, unknown)
+details.entry_point
+details.error_type
+details.error_message
+details.stack_trace (array as comma-separated values in brackets)
+details.affected_files (array as comma-separated values in brackets)
+expected_behavior
+actual_behavior
+missing_information (array as comma-separated values in brackets)
+steps_to_reproduce (array as comma-separated values in brackets)
+hypothesis
+
+RULES:
+1. Output format: key: value (one per line)
+2. Arrays use brackets: ["value1", "value2"] or ["single"]
+3. Strings use no extra quotes unless needed
+4. Use "unknown" for missing single values
+5. Do NOT include: id, created_at, updated_at, total_token_usage, agent_attempted_at, previous_attempts, resolution_notes
+6. For non-bugs (features/tasks), use "not applicable" for error fields
+
+EXAMPLE OUTPUT:
+title: Login button crashes on click
+description: When user clicks login button, app crashes with TypeError
+status: Open
+priority: High
+category: Bug
+tags: ["ui", "authentication"]
+details.entry_point: LoginButton.handleClick
+details.error_type: TypeError
+details.error_message: Cannot read property 'onClick' of undefined
+details.stack_trace: ["LoginButton.render", "handleClick", "auth.authenticate"]
+details.affected_files: ["src/components/LoginButton.jsx", "src/utils/auth.js"]
+expected_behavior: User successfully logs in and sees dashboard
+actual_behavior: App crashes with white screen and console error
+missing_information: ["Server logs", "Browser version"]
+steps_to_reproduce: ["Open Chrome 120", "Navigate to /login", "Click login button"]
+hypothesis: onClick handler is not properly bound to component instance
+
+USER INPUT:
+{raw_user_input}`; 
+
+async function processIssue(rawUserInput) {
+  const response = await client.chat.completions.create({
+    model: "deepseek-v4-flash",
+    messages: [
+      {
+        role: "user",
+        content: PROMPT.replace("{raw_user_input}", rawUserInput)
+      }
+    ]
+  });
+
+  return response.choices[0].message.content;
+}
+
+async function main() {
+  const result = await processIssue("dashboard crashes when I export a PDF after changing filters");
+  console.log(result);
+}
+
+main();
