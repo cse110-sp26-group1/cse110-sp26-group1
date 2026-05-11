@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Your teams · Issue Tracker</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			try {
+				if (localStorage.getItem('theme') === 'dark') {
+					document.documentElement.classList.add('dark');
+				}
+			} catch {
+				/* localStorage unavailable */
+			}
+		</script>
+		<link rel="stylesheet" href="styles.css" />
+		<style>
+			body {
+				min-height: 100vh;
+			}
+
+			/* top bar */
+			.topbar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 14px 28px;
+				border-bottom: 1px solid var(--line);
+				background: var(--bg);
+				position: sticky;
+				top: 0;
+				z-index: 5;
+			}
+			.brand {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.logo {
+				width: 24px;
+				height: 24px;
+				background: var(--ink);
+				border-radius: 5px;
+				position: relative;
+			}
+			.logo::before,
+			.logo::after {
+				content: '';
+				position: absolute;
+				background: var(--bg);
+			}
+			.logo::before {
+				top: 7px;
+				left: 5px;
+				width: 14px;
+				height: 1.5px;
+			}
+			.logo::after {
+				top: 11px;
+				left: 5px;
+				width: 10px;
+				height: 1.5px;
+				box-shadow: 0 4px 0 var(--bg);
+			}
+			.brand .name {
+				font-weight: 600;
+			}
+			.user-menu {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+
+			/* layout */
+			main {
+				max-width: 1080px;
+				margin: 0 auto;
+				padding: 56px 28px 80px;
+			}
+
+			.hero {
+				display: flex;
+				justify-content: space-between;
+				align-items: flex-end;
+				margin-bottom: 32px;
+				gap: 16px;
+			}
+			.hero h1 {
+				margin: 0 0 4px;
+				font-size: 30px;
+				font-weight: 600;
+				letter-spacing: -0.02em;
+			}
+			.hero p {
+				margin: 0;
+				color: var(--muted);
+			}
+
+			/* search row */
+			.search-row {
+				display: flex;
+				gap: 10px;
+				margin-bottom: 24px;
+			}
+			.search-row .input {
+				max-width: 320px;
+			}
+
+			/* team grid */
+			.grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+				gap: 14px;
+			}
+			.team {
+				padding: 18px 20px 16px;
+				display: flex;
+				flex-direction: column;
+				gap: 14px;
+				cursor: pointer;
+				transition:
+					border-color 0.12s,
+					transform 0.08s,
+					box-shadow 0.12s;
+				background: var(--surface);
+				border: 1px solid var(--line);
+				border-radius: var(--r-3);
+				box-shadow: var(--shadow-1);
+				text-align: left;
+			}
+			.team:hover {
+				border-color: var(--ink-2);
+				transform: translateY(-1px);
+				box-shadow: var(--shadow-2);
+			}
+			.team-head {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.team-mark {
+				width: 40px;
+				height: 40px;
+				border-radius: 8px;
+				background: var(--surface-3);
+				border: 1px solid var(--line);
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				font-weight: 700;
+				font-size: 15px;
+				letter-spacing: 0.02em;
+				flex: 0 0 auto;
+			}
+			.team-mark.c1 {
+				background: oklch(0.92 0.04 38);
+				color: oklch(0.4 0.12 38);
+				border-color: oklch(0.85 0.05 38);
+			}
+			.team-mark.c2 {
+				background: oklch(0.92 0.04 200);
+				color: oklch(0.38 0.1 200);
+				border-color: oklch(0.85 0.05 200);
+			}
+			.team-mark.c3 {
+				background: oklch(0.93 0.04 130);
+				color: oklch(0.38 0.1 130);
+				border-color: oklch(0.85 0.05 130);
+			}
+			.team-mark.c4 {
+				background: oklch(0.92 0.04 320);
+				color: oklch(0.4 0.1 320);
+				border-color: oklch(0.85 0.05 320);
+			}
+
+			.team h2 {
+				margin: 0;
+				font-size: 15.5px;
+				font-weight: 600;
+				line-height: 1.2;
+				letter-spacing: -0.005em;
+			}
+			.team .slug {
+				font-family: var(--mono);
+				font-size: 11px;
+				color: var(--muted);
+				margin-top: 2px;
+			}
+
+			.stats {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 4px;
+				padding: 10px 0;
+				border-top: 1px solid var(--line);
+			}
+			.stats .stat {
+				display: flex;
+				flex-direction: column;
+			}
+			.stats .stat .n {
+				font-size: 18px;
+				font-weight: 600;
+				letter-spacing: -0.01em;
+			}
+			.stats .stat .l {
+				font-family: var(--mono);
+				font-size: 10px;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				color: var(--muted);
+				margin-top: 2px;
+			}
+
+			.team-foot {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+			.members {
+				display: inline-flex;
+			}
+			.members .avatar {
+				margin-left: -8px;
+				background: var(--surface);
+			}
+			.members .avatar:first-child {
+				margin-left: 0;
+			}
+			.members .more {
+				margin-left: -8px;
+				width: 28px;
+				height: 28px;
+				border-radius: 50%;
+				background: var(--surface-2);
+				color: var(--muted);
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 11px;
+				font-weight: 600;
+				border: 1px solid var(--line);
+			}
+			.last-active {
+				font-size: 12px;
+				color: var(--muted);
+			}
+
+			/* "create new" card */
+			.team.new {
+				border-style: dashed;
+				background: transparent;
+				align-items: stretch;
+				justify-content: center;
+				text-align: center;
+				color: var(--muted);
+				min-height: 100%;
+			}
+			.team.new:hover {
+				background: var(--surface-2);
+				color: var(--ink);
+			}
+			.team.new .plus {
+				width: 40px;
+				height: 40px;
+				border-radius: 50%;
+				border: 1px solid var(--line-strong);
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 22px;
+				margin: 0 auto 4px;
+			}
+			.team.new h2 {
+				font-size: 15px;
+			}
+
+			/* pending invites */
+			.invites {
+				margin-top: 36px;
+				border-top: 1px solid var(--line);
+				padding-top: 24px;
+			}
+			.invites h3 {
+				margin: 0 0 10px;
+				font-size: 14px;
+				font-weight: 600;
+			}
+			.invite {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 12px 16px;
+				background: var(--surface);
+				border: 1px solid var(--line);
+				border-radius: var(--r-2);
+				margin-bottom: 8px;
+			}
+			.invite .info {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.invite .info .team-mark {
+				width: 32px;
+				height: 32px;
+				font-size: 13px;
+			}
+			.invite .actions {
+				display: flex;
+				gap: 6px;
+			}
+			.invite p {
+				margin: 0;
+				font-size: 12.5px;
+				color: var(--muted);
+			}
+			.invite strong {
+				font-weight: 600;
+				color: var(--ink);
+			}
+		</style>
+	</head>
+	<body>
+		<header class="topbar">
+			<div class="brand">
+				<div class="logo"></div>
+				<span class="name">Tracker</span>
+			</div>
+			<div class="user-menu">
+				<button class="btn ghost sm">Help</button>
+				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
+				<div class="avatar" title="Ada Lovelace">AL</div>
+			</div>
+		</header>
+
+		<main>
+			<div class="hero">
+				<div>
+					<h1>Your teams</h1>
+					<p>Each team is its own workspace. Pick one to open its issue tracker.</p>
+				</div>
+				<div style="display: flex; gap: 8px">
+					<button class="btn">Join with code</button>
+					<button class="btn primary" id="createTeam">+ New team</button>
+				</div>
+			</div>
+
+			<div class="search-row">
+				<input class="input" placeholder="Search teams…" />
+				<button class="btn">Sort: recent ▾</button>
+			</div>
+
+			<div class="grid">
+				<a class="team" href="tracker.html?team=studio-ai">
+					<div class="team-head">
+						<div class="team-mark c1">SA</div>
+						<div>
+							<h2>Studio · AI Tools</h2>
+							<div class="slug">studio-ai</div>
+						</div>
+					</div>
+					<div class="stats">
+						<div class="stat"><span class="n">14</span><span class="l">open</span></div>
+						<div class="stat"><span class="n">3</span><span class="l">in&nbsp;prog</span></div>
+						<div class="stat"><span class="n">47</span><span class="l">done</span></div>
+					</div>
+					<div class="team-foot">
+						<div class="members">
+							<span class="avatar">AL</span>
+							<span class="avatar">JK</span>
+							<span class="avatar">MN</span>
+							<span class="more">+4</span>
+						</div>
+						<span class="last-active">active 2h ago</span>
+					</div>
+				</a>
+
+				<a class="team" href="tracker.html?team=group-eight">
+					<div class="team-head">
+						<div class="team-mark c2">G8</div>
+						<div>
+							<h2>Group 8 · Capstone</h2>
+							<div class="slug">group-eight</div>
+						</div>
+					</div>
+					<div class="stats">
+						<div class="stat"><span class="n">22</span><span class="l">open</span></div>
+						<div class="stat"><span class="n">5</span><span class="l">in&nbsp;prog</span></div>
+						<div class="stat"><span class="n">12</span><span class="l">done</span></div>
+					</div>
+					<div class="team-foot">
+						<div class="members">
+							<span class="avatar">AM</span>
+							<span class="avatar">AC</span>
+							<span class="avatar">BN</span>
+							<span class="more">+3</span>
+						</div>
+						<span class="last-active">active 15m ago</span>
+					</div>
+				</a>
+
+				<a class="team" href="tracker.html?team=side-quest">
+					<div class="team-head">
+						<div class="team-mark c3">SQ</div>
+						<div>
+							<h2>Side Quest</h2>
+							<div class="slug">side-quest</div>
+						</div>
+					</div>
+					<div class="stats">
+						<div class="stat"><span class="n">6</span><span class="l">open</span></div>
+						<div class="stat"><span class="n">1</span><span class="l">in&nbsp;prog</span></div>
+						<div class="stat"><span class="n">8</span><span class="l">done</span></div>
+					</div>
+					<div class="team-foot">
+						<div class="members"><span class="avatar">AL</span></div>
+						<span class="last-active">active yesterday</span>
+					</div>
+				</a>
+
+				<a class="team" href="tracker.html?team=hearth-os">
+					<div class="team-head">
+						<div class="team-mark c4">HO</div>
+						<div>
+							<h2>Hearth OS</h2>
+							<div class="slug">hearth-os</div>
+						</div>
+					</div>
+					<div class="stats">
+						<div class="stat"><span class="n">31</span><span class="l">open</span></div>
+						<div class="stat"><span class="n">9</span><span class="l">in&nbsp;prog</span></div>
+						<div class="stat"><span class="n">128</span><span class="l">done</span></div>
+					</div>
+					<div class="team-foot">
+						<div class="members">
+							<span class="avatar">RT</span>
+							<span class="avatar">YK</span>
+							<span class="more">+6</span>
+						</div>
+						<span class="last-active">active 4d ago</span>
+					</div>
+				</a>
+
+				<button class="team new" id="createTeam2">
+					<div>
+						<div class="plus">+</div>
+						<h2>Create new team</h2>
+						<p style="margin: 4px 0 0; font-size: 12.5px">Start a fresh workspace.</p>
+					</div>
+				</button>
+			</div>
+
+			<section class="invites">
+				<h3>Pending invitations</h3>
+
+				<div class="invite">
+					<div class="info">
+						<div class="team-mark c2" style="width: 32px; height: 32px; font-size: 13px">DK</div>
+						<div>
+							<p><strong>Dawn Kernel</strong> · invited by ben@dawn.io</p>
+							<p>3 members · invited 2 days ago</p>
+						</div>
+					</div>
+					<div class="actions">
+						<button class="btn sm">Decline</button>
+						<button class="btn primary sm">Accept</button>
+					</div>
+				</div>
+
+				<div class="invite">
+					<div class="info">
+						<div class="team-mark c1" style="width: 32px; height: 32px; font-size: 13px">RR</div>
+						<div>
+							<p><strong>Roost Robotics</strong> · invited by anchita@roost.dev</p>
+							<p>11 members · invited 5 days ago</p>
+						</div>
+					</div>
+					<div class="actions">
+						<button class="btn sm">Decline</button>
+						<button class="btn primary sm">Accept</button>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<!-- Create team modal -->
+		<div class="backdrop" id="createBackdrop">
+			<div class="modal">
+				<div class="modal-head">
+					<h3>Create a new team</h3>
+					<p>You'll be the first member. Invite others after.</p>
+				</div>
+				<div class="modal-body">
+					<div class="field">
+						<label>Team name <span class="req">*</span></label>
+						<input class="input" id="teamName" placeholder="e.g. Roost Robotics" />
+					</div>
+					<div class="field">
+						<label>URL slug</label>
+						<input class="input" id="teamSlug" placeholder="roost-robotics" />
+						<div class="hint">Lowercase letters, numbers, dashes.</div>
+					</div>
+					<div class="field">
+						<label>Description <span style="font-weight: 400; color: var(--muted)">(optional)</span></label>
+						<textarea class="textarea" placeholder="What does this team work on?"></textarea>
+					</div>
+				</div>
+				<div class="modal-foot">
+					<button class="btn" id="cancelCreate">Cancel</button>
+					<button class="btn primary" id="confirmCreate">Create team</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="toast" id="toast"></div>
+
+		<script type="module" src="js/teams.js"></script>
+	</body>
+</html>

@@ -81,3 +81,17 @@
 --   token_usage INTEGER,
 --   FOREIGN KEY (issue_id) REFERENCES issues(id)
 -- );
+
+--------------------------------- INVITES TABLE ---------------------------------
+CREATE TABLE invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    team_id INTEGER NOT NULL, 
+    inviter_user_id INTEGER NOT NULL,
+    invited_user_id INTEGER NOT NULL,
+
+    status TEXT NOT NULL DEFAULT 'pending' 
+        CHECK (status IN ('pending', 'accepted', 'declined')),
+    
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
