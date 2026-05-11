@@ -1,0 +1,41 @@
+name: PR Size Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-pr-size:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Count lines changed
+        id: diff
+        run: |
+          LINES=$(git diff --stat origin/main...HEAD | tail -1 | grep -oP '\d+(?= insertion)' || echo 0)
+          DELETIONS=$(git diff --stat origin/main...HEAD | tail -1 | grep -oP '\d+(?= deletion)' || echo 0)
+          TOTAL=$((LINES + DELETIONS))
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "Total lines changed: $TOTAL"
+
+      - name: Check for review if over 300 lines
+        if: steps.diff.outputs.total > 300
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "This PR changes ${{ steps.diff.outputs.total }} lines (over 300 line limit)."
+          echo "Checking for an approved review..."
+
+          APPROVALS=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
+            --jq '[.[] | select(.state == "APPROVED")] | length')
+
+          if [ "$APPROVALS" -lt 1 ]; then
+            echo "::error::PRs over 300 lines require at least one approved review before merging."
+            exit 1
+          else
+            echo "Approved review found. Good to go."
+          fi
