@@ -2,9 +2,6 @@ import globals from 'globals';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import jsdoc from 'eslint-plugin-jsdoc';
 
-import eslintConfigPrettier from 'eslint-config-prettier';
-import jsdoc from 'eslint-plugin-jsdoc';
-
 export default [
     {
         files: ['**/*.js'],
