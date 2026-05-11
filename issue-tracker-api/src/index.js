@@ -8,7 +8,10 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
+import { handleInvites } from "../routes/invites.js";
+
 export default {
+<<<<<<< HEAD
 	async fetch(request, env, ctx) {
 		const url = new URL(request.url);
 		const method = request.method;
@@ -117,3 +120,24 @@ export default {
 		);
 	},
 };
+=======
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    if (
+      url.pathname.startsWith("/invites") ||
+      (url.pathname.startsWith("/teams/") &&
+        url.pathname.endsWith("/invite"))
+    ) {
+      return handleInvites(request, env);
+    }
+
+    return Response.json(
+      {
+        error: "Route not found",
+      },
+      { status: 404 }
+    );
+  },
+};
+>>>>>>> eb2993b (refactor: move invite routes into routes folder)
