@@ -506,3 +506,69 @@ select.input:focus {
 	outline-offset: 2px;
 	border-radius: 2px;
 }
+
+/* ============================================================
+   Dark mode — applied by toggling .dark on <html>
+   The FOUC-prevention inline script in each page reads
+   localStorage('theme') and sets this class before paint.
+   ============================================================ */
+html {
+	color-scheme: light;
+}
+html.dark {
+	color-scheme: dark;
+
+	--bg: #14130f;
+	--surface: #1c1a16;
+	--surface-2: #25221d;
+	--surface-3: #2f2c25;
+
+	--ink: #f0ece2;
+	--ink-2: #c9c4b7;
+	--muted: #8a8478;
+	--muted-2: #5a554b;
+
+	--line: #2a2722;
+	--line-strong: #3a3733;
+
+	--accent-soft: oklch(0.3 0.05 38);
+
+	--shadow-1: 0 1px 0 #00000030, 0 1px 2px #00000040;
+	--shadow-2: 0 1px 0 #00000040, 0 4px 16px #00000050;
+	--shadow-pop: 0 1px 0 #00000040, 0 10px 40px #00000080;
+}
+
+/* Surfaces that use var(--ink) as background need inverted contrast in dark mode */
+html.dark .btn.primary {
+	background: #f0ece2;
+	color: #1a1a1a;
+	border-color: #f0ece2;
+}
+html.dark .btn.primary:hover {
+	background: #ffffff;
+	border-color: #ffffff;
+}
+html.dark .toast {
+	background: #f0ece2;
+	color: #1a1a1a;
+}
+html.dark .chip-btn.on {
+	background: #f0ece2;
+	color: #1a1a1a;
+	border-color: #f0ece2;
+}
+/* Login poster is a fixed-dark decorative panel — keep it dark in both modes
+   (its CSS uses var(--ink) which would otherwise invert to a light surface). */
+html.dark .poster {
+	background: #0c0b09;
+}
+
+/* theme toggle icon (sun/moon) */
+.theme-toggle::before {
+	content: '☾';
+	font-size: 14px;
+	line-height: 1;
+}
+html.dark .theme-toggle::before {
+	content: '☀';
+}

@@ -1,4 +1,5 @@
 import { ISSUES, TEAMS, PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './data.js';
+import './theme.js';
 
 // ============================================================
 // STATE

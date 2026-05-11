@@ -4,6 +4,15 @@
 		<meta charset="utf-8" />
 		<title>Issues · Issue Tracker</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			try {
+				if (localStorage.getItem('theme') === 'dark') {
+					document.documentElement.classList.add('dark');
+				}
+			} catch {
+				/* localStorage unavailable */
+			}
+		</script>
 		<link rel="stylesheet" href="styles.css" />
 		<style>
 			html,
@@ -900,6 +909,7 @@
 					<input class="search-top" placeholder="Search issues, files…" />
 				</div>
 				<button class="btn ghost icon" title="Notifications">◔</button>
+				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
 				<div class="avatar sm" title="Ada Lovelace">AL</div>
 			</div>
 		</header>
