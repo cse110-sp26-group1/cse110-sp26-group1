@@ -1,4 +1,4 @@
-export async function handleInvites(request, env) {
+export async function handleInvites(request, _env) {
 	const url = new URL(request.url);
 	const method = request.method;
 
