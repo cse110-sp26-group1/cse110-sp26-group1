@@ -3,10 +3,16 @@ const teamNameEl = document.getElementById('teamName');
 const teamSlugEl = document.getElementById('teamSlug');
 const toast = document.getElementById('toast');
 
+/**
+ *
+ */
 function openModal() {
 	backdrop.classList.add('open');
 	teamNameEl.focus();
 }
+/**
+ *
+ */
 function closeModal() {
 	backdrop.classList.remove('open');
 }
@@ -42,6 +48,10 @@ document.getElementById('confirmCreate').addEventListener('click', () => {
 	location.href = `tracker.html?team=${encodeURIComponent(slug)}`;
 });
 
+/**
+ *
+ * @param msg
+ */
 function showToast(msg) {
 	toast.textContent = msg;
 	toast.classList.add('show');
