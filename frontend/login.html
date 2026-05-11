@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Sign in · Issue Tracker</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="stylesheet" href="styles.css" />
+		<style>
+			body {
+				min-height: 100vh;
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+			}
+			.stage {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 48px 40px;
+			}
+			.stage .inner {
+				width: min(380px, 100%);
+			}
+
+			.brand {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-bottom: 36px;
+			}
+			.logo {
+				width: 28px;
+				height: 28px;
+				background: var(--ink);
+				border-radius: 6px;
+				position: relative;
+				flex: 0 0 auto;
+			}
+			.logo::before,
+			.logo::after {
+				content: '';
+				position: absolute;
+				background: var(--bg);
+			}
+			.logo::before {
+				top: 8px;
+				left: 6px;
+				width: 16px;
+				height: 1.5px;
+			}
+			.logo::after {
+				top: 13px;
+				left: 6px;
+				width: 11px;
+				height: 1.5px;
+				box-shadow: 0 5px 0 var(--bg);
+			}
+			.brand .name {
+				font-weight: 600;
+				letter-spacing: -0.01em;
+			}
+			.brand .ver {
+				font-family: var(--mono);
+				font-size: 10.5px;
+				color: var(--muted);
+				margin-left: 4px;
+			}
+
+			h1.title {
+				margin: 0 0 6px;
+				font-size: 26px;
+				font-weight: 600;
+				letter-spacing: -0.015em;
+			}
+			p.sub {
+				margin: 0 0 28px;
+				color: var(--muted);
+			}
+
+			.tabs-seg {
+				display: inline-flex;
+				background: var(--surface-2);
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				padding: 3px;
+				margin-bottom: 22px;
+			}
+			.tabs-seg button {
+				background: transparent;
+				border: none;
+				padding: 6px 14px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--muted);
+				border-radius: 6px;
+				cursor: pointer;
+			}
+			.tabs-seg button.on {
+				background: var(--surface);
+				color: var(--ink);
+				box-shadow: var(--shadow-1);
+			}
+
+			.row2 {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 10px;
+			}
+
+			.help-row {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				font-size: 12.5px;
+				margin: -4px 0 18px;
+			}
+			.help-row a {
+				color: var(--accent-ink);
+			}
+			.help-row a:hover {
+				text-decoration: underline;
+			}
+
+			.btn.block {
+				width: 100%;
+				justify-content: center;
+				padding: 11px;
+				font-size: 14px;
+			}
+
+			.or {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin: 18px 0;
+				color: var(--muted);
+				font-size: 12px;
+			}
+			.or::before,
+			.or::after {
+				content: '';
+				flex: 1;
+				height: 1px;
+				background: var(--line);
+			}
+
+			.social {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 8px;
+			}
+			.social .btn {
+				justify-content: center;
+				padding: 10px;
+				font-size: 13px;
+			}
+			.social .gh::before {
+				content: '⌘';
+				font-family: var(--mono);
+				margin-right: 4px;
+			}
+			.social .goog::before {
+				content: 'G';
+				font-family: var(--mono);
+				font-weight: 700;
+				margin-right: 4px;
+			}
+
+			.legal {
+				margin-top: 24px;
+				font-size: 11.5px;
+				color: var(--muted);
+				text-align: center;
+			}
+
+			/* RIGHT side: poster */
+			.poster {
+				background: var(--ink);
+				color: #e9e4d8;
+				padding: 40px;
+				overflow: hidden;
+				position: relative;
+				display: flex;
+				flex-direction: column;
+				justify-content: space-between;
+			}
+			.poster::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background:
+					radial-gradient(circle at 80% 10%, oklch(0.35 0.06 38) 0%, transparent 40%),
+					radial-gradient(circle at 10% 90%, oklch(0.3 0.04 220) 0%, transparent 50%);
+				opacity: 0.9;
+			}
+			.poster > * {
+				position: relative;
+				z-index: 1;
+			}
+			.poster .label {
+				color: oklch(0.75 0.06 38);
+			}
+			.poster h2 {
+				font-size: 32px;
+				line-height: 1.15;
+				letter-spacing: -0.02em;
+				font-weight: 500;
+				margin: 12px 0 0;
+				max-width: 380px;
+			}
+			.poster h2 em {
+				font-style: normal;
+				color: oklch(0.78 0.12 38);
+			}
+
+			/* preview cards */
+			.preview-stack {
+				margin: 36px 0;
+				position: relative;
+				height: 260px;
+			}
+			.pc {
+				position: absolute;
+				background: #211f1c;
+				border: 1px solid #2f2c28;
+				border-radius: 10px;
+				padding: 14px 16px;
+				width: 320px;
+				box-shadow: 0 20px 40px #00000050;
+			}
+			.pc h4 {
+				margin: 0 0 6px;
+				font-size: 13.5px;
+				font-weight: 600;
+				color: #f1ece0;
+			}
+			.pc .row {
+				display: flex;
+				gap: 6px;
+				align-items: center;
+			}
+			.pc .id {
+				font-family: var(--mono);
+				font-size: 10.5px;
+				color: #8a8478;
+				margin-right: 6px;
+			}
+			.pc .pri {
+				font-family: var(--mono);
+				font-size: 10px;
+				padding: 1px 6px;
+				border-radius: 4px;
+				font-weight: 600;
+			}
+			.pc .pri.high {
+				background: oklch(0.35 0.12 38);
+				color: oklch(0.85 0.12 38);
+			}
+			.pc .pri.med {
+				background: oklch(0.32 0.08 75);
+				color: oklch(0.82 0.1 75);
+			}
+			.pc .pri.low {
+				background: oklch(0.32 0.06 220);
+				color: oklch(0.8 0.08 220);
+			}
+			.pc .tag {
+				font-family: var(--mono);
+				font-size: 10px;
+				color: #b5afa1;
+				border: 1px solid #3a3733;
+				padding: 1px 6px;
+				border-radius: 4px;
+			}
+			.pc .sum {
+				font-size: 12px;
+				color: #b5afa1;
+				margin-top: 6px;
+				line-height: 1.45;
+			}
+			.pc-1 {
+				top: 0;
+				left: 0;
+				transform: rotate(-2deg);
+			}
+			.pc-2 {
+				top: 80px;
+				left: 60px;
+				transform: rotate(1deg);
+			}
+			.pc-3 {
+				top: 160px;
+				left: 120px;
+				transform: rotate(-1deg);
+			}
+
+			.poster footer {
+				font-size: 12px;
+				color: #8a8478;
+				border-top: 1px solid #2f2c28;
+				padding-top: 18px;
+				display: flex;
+				justify-content: space-between;
+			}
+			.poster footer .dots {
+				display: flex;
+				gap: 4px;
+				align-items: center;
+			}
+			.poster footer .dots span {
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				background: #3a3733;
+			}
+			.poster footer .dots span.on {
+				background: oklch(0.78 0.12 38);
+			}
+
+			/* signup-only fields, hidden by default */
+			.signup-only {
+				display: none;
+			}
+			body.mode-signup .signup-only {
+				display: block;
+			}
+			body.mode-signup .login-only {
+				display: none;
+			}
+
+			@media (max-width: 880px) {
+				body {
+					grid-template-columns: 1fr;
+				}
+				.poster {
+					display: none;
+				}
+			}
+		</style>
+	</head>
+	<body class="mode-login">
+		<div class="stage">
+			<div class="inner">
+				<div class="brand">
+					<div class="logo" aria-hidden="true"></div>
+					<span class="name">Tracker</span>
+					<span class="ver">v0.1</span>
+				</div>
+
+				<h1 class="title login-only">Welcome back</h1>
+				<h1 class="title signup-only">Create your account</h1>
+				<p class="sub login-only">Sign in to continue to your teams.</p>
+				<p class="sub signup-only">A few details and you're in.</p>
+
+				<div class="tabs-seg" role="tablist">
+					<button id="tabLogin" class="on" role="tab" aria-selected="true">Sign in</button>
+					<button id="tabSignup" role="tab" aria-selected="false">Sign up</button>
+				</div>
+
+				<form id="authForm" novalidate>
+					<div class="signup-only row2">
+						<div class="field">
+							<label for="first">First name</label>
+							<input id="first" class="input" type="text" placeholder="Ada" autocomplete="given-name" />
+						</div>
+						<div class="field">
+							<label for="last">Last name</label>
+							<input id="last" class="input" type="text" placeholder="Lovelace" autocomplete="family-name" />
+						</div>
+					</div>
+
+					<div class="field">
+						<label for="email">Email</label>
+						<input id="email" class="input" type="email" placeholder="you@studio.dev" autocomplete="email" required />
+					</div>
+
+					<div class="field">
+						<label for="password">Password</label>
+						<input id="password" class="input" type="password" placeholder="••••••••" autocomplete="current-password" required />
+					</div>
+
+					<div class="help-row login-only">
+						<label style="display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2)">
+							<input type="checkbox" /> Remember me
+						</label>
+						<a href="#">Forgot password?</a>
+					</div>
+
+					<button class="btn primary block" id="submitBtn" type="submit">
+						<span class="login-only">Sign in</span>
+						<span class="signup-only">Create account</span>
+					</button>
+
+					<div class="or"><span>or continue with</span></div>
+
+					<div class="social">
+						<button type="button" class="btn goog">Google</button>
+						<button type="button" class="btn gh">GitHub</button>
+					</div>
+
+					<div class="legal">By continuing you agree to the Terms of Service and Privacy Policy.</div>
+				</form>
+			</div>
+		</div>
+
+		<aside class="poster" aria-hidden="true">
+			<div>
+				<span class="label">Issue Tracker</span>
+				<h2>Track the work. <em>Hand context to your agents.</em></h2>
+			</div>
+
+			<div class="preview-stack">
+				<div class="pc pc-1">
+					<div class="row">
+						<span class="id">#142</span>
+						<span class="pri high">P1 · HIGH</span>
+					</div>
+					<h4>Login redirect loops after session expiry</h4>
+					<div class="sum">Auth bounce — missing return-URL guard on protected routes.</div>
+				</div>
+				<div class="pc pc-2">
+					<div class="row">
+						<span class="id">#141</span>
+						<span class="pri med">P2 · MED</span>
+						<span class="tag">ui</span>
+					</div>
+					<h4>Filter chips cause list reflow</h4>
+				</div>
+				<div class="pc pc-3">
+					<div class="row">
+						<span class="id">#139</span>
+						<span class="pri med">P2 · MED</span>
+						<span class="tag">infra</span>
+					</div>
+					<h4>D1 schema: add team_id to issues</h4>
+				</div>
+			</div>
+
+			<footer>
+				<span>Designed for humans &amp; their agents.</span>
+				<div class="dots"><span class="on"></span><span></span><span></span></div>
+			</footer>
+		</aside>
+
+		<script type="module" src="js/login.js"></script>
+	</body>
+</html>
