@@ -1,5 +1,3 @@
-import './theme.js';
-
 const backdrop = document.getElementById('createBackdrop');
 const teamNameEl = document.getElementById('teamName');
 const teamSlugEl = document.getElementById('teamSlug');

@@ -1,5 +1,3 @@
-import './theme.js';
-
 const tabLogin = document.getElementById('tabLogin');
 const tabSignup = document.getElementById('tabSignup');
 const body = document.body;
