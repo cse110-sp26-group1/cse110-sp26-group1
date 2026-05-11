@@ -8,7 +8,7 @@
 	"main": "src/index.js",
 	"compatibility_date": "2026-05-09",
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
 	"upload_source_maps": true,
 	"compatibility_flags": ["nodejs_compat"],
@@ -16,9 +16,9 @@
 		{
 			"binding": "issue_tracker_db",
 			"database_name": "issue-tracker-db",
-			"database_id": "9f845578-0391-4e87-a3ee-77d73b8d2bb9"
-		}
-	]
+			"database_id": "9f845578-0391-4e87-a3ee-77d73b8d2bb9",
+		},
+	],
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
