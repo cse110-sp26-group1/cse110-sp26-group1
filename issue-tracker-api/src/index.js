@@ -10,6 +10,34 @@
 
 export default {
 	async fetch(request, env, ctx) {
-		return new Response("Hello World!");
+		return new Response('Hello World!');
 	},
 };
+// example how we'd manage the requests
+// import { handleIssues } from "./routes/issues.js";
+// import { handleInvites } from "./routes/invites.js";
+// import { handleTeams } from "./routes/teams.js";
+
+// export default {
+//   async fetch(request, env) {
+//     const url = new URL(request.url);
+//     const path = url.pathname;
+
+//     // Issues routes
+//     if (path.startsWith("/issues")) {
+//       return handleIssues(request, env);
+//     }
+
+//     // Invites routes
+//     if (path.startsWith("/invites")) {
+//       return handleInvites(request, env);
+//     }
+
+//     // Teams routes
+//     if (path.startsWith("/teams")) {
+//       return handleTeams(request, env);
+//     }
+
+//     return new Response("Not Found", { status: 404 });
+//   }
+// };
