@@ -144,7 +144,7 @@ export async function handleInvites(request, env) {
 
 		return Response.json({
 			success,
-			message: 'Invite rejected',
+			message: 'Invite declined',
 		});
 	}
 
