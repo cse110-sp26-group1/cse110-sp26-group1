@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS issues (
   priority TEXT,
   category TEXT,
   tags TEXT,
+  difficulty TEXT,
   entry_point TEXT,
   error_type TEXT,
   error_message TEXT,
