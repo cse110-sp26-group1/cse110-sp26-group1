@@ -1,12 +1,11 @@
-# User Story 1: Active Task Steering
+# User Story 1: Collaborative Issue Enrichment
 
-## Story
-As a student, I want to be able to provide real-time feedback and direct input into an active AI task, so that I can steer the AI in the right direction and prevent "slop" or incorrect outputs.
+**As an Engineer,** I want to use AI to professionalize my rough technical notes, so that I can create high-quality issues without spending 10 minutes on formatting, while still retaining final editorial control.
 
-## Why This Matters
-Instead of just letting an agent run until it's finished, I need to be a part of the loop. If I see the AI interpreting an assignment prompt incorrectly, I need a "steering wheel" to provide a course correction immediately before it wastes time or does the task wrong.
-
-## Acceptance Criteria
-- The user can insert a "correction" comment while a task is still in progress.
-- The AI must acknowledge the new steering input and adjust its plan accordingly.
-- There is a clear "Pause/Resume" feature for the user to stop the AI and provide manual guidance.
+### Step-by-Step Experience:
+1. **Initial Draft:** User opens the "New Issue" modal and types a quick, messy description (e.g., "login button broke on mobile safari").
+2. **AI Trigger:** Instead of auto-saving, the user clicks a dedicated **"Propose Enrichment"** button.
+3. **Pending State:** The UI shows a "Processing" indicator. The user can still edit their original text during this time.
+4. **Review Proposal:** The AI populates suggested fields (Title, Priority, Labels, structured "Steps to Reproduce") in a distinct "Proposed" visual style (e.g., italicized or highlighted).
+5. **Human Steering:** User notices the AI suggested "Priority: High" but clicks a "Downgrade" button to set it to "Medium" because they know the fix is non-critical.
+6. **Final Commit:** User clicks **"Approve & Post"**. Only then is the issue officially created in the database.

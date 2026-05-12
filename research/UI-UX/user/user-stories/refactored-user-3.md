@@ -1,12 +1,11 @@
-# User Story 1: Critical Decision Checkpoints
+# User Story 3: Transparent Triage & Validation
 
-## Story
-I want the issue tracker to flag specific "Decision Points" where the AI requires my direct input to proceed, so that I maintain absolute control over the final assignment quality.
+**As a Tech Lead,** I want to see the reasoning behind AI-suggested metadata, so that I can quickly validate its work during a high-volume triage session without feeling like I'm losing control.
 
-## Why This Matters
-We want to move away from 24/7 autonomous running. By creating "high-friction" checkpoints, we ensure that the AI cannot complete a major phase of a project without a human "Quality Gate."
-
-## Acceptance Criteria
-- Tasks can be set to "Require Human Approval" at specific milestones.
-- Tasks can be set to "Require Human Approval" at specific milestones.
-- The AI provides a "Summary of Reasoning" that the user must read and sign off on.
+### Step-by-Step Experience:
+1. **List Triage:** User enters the "Unassigned Issues" list view.
+2. **Visual Cues:** User sees several issues where labels were added by "AI-Assistant."
+3. **Reasoning Check:** User hovers over a suggested "Security" label. A tooltip appears saying: *"Suggested because description mentions 'SQL Injection' and 'Database Credentials'."*
+4. **Side-by-Side Comparison:** User toggles a "Show Original" view to see a diff of what they wrote versus what the AI changed.
+5. **Confidence Validation:** User sees a "85% Confidence" score on the priority level.
+6. **One-Click Approval:** User clicks a "Verified" checkmark next to the AI’s work to confirm the triage is correct.
