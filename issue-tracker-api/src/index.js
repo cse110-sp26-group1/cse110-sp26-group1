@@ -15,6 +15,8 @@
 // };
 
 import { handleIssues } from '../routes/issues.js';
+import { handleInvites } from '../routes/invites.js';
+import { handleTeams } from '../routes/teams.js';
 
 /**
  * @param {Request} request
@@ -31,6 +33,14 @@ export default {
 
 		if (path.startsWith('/issues')) {
 			return handleIssues(request, envWithDb);
+		}
+
+		if (path.startsWith('/teams')) {
+			return handleTeams(request, envWithDb);
+		}
+
+		if (path.startsWith('/invites')) {
+			return handleInvites(request, envWithDb);
 		}
 
 		return new Response('Not Found', { status: 404 });
