@@ -140,7 +140,7 @@ export async function handleInvites(request, env) {
 			return Response.json({ error: 'Invite already handled' }, { status: 409 });
 		}
 
-		const { success } = await env.issue_tracker_db.prepare("UPDATE invites SET status = 'rejected' WHERE id = ?").bind(inviteId).run();
+		const { success } = await env.issue_tracker_db.prepare("UPDATE invites SET status = 'declined' WHERE id = ?").bind(inviteId).run();
 
 		return Response.json({
 			success,
