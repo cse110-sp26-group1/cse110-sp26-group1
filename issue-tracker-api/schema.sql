@@ -1,25 +1,10 @@
---------------------------------- EXAMPLES ---------------------------------
--- users table
--- CREATE TABLE users (
---   id INTEGER PRIMARY KEY,
---   username TEXT NOT NULL
--- );
-
--- teams table
--- CREATE TABLE teams (
---   id INTEGER PRIMARY KEY,
---   team_name TEXT NOT NULL
--- );
-----------------------------------------------------------------------------
-
-
 --------------------------------- USERS TABLE ---------------------------------
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at TEXT DEFAULT (datetime('now'))
 );
 
 
@@ -27,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS teams (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   team_name TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at TEXT DEFAULT (datetime('now'))
 );
 
 
@@ -68,19 +53,19 @@ CREATE TABLE IF NOT EXISTS issues (
   hypothesis TEXT,
   token_usage INTEGER,
   resolution_notes TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (team_id) REFERENCES teams(id),
   FOREIGN KEY (created_by) REFERENCES users(id),
   FOREIGN KEY (assigned_to) REFERENCES users(id)
 );
 
 
---------------------------------- AGENT_ATEMPTSS TABLE ---------------------------------
+--------------------------------- AGENT_ATTEMPTS TABLE ---------------------------------
 CREATE TABLE IF NOT EXISTS agent_attempts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   issue_id INTEGER NOT NULL,
-  agent_attempted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  agent_attempted_at TEXT DEFAULT (datetime('now')),
   total_token_usage INTEGER,
   attempt_number INTEGER,
   result TEXT,
@@ -101,7 +86,7 @@ CREATE TABLE IF NOT EXISTS invites (
   status TEXT NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'accepted', 'declined')),
 
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_at TEXT DEFAULT (datetime('now')),
 
   FOREIGN KEY (team_id) REFERENCES teams(id),
   FOREIGN KEY (inviter_user_id) REFERENCES users(id),
