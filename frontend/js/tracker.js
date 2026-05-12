@@ -1,5 +1,4 @@
 import { ISSUES, TEAMS, PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './data.js';
-import './theme.js';
 
 // ============================================================
 // STATE
@@ -14,6 +13,9 @@ const state = {
 // ============================================================
 // TEAM SWITCH from query string
 // ============================================================
+/**
+ *
+ */
 function applyTeamFromUrl() {
 	const qs = new URLSearchParams(location.search);
 	const slug = qs.get('team');
@@ -34,6 +36,9 @@ function applyTeamFromUrl() {
 const listEl = document.getElementById('issueList');
 const totalCountEl = document.getElementById('totalCount');
 
+/**
+ *
+ */
 function renderList() {
 	let items = ISSUES.slice();
 	if (state.tag !== 'all') {
@@ -95,6 +100,10 @@ function renderList() {
 	});
 }
 
+/**
+ *
+ * @param i
+ */
 function rowHtml(i) {
 	const isSel = state.selected === i.id;
 	const statusKey = i.status === 'in-progress' ? 'prog' : i.status;
@@ -117,6 +126,9 @@ function rowHtml(i) {
 // ============================================================
 const detailEl = document.getElementById('detail');
 
+/**
+ *
+ */
 function renderDetail() {
 	const i = ISSUES.find((x) => x.id === state.selected);
 	if (!i) {
@@ -321,6 +333,9 @@ if (allTeamsItem) {
 // ============================================================
 // DETAIL TOGGLE
 // ============================================================
+/**
+ *
+ */
 function toggleDetail() {
 	state.detailOpen = !state.detailOpen;
 	content.classList.toggle('collapsed-detail', !state.detailOpen);
@@ -333,14 +348,23 @@ document.getElementById('toggleDetail').addEventListener('click', toggleDetail);
 const newBackdrop = document.getElementById('newBackdrop');
 let pendingFiles = [];
 
+/**
+ *
+ */
 function openNew() {
 	newBackdrop.classList.add('open');
 	setTimeout(() => document.getElementById('nTitle').focus(), 30);
 }
+/**
+ *
+ */
 function closeNew() {
 	newBackdrop.classList.remove('open');
 	resetForm();
 }
+/**
+ *
+ */
 function resetForm() {
 	document.getElementById('nTitle').value = '';
 	document.getElementById('nDesc').value = '';
@@ -378,10 +402,17 @@ dropzone.addEventListener('drop', (e) => {
 	e.preventDefault();
 	addFiles(e.dataTransfer.files);
 });
+/**
+ *
+ * @param files
+ */
 function addFiles(files) {
 	Array.from(files).forEach((f) => pendingFiles.push(f));
 	renderFiles();
 }
+/**
+ *
+ */
 function renderFiles() {
 	fileList.innerHTML = pendingFiles
 		.map(
@@ -450,6 +481,10 @@ document.getElementById('confirmNew').addEventListener('click', () => {
 		}
 	}, 2200);
 });
+/**
+ *
+ * @param n
+ */
 function humanSize(n) {
 	if (n < 1024) {
 		return n + ' B';
@@ -459,6 +494,10 @@ function humanSize(n) {
 	}
 	return (n / 1024 / 1024).toFixed(1) + ' MB';
 }
+/**
+ *
+ * @param name
+ */
 function ext(name) {
 	const e = (name.split('.').pop() || '').toUpperCase();
 	return e.length > 3 ? e.slice(0, 3) : e;
@@ -468,6 +507,10 @@ function ext(name) {
 // TOAST
 // ============================================================
 const toast = document.getElementById('toast');
+/**
+ *
+ * @param msg
+ */
 function showToast(msg) {
 	toast.textContent = msg;
 	toast.classList.add('show');

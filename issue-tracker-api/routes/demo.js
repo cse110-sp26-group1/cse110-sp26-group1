@@ -1,3 +1,8 @@
+/**
+ *
+ * @param request
+ * @param env
+ */
 export async function handleIssues(request, env) {
 	const url = new URL(request.url);
 

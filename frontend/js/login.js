@@ -1,9 +1,11 @@
-import './theme.js';
-
 const tabLogin = document.getElementById('tabLogin');
 const tabSignup = document.getElementById('tabSignup');
 const body = document.body;
 
+/**
+ *
+ * @param mode
+ */
 function setMode(mode) {
 	body.classList.toggle('mode-login', mode === 'login');
 	body.classList.toggle('mode-signup', mode === 'signup');
