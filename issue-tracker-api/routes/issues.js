@@ -47,10 +47,10 @@ export async function handleIssues(request, env) {
 				`
             INSERT INTO issues (
                 team_id, created_by, title, description, summary, 
-                status, priority, category, tags, entry_point, 
+                status, priority, category, tags, difficulty, entry_point, 
                 error_type, error_message, stack_trace, affected_files,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
 			)
 			.bind(
@@ -63,6 +63,7 @@ export async function handleIssues(request, env) {
 				body.priority || 'Medium',
 				body.category || 'Bug',
 				JSON.stringify(body.tags || []),
+				body.difficulty || null,
 				body.details?.entry_point || null,
 				body.details?.error_type || null,
 				body.details?.error_message || null,
