@@ -17,6 +17,7 @@ export default {
 // import { handleIssues } from "./routes/issues.js";
 // import { handleInvites } from "./routes/invites.js";
 // import { handleTeams } from "./routes/teams.js";
+// import { handleAgents } from "./routes/agent.js";
 
 // export default {
 //   async fetch(request, env) {
@@ -36,6 +37,11 @@ export default {
 //     // Teams routes
 //     if (path.startsWith("/teams")) {
 //       return handleTeams(request, env);
+//     }
+
+//	   // Agent routes
+//		if (path.startsWith("/agents")) {
+//       return handleAgents(request, env);
 //     }
 
 //     return new Response("Not Found", { status: 404 });
