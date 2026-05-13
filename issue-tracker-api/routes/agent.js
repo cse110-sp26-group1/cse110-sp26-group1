@@ -8,20 +8,23 @@
  *   PATCH  /agents/:id   - Partially update an agent by ID
  *   DELETE /agents/:id   - Delete an agent by ID
  *
- * @param {Request} request
- * @param {object} env
+ * @param {Request} request - Incoming HTTP request.
+ * @param {object} env - Cloudflare Worker environment bindings.
+ * @returns {Promise<Response>} HTTP response for the matched route.
  */
 export async function handleAgents(request, env) {
 	const url = new URL(request.url);
 	const pathname = url.pathname;
 
 	// Match /agents/:id — capture the id segment
-	const agentIdMatch = pathname.matgit ch(/^\/agents\/([^/]+)$/);
+	const agentIdMatch = pathname.match(/^\/agents\/([^/]+)$/);
 	const agentId = agentIdMatch ? agentIdMatch[1] : null;
 
 	// GET /agents
 	if (request.method === 'GET' && pathname === '/agents') {
-		const { results } = await env.issue_tracker_db.prepare('SELECT * FROM agents').all();
+		const { results } = await env.issue_tracker_db
+			.prepare('SELECT * FROM agents')
+			.all();
 
 		return Response.json(results);
 	}
@@ -60,7 +63,7 @@ export async function handleAgents(request, env) {
 	if (request.method === 'PATCH' && agentId) {
 		const body = await request.json();
 
-		// Build SET clause dynamically from whichever fields were provided
+		// Build SET clause dynamically from whichever fields were provided.
 		const allowed = ['name', 'type', 'token'];
 		const fields = allowed.filter((key) => body[key] !== undefined);
 
