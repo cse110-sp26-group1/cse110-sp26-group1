@@ -22,19 +22,14 @@ export async function handleAgents(request, env) {
 
 	// GET /agents
 	if (request.method === 'GET' && pathname === '/agents') {
-		const { results } = await env.issue_tracker_db
-			.prepare('SELECT * FROM agents')
-			.all();
+		const { results } = await env.issue_tracker_db.prepare('SELECT * FROM agents').all();
 
 		return Response.json(results);
 	}
 
 	// GET /agents/:id
 	if (request.method === 'GET' && agentId) {
-		const agent = await env.issue_tracker_db
-			.prepare('SELECT * FROM agents WHERE id = ?')
-			.bind(agentId)
-			.first();
+		const agent = await env.issue_tracker_db.prepare('SELECT * FROM agents WHERE id = ?').bind(agentId).first();
 
 		if (!agent) {
 			return new Response('Agent not found', { status: 404 });
@@ -51,10 +46,7 @@ export async function handleAgents(request, env) {
 			return new Response("Missing required fields: 'name' and 'type'", { status: 400 });
 		}
 
-		await env.issue_tracker_db
-			.prepare('INSERT INTO agents (name, type, token) VALUES (?, ?, ?)')
-			.bind(body.name, body.type, body.token ?? null)
-			.run();
+		await env.issue_tracker_db.prepare('INSERT INTO agents (name, type, token) VALUES (?, ?, ?)').bind(body.name, body.type, body.token ?? null).run();
 
 		return new Response('Agent created', { status: 201 });
 	}
@@ -88,10 +80,7 @@ export async function handleAgents(request, env) {
 
 	// DELETE /agents/:id
 	if (request.method === 'DELETE' && agentId) {
-		const result = await env.issue_tracker_db
-			.prepare('DELETE FROM agents WHERE id = ?')
-			.bind(agentId)
-			.run();
+		const result = await env.issue_tracker_db.prepare('DELETE FROM agents WHERE id = ?').bind(agentId).run();
 
 		if (result.meta.changes === 0) {
 			return new Response('Agent not found', { status: 404 });
