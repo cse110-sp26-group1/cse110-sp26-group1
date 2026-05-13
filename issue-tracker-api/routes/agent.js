@@ -46,7 +46,10 @@ export async function handleAgents(request, env) {
 			return new Response("Missing required fields: 'name' and 'type'", { status: 400 });
 		}
 
-		await env.issue_tracker_db.prepare('INSERT INTO agents (name, type, token) VALUES (?, ?, ?)').bind(body.name, body.type, body.token ?? null).run();
+		await env.issue_tracker_db
+			.prepare('INSERT INTO agents (name, type, token) VALUES (?, ?, ?)')
+			.bind(body.name, body.type, body.token ?? null)
+			.run();
 
 		return new Response('Agent created', { status: 201 });
 	}
