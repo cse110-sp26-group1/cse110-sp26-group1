@@ -10,6 +10,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- SEED HELPERS ---
+/**
+ *
+ * @param username
+ * @param email
+ */
 async function createTestUser(username, email) {
 	const row = await env.issue_tracker_db
 		.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
@@ -18,14 +23,21 @@ async function createTestUser(username, email) {
 	return row.id;
 }
 
+/**
+ *
+ * @param teamName
+ */
 async function createTestTeam(teamName) {
-	const row = await env.issue_tracker_db
-		.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id')
-		.bind(teamName)
-		.first();
+	const row = await env.issue_tracker_db.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id').bind(teamName).first();
 	return row.id;
 }
 
+/**
+ *
+ * @param teamId
+ * @param createdById
+ * @param title
+ */
 async function createTestIssue(teamId, createdById, title = 'Sample Bug') {
 	const row = await env.issue_tracker_db
 		.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
@@ -79,7 +91,7 @@ describe('Issues Endpoint Testing Suite', () => {
 			it('200: returns an empty array if team has no issues (Integration Style)', async () => {
 				const teamId = await createTestTeam('Empty Team');
 				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}`);
-				
+
 				expect(res.status).toBe(200);
 				const data = await res.json();
 				expect(data).toEqual([]);
@@ -120,8 +132,8 @@ describe('Issues Endpoint Testing Suite', () => {
 						created_by: userId,
 						title: 'UI alignment bug',
 						priority: 'High',
-						category: 'Bug'
-					})
+						category: 'Bug',
+					}),
 				});
 
 				expect(res.status).toBe(201);
@@ -135,7 +147,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				const res = await SELF.fetch('http://localhost/issues', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ title: 'Missing team and user data' })
+					body: JSON.stringify({ title: 'Missing team and user data' }),
 				});
 
 				expect(res.status).toBe(400);
@@ -147,7 +159,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				const res = await SELF.fetch('http://localhost/issues', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ team_id: 1, created_by: 1, title: 12345 })
+					body: JSON.stringify({ team_id: 1, created_by: 1, title: 12345 }),
 				});
 
 				expect(res.status).toBe(400);
@@ -159,7 +171,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				const res = await SELF.fetch('http://localhost/issues', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ team_id: 'crazy-id', created_by: 1, title: 'Valid Title' })
+					body: JSON.stringify({ team_id: 'crazy-id', created_by: 1, title: 'Valid Title' }),
 				});
 
 				expect(res.status).toBe(400);
@@ -171,7 +183,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				const res = await SELF.fetch('http://localhost/issues', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ team_id: 1, created_by: 1, title: 'Bug', status: 'SuperCritical' })
+					body: JSON.stringify({ team_id: 1, created_by: 1, title: 'Bug', status: 'SuperCritical' }),
 				});
 
 				expect(res.status).toBe(400);
@@ -194,7 +206,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: 'In Progress', priority: 'Critical' })
+					body: JSON.stringify({ status: 'In Progress', priority: 'Critical' }),
 				});
 
 				expect(res.status).toBe(200);
@@ -208,7 +220,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				const res = await SELF.fetch('http://localhost/issues/invalid-id-string', {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: 'Resolved' })
+					body: JSON.stringify({ status: 'Resolved' }),
 				});
 
 				expect(res.status).toBe(400);
