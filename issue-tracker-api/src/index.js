@@ -31,7 +31,7 @@ export default {
 
 		// Fix: Restore the root response so index.spec.js passes
 		if (path === '/') {
-			return new Response('Hello World');
+			return new Response('Hello World!');
 		}
 
 		if (path.startsWith('/issues')) {
