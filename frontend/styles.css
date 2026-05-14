@@ -109,6 +109,19 @@ button {
 	font-family: var(--mono);
 }
 
+/* ------- small utilities ------- */
+.redirect-page {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+}
+
+.optional-label {
+	font-weight: 400;
+	color: var(--muted);
+}
+
 /* ------- buttons ------- */
 .btn {
 	display: inline-flex;

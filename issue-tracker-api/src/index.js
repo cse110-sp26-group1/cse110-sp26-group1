@@ -7,43 +7,37 @@
  *
  * Learn more at https://developers.cloudflare.com/workers/
  */
+// export default {
+// 	// underscore prefixes as these variables are not currently being used
+// 	async fetch(_request, _env, _ctx) {
+// 		return new Response('Hello World!');
+// 	},
+// };
+
+import { handleIssues } from '../routes/issues.js';
+import { handleAgents } from '../routes/agent.js';
+
+/**
+ * @param {Request} request
+ * @param {Env} env
+ * @param {ExecutionContext} ctx
+ */
 export default {
-	// underscore prefixes as these variables are not currently being used
-	async fetch(_request, _env, _ctx) {
-		return new Response('Hello World!');
+	async fetch(request, env, _ctx) {
+		const url = new URL(request.url);
+		const path = url.pathname;
+
+		// routes/issues.js uses env.DB; wrangler.jsonc binds issue_tracker_db
+		const envWithDb = { ...env, DB: env.issue_tracker_db };
+
+		if (path.startsWith('/issues')) {
+			return handleIssues(request, envWithDb);
+		}
+
+		if (path.startsWith('/agents')) {
+			return handleAgents(request, envWithDb);
+		}
+
+		return new Response('Not Found', { status: 404 });
 	},
 };
-// example how we'd manage the requests
-// import { handleIssues } from "./routes/issues.js";
-// import { handleInvites } from "./routes/invites.js";
-// import { handleTeams } from "./routes/teams.js";
-// import { handleAgents } from "./routes/agent.js";
-
-// export default {
-//   async fetch(request, env) {
-//     const url = new URL(request.url);
-//     const path = url.pathname;
-
-//     // Issues routes
-//     if (path.startsWith("/issues")) {
-//       return handleIssues(request, env);
-//     }
-
-//     // Invites routes
-//     if (path.startsWith("/invites")) {
-//       return handleInvites(request, env);
-//     }
-
-//     // Teams routes
-//     if (path.startsWith("/teams")) {
-//       return handleTeams(request, env);
-//     }
-
-//	   // Agent routes
-//		if (path.startsWith("/agents")) {
-//       return handleAgents(request, env);
-//     }
-
-//     return new Response("Not Found", { status: 404 });
-//   }
-// };

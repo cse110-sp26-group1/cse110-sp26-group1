@@ -19,7 +19,7 @@ export async function handleIssues(request, env) {
 		const teamId = url.searchParams.get('team_id');
 		if (!teamId) return Response.json({ error: 'team_id query param required' }, { status: 400 });
 
-		const { results } = await env.DB.prepare('SELECT * FROM issues WHERE team_id = ?').bind(teamId).all();
+		const { results } = await env.issue_tracker_db.prepare('SELECT * FROM issues WHERE team_id = ?').bind(teamId).all();
 
 		// Parse JSON strings back into arrays for the frontend
 		const formatted = results.map((row) => ({
@@ -42,16 +42,17 @@ export async function handleIssues(request, env) {
 		}
 
 		const now = new Date().toISOString();
-		const { success } = await env.DB.prepare(
-			`
+		const { success } = await env.issue_tracker_db
+			.prepare(
+				`
             INSERT INTO issues (
                 team_id, created_by, title, description, summary, 
-                status, priority, category, tags, entry_point, 
+                status, priority, category, tags, difficulty, entry_point, 
                 error_type, error_message, stack_trace, affected_files,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
-		)
+			)
 			.bind(
 				body.team_id,
 				body.created_by,
@@ -62,6 +63,7 @@ export async function handleIssues(request, env) {
 				body.priority || 'Medium',
 				body.category || 'Bug',
 				JSON.stringify(body.tags || []),
+				body.difficulty || null,
 				body.details?.entry_point || null,
 				body.details?.error_type || null,
 				body.details?.error_message || null,
@@ -81,8 +83,9 @@ export async function handleIssues(request, env) {
 		const now = new Date().toISOString();
 
 		// Dynamically build update query for provided fields
-		const { success } = await env.DB.prepare(
-			`
+		const { success } = await env.issue_tracker_db
+			.prepare(
+				`
             UPDATE issues SET 
                 status = COALESCE(?, status),
                 priority = COALESCE(?, priority),
@@ -90,7 +93,7 @@ export async function handleIssues(request, env) {
                 updated_at = ?
             WHERE id = ?
         `,
-		)
+			)
 			.bind(body.status || null, body.priority || null, body.assigned_to || null, now, issueId)
 			.run();
 
@@ -99,7 +102,7 @@ export async function handleIssues(request, env) {
 
 	// DELETE /issues/:id
 	if (method === 'DELETE' && issueId) {
-		const { success } = await env.DB.prepare('DELETE FROM issues WHERE id = ?').bind(issueId).run();
+		const { success } = await env.issue_tracker_db.prepare('DELETE FROM issues WHERE id = ?').bind(issueId).run();
 		return Response.json({ success });
 	}
 
