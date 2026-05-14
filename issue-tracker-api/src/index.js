@@ -28,6 +28,13 @@ const CORS_HEADERS = {
 	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+/**
+ * Wraps a Response with the appropriate CORS headers based on the request origin.
+ * Only sets `Access-Control-Allow-Origin` for origins in ALLOWED_ORIGINS.
+ * @param {Response} response - The response to decorate.
+ * @param {Request} request - The incoming request, used to read the Origin header.
+ * @returns {Response} A new Response with CORS headers applied.
+ */
 function withCors(response, request) {
 	const origin = request.headers.get('Origin');
 	const res = new Response(response.body, response);
@@ -39,9 +46,12 @@ function withCors(response, request) {
 }
 
 /**
- * @param {Request} request
- * @param {Env} env
- * @param {ExecutionContext} ctx
+ * Main Cloudflare Worker entry point. Routes requests to the appropriate handler
+ * and wraps every response with CORS headers.
+ * @param {Request} request - The incoming HTTP request.
+ * @param {Env} env - Worker environment bindings (includes `issue_tracker_db` D1 binding).
+ * @param {ExecutionContext} _ctx - Execution context (unused).
+ * @returns {Promise<Response>}
  */
 export default {
 	async fetch(request, env, _ctx) {

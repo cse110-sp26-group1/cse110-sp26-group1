@@ -1,5 +1,16 @@
 import { hashPassword, verifyPassword, sessionExpiresAt } from '../src/lib/auth.js';
 
+/**
+ * Handles all /auth routes: POST /auth/register, /auth/login, and /auth/logout.
+ * @param {Request} request - The incoming Worker request.
+ * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
+ * @returns {Promise<Response>}
+ *   201 — user registered successfully
+ *   400 — missing required fields, or no session token on logout
+ *   401 — invalid credentials, invalid session token, or already-expired session
+ *   409 — email or username already in use
+ *   404 — route not matched
+ */
 export async function handleAuth(request, env) {
 	const url = new URL(request.url);
 	const method = request.method;
@@ -12,9 +23,7 @@ export async function handleAuth(request, env) {
 			return Response.json({ error: 'username, email, and password are required' }, { status: 400 });
 		}
 
-		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?')
-			.bind(body.email, body.username)
-			.first();
+		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?').bind(body.email, body.username).first();
 
 		if (existing) {
 			return Response.json({ error: 'Email or username already in use' }, { status: 409 });
@@ -45,9 +54,7 @@ export async function handleAuth(request, env) {
 		const token = crypto.randomUUID();
 		const expires_at = sessionExpiresAt();
 
-		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)')
-			.bind(user.id, token, expires_at)
-			.run();
+		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(user.id, token, expires_at).run();
 
 		return Response.json({ token, expires_at });
 	}
