@@ -119,3 +119,12 @@ ON issues(assigned_to);
 
 CREATE INDEX idx_team_members_user_id --- all teams a user is in
 ON team_members(user_id);
+
+--------------------------------- AGENTS TABLE ---------------------------------
+CREATE TABLE IF NOT EXISTS agents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  token TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
