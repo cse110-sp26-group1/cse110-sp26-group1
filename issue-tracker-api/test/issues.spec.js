@@ -1,11 +1,16 @@
 import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import worker from '../src';
-// Raw import loads the schema file as a string at build time, 
+// Raw import loads the schema file as a string at build time,
 // bypassing all runtime path resolution issues on different OSes.
 import sqlSchemaRaw from '../schema.sql?raw';
 
 // --- SEED HELPERS ---
+/**
+ *
+ * @param username
+ * @param email
+ */
 async function createTestUser(username, email) {
 	const row = await env.issue_tracker_db
 		.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
@@ -14,14 +19,21 @@ async function createTestUser(username, email) {
 	return row.id;
 }
 
+/**
+ *
+ * @param teamName
+ */
 async function createTestTeam(teamName) {
-	const row = await env.issue_tracker_db
-		.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id')
-		.bind(teamName)
-		.first();
+	const row = await env.issue_tracker_db.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id').bind(teamName).first();
 	return row.id;
 }
 
+/**
+ *
+ * @param teamId
+ * @param createdById
+ * @param title
+ */
 async function createTestIssue(teamId, createdById, title = 'Sample Bug') {
 	const row = await env.issue_tracker_db
 		.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
@@ -37,8 +49,8 @@ describe('Issues Endpoint Testing Suite', () => {
 		const cleanSql = sqlSchemaRaw
 			.split('\n')
 			.map((line) => line.split('--')[0].trim()) // Strip comments
-			.filter((line) => line.length > 0)        // Strip empty lines
-			.join(' ');                               // Join into a single execution string
+			.filter((line) => line.length > 0) // Strip empty lines
+			.join(' '); // Join into a single execution string
 
 		// Initialize the temporary D1 test database with your schema
 		await env.issue_tracker_db.exec(cleanSql);
