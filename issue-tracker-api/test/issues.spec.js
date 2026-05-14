@@ -1,20 +1,11 @@
 import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import worker from '../src';
-
-// Set up directory naming for ESM environments
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Raw import loads the schema file as a string at build time, 
+// bypassing all runtime path resolution issues on different OSes.
+import sqlSchemaRaw from '../schema.sql?raw';
 
 // --- SEED HELPERS ---
-/**
- *
- * @param username
- * @param email
- */
 async function createTestUser(username, email) {
 	const row = await env.issue_tracker_db
 		.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
@@ -23,21 +14,14 @@ async function createTestUser(username, email) {
 	return row.id;
 }
 
-/**
- *
- * @param teamName
- */
 async function createTestTeam(teamName) {
-	const row = await env.issue_tracker_db.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id').bind(teamName).first();
+	const row = await env.issue_tracker_db
+		.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id')
+		.bind(teamName)
+		.first();
 	return row.id;
 }
 
-/**
- *
- * @param teamId
- * @param createdById
- * @param title
- */
 async function createTestIssue(teamId, createdById, title = 'Sample Bug') {
 	const row = await env.issue_tracker_db
 		.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
@@ -48,17 +32,20 @@ async function createTestIssue(teamId, createdById, title = 'Sample Bug') {
 
 describe('Issues Endpoint Testing Suite', () => {
 	beforeAll(async () => {
-		// Use a standard URL object relative to the test file.
-		// This creates a proper 'file://' URL that workerd requires, 
-		// and works flawlessly on Windows, Mac, and Linux.
-		const schemaUrl = new URL('../schema.sql', import.meta.url);
-		const sqlSchema = fs.readFileSync(schemaUrl, 'utf8');
-		
-		await env.issue_tracker_db.exec(sqlSchema);
+		// Clean the SQL string to remove comments and decorative headers
+		// that can cause parsing errors in the D1 internal engine.
+		const cleanSql = sqlSchemaRaw
+			.split('\n')
+			.map((line) => line.split('--')[0].trim()) // Strip comments
+			.filter((line) => line.length > 0)        // Strip empty lines
+			.join(' ');                               // Join into a single execution string
+
+		// Initialize the temporary D1 test database with your schema
+		await env.issue_tracker_db.exec(cleanSql);
 	});
 
 	beforeEach(async () => {
-		// Clean up database records between tests to keep state separate
+		// Clear all tables to ensure test isolation and a clean state for every run
 		await env.issue_tracker_db.exec(`
 			DELETE FROM agent_attempts;
 			DELETE FROM invites;
