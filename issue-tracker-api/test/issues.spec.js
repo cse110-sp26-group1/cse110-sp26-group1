@@ -49,7 +49,7 @@ async function createTestIssue(teamId, createdById, title = 'Sample Bug') {
 describe('Issues Endpoint Testing Suite', () => {
 	beforeAll(async () => {
 		// Read and execute schema.sql against local D1 test database environment
-		const schemaPath = path.resolve(__dirname, '../schema.sql');
+		const schemaPath = path.join(process.cwd(), 'schema.sql');
 		const sqlSchema = fs.readFileSync(schemaPath, 'utf8');
 		await env.issue_tracker_db.exec(sqlSchema);
 	});

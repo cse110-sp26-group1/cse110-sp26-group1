@@ -29,6 +29,11 @@ export default {
 		// routes/issues.js uses env.DB; wrangler.jsonc binds issue_tracker_db
 		const envWithDb = { ...env, DB: env.issue_tracker_db };
 
+		// Fix: Restore the root response so index.spec.js passes
+		if (path === '/') {
+			return new Response('Hello World');
+		}
+
 		if (path.startsWith('/issues')) {
 			return handleIssues(request, envWithDb);
 		}
