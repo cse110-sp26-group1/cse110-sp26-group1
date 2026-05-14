@@ -1,7 +1,25 @@
 /**
+ * Handle invite-related API endpoints.
  *
- * @param request
- * @param env
+ * Supported endpoints:
+ * - GET /invites?user_id=X
+ *   Fetches invites for a specific invited user.
+ *
+ * - POST /invites
+ *   Creates a pending invite from one existing team member to another user.
+ *
+ * - PATCH /invites/:id/accept
+ *   Accepts a pending invite, updates invite status, and adds the invited user
+ *   to the team_members table.
+ *
+ * - PATCH /invites/:id/reject
+ *   Declines a pending invite and updates invite status.
+ *
+ * - DELETE /invites/:id
+ *   Deletes an invite by id.
+ *
+ * @param {Request} request Incoming HTTP request.
+ * @param {Env} env Cloudflare Worker environment with D1 database binding.
  */
 export async function handleInvites(request, env) {
 	const url = new URL(request.url);
@@ -15,6 +33,10 @@ export async function handleInvites(request, env) {
 
 		if (!userId) {
 			return Response.json({ error: 'user_id query param required' }, { status: 400 });
+		}
+
+		if (Number.isNaN(Number(userId))) {
+			return Response.json({ error: 'user_id must be a number' }, { status: 400 });
 		}
 
 		const { results } = await env.issue_tracker_db
@@ -39,6 +61,25 @@ export async function handleInvites(request, env) {
 
 		if (!body.team_id || !body.inviter_user_id || !body.invited_user_id) {
 			return Response.json({ error: 'Missing required fields' }, { status: 400 });
+		}
+
+		if (Number.isNaN(Number(body.team_id)) || Number.isNaN(Number(body.inviter_user_id)) || Number.isNaN(Number(body.invited_user_id))) {
+			return Response.json({ error: 'team_id, inviter_user_id, and invited_user_id must be numbers' }, { status: 400 });
+		}
+
+		const inviterMembership = await env.issue_tracker_db
+			.prepare(
+				`
+				SELECT *
+				FROM team_members
+				WHERE team_id = ? AND user_id = ?
+			`,
+			)
+			.bind(body.team_id, body.inviter_user_id)
+			.first();
+
+		if (!inviterMembership) {
+			return Response.json({ error: 'Inviter is not a member of this team' }, { status: 403 });
 		}
 
 		const existingMember = await env.issue_tracker_db
@@ -100,6 +141,10 @@ export async function handleInvites(request, env) {
 
 	// PATCH /invites/:id/accept
 	if (method === 'PATCH' && inviteId && pathParts[3] === 'accept') {
+		if (Number.isNaN(Number(inviteId))) {
+			return Response.json({ error: 'invite id must be a number' }, { status: 400 });
+		}
+
 		const invite = await env.issue_tracker_db.prepare('SELECT * FROM invites WHERE id = ?').bind(inviteId).first();
 
 		if (!invite) {
@@ -130,6 +175,10 @@ export async function handleInvites(request, env) {
 
 	// PATCH /invites/:id/reject
 	if (method === 'PATCH' && inviteId && pathParts[3] === 'reject') {
+		if (Number.isNaN(Number(inviteId))) {
+			return Response.json({ error: 'invite id must be a number' }, { status: 400 });
+		}
+
 		const invite = await env.issue_tracker_db.prepare('SELECT * FROM invites WHERE id = ?').bind(inviteId).first();
 
 		if (!invite) {
@@ -150,6 +199,10 @@ export async function handleInvites(request, env) {
 
 	// DELETE /invites/:id
 	if (method === 'DELETE' && inviteId) {
+		if (Number.isNaN(Number(inviteId))) {
+			return Response.json({ error: 'invite id must be a number' }, { status: 400 });
+		}
+
 		const { success } = await env.issue_tracker_db.prepare('DELETE FROM invites WHERE id = ?').bind(inviteId).run();
 
 		return Response.json({ success });
