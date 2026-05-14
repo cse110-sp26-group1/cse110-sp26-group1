@@ -48,9 +48,12 @@ async function createTestIssue(teamId, createdById, title = 'Sample Bug') {
 
 describe('Issues Endpoint Testing Suite', () => {
 	beforeAll(async () => {
-		// Read and execute schema.sql against local D1 test database environment
-		const schemaPath = path.join(process.cwd(), 'schema.sql');
-		const sqlSchema = fs.readFileSync(schemaPath, 'utf8');
+		// Use a standard URL object relative to the test file.
+		// This creates a proper 'file://' URL that workerd requires, 
+		// and works flawlessly on Windows, Mac, and Linux.
+		const schemaUrl = new URL('../schema.sql', import.meta.url);
+		const sqlSchema = fs.readFileSync(schemaUrl, 'utf8');
+		
 		await env.issue_tracker_db.exec(sqlSchema);
 	});
 
