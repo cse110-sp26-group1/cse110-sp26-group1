@@ -3,8 +3,9 @@ const tabSignup = document.getElementById('tabSignup');
 const body = document.body;
 
 /**
+ * Switches the auth form between login and signup modes.
  *
- * @param mode
+ * @param {string} mode Selected auth mode.
  */
 function setMode(mode) {
 	body.classList.toggle('mode-login', mode === 'login');
