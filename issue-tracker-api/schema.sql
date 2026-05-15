@@ -57,16 +57,28 @@ CREATE TABLE IF NOT EXISTS issues (
   FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL
 );
 
+--------------------------------- AGENTS TABLE ---------------------------------
+CREATE TABLE IF NOT EXISTS agents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  token TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 -- AGENT_ATTEMPTS TABLE
 CREATE TABLE IF NOT EXISTS agent_attempts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   issue_id INTEGER NOT NULL,
+  agent_id INTEGER NOT NULL,
   agent_attempted_at TEXT DEFAULT (datetime('now')),
   attempt_number INTEGER,
   result TEXT,
   notes TEXT,
   token_usage INTEGER,
-  FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
+  FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+  FOREIGN KEY (agent_id) REFERENCES agents(id),
+  UNIQUE(issue_id, agent_id, attempt_number),
 );
 
 -- INVITES TABLE
