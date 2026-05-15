@@ -4,9 +4,14 @@ const ISSUE_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 const ALLOWED_CATEGORIES = ['Bug', 'Feature', 'Task'];
 
 /**
- * Handles all CRUD operations for the /issues endpoint with strict type validation.
- * @param {Request} request
- * @param {Env} env
+ * Handles all /issues routes: GET (list by team), POST (create), PATCH (update), DELETE (remove).
+ * @param {Request} request - The incoming Worker request.
+ * @param {{ issue_tracker_db: D1Database }} env - Worker environment with the D1 database binding.
+ * @returns {Promise<Response>}
+ *   200 — issues list (GET) or update/delete result (PATCH/DELETE)
+ *   201 — issue created (POST)
+ *   400 — missing team_id param (GET) or missing required fields (POST)
+ *   404 — route not matched
  */
 export async function handleIssues(request, env) {
 	const url = new URL(request.url);

@@ -83,7 +83,23 @@ CREATE TABLE IF NOT EXISTS invites (
   FOREIGN KEY (invited_user_id) REFERENCES users(id)
 );
 
--- INDEXES
-CREATE INDEX IF NOT EXISTS idx_issues_team_id ON issues(team_id);
-CREATE INDEX IF NOT EXISTS idx_issues_assigned_to ON issues(assigned_to);
-CREATE INDEX IF NOT EXISTS idx_team_members_user_id ON team_members(user_id);
+
+--------------------------------- SESSIONS TABLE ---------------------------------
+CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+--------------------------------- INDEXES ---------------------------------
+
+CREATE INDEX idx_issues_team_id --- all issues in a team
+ON issues(team_id);
+
+CREATE INDEX idx_issues_assigned_to -- all issues assigned to user 
+ON issues(assigned_to);
+
+CREATE INDEX idx_team_members_user_id --- all teams a user is in
+ON team_members(user_id);
