@@ -15,6 +15,8 @@
 // };
 
 import { handleIssues } from '../routes/issues.js';
+import { handleInvites } from '../routes/invites.js';
+import { handleTeams } from '../routes/teams.js';
 import { handleAuth } from '../routes/auth.js';
 
 const ALLOWED_ORIGINS = [
@@ -76,6 +78,14 @@ export default {
 
 		if (path.startsWith('/issues')) {
 			return withCors(await handleIssues(request, envWithDb), request);
+		}
+
+		if (path.startsWith('/teams')) {
+			return handleTeams(request, envWithDb);
+		}
+
+		if (path.startsWith('/invites')) {
+			return handleInvites(request, envWithDb);
 		}
 
 		return withCors(new Response('Not Found', { status: 404 }), request);
