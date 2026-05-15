@@ -35,12 +35,12 @@ frontend/
 ├── login.html
 ├── teams.html
 ├── tracker.html
-├── styles.css
-├── login.css
-├── teams.css
-├── tracker.css
 ├── README.md
-├── fontend-documentation.md
+├── css/
+│   ├── global.css
+│   ├── login.css
+│   ├── teams.css
+│   └── tracker.css
 └── js/
     ├── data.js
     ├── login.js
@@ -217,10 +217,10 @@ Recommended integration path:
 
 ## Styling Notes
 
-The shared visual system lives in `styles.css`.
+The shared visual system lives in `css/global.css`.
 
 - CSS custom properties define surfaces, typography, semantic colors, radii, and shadows.
-- Page-specific CSS files layer layout and component styling on top of those shared tokens.
+- Page-specific CSS files in `css/` layer layout and component styling on top of those shared tokens.
 - Dark mode works by overriding the token set under `.dark`.
 
 ## Known Constraints

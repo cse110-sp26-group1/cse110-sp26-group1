@@ -14,7 +14,7 @@ const state = {
 // TEAM SWITCH from query string
 // ============================================================
 /**
- *
+ * Applies the selected team from the page query string.
  */
 function applyTeamFromUrl() {
 	const qs = new URLSearchParams(location.search);
@@ -37,7 +37,7 @@ const listEl = document.getElementById('issueList');
 const totalCountEl = document.getElementById('totalCount');
 
 /**
- *
+ * Renders the issue list using the current sort and tag filters.
  */
 function renderList() {
 	let items = ISSUES.slice();
@@ -101,8 +101,10 @@ function renderList() {
 }
 
 /**
+ * Builds the markup for one issue row.
  *
- * @param i
+ * @param {object} i Issue record to render.
+ * @returns {string} HTML for the issue row.
  */
 function rowHtml(i) {
 	const isSel = state.selected === i.id;
@@ -127,7 +129,7 @@ function rowHtml(i) {
 const detailEl = document.getElementById('detail');
 
 /**
- *
+ * Renders the selected issue in the detail pane.
  */
 function renderDetail() {
 	const i = ISSUES.find((x) => x.id === state.selected);
@@ -334,7 +336,7 @@ if (allTeamsItem) {
 // DETAIL TOGGLE
 // ============================================================
 /**
- *
+ * Toggles the detail pane between visible and collapsed states.
  */
 function toggleDetail() {
 	state.detailOpen = !state.detailOpen;
@@ -349,21 +351,21 @@ const newBackdrop = document.getElementById('newBackdrop');
 let pendingFiles = [];
 
 /**
- *
+ * Opens the new-issue modal and focuses the title input.
  */
 function openNew() {
 	newBackdrop.classList.add('open');
 	setTimeout(() => document.getElementById('nTitle').focus(), 30);
 }
 /**
- *
+ * Closes the new-issue modal and clears draft input.
  */
 function closeNew() {
 	newBackdrop.classList.remove('open');
 	resetForm();
 }
 /**
- *
+ * Resets the new-issue draft fields and pending attachments.
  */
 function resetForm() {
 	document.getElementById('nTitle').value = '';
@@ -403,15 +405,16 @@ dropzone.addEventListener('drop', (e) => {
 	addFiles(e.dataTransfer.files);
 });
 /**
+ * Adds selected files to the pending attachment list.
  *
- * @param files
+ * @param {FileList} files Files selected from the input or drop zone.
  */
 function addFiles(files) {
 	Array.from(files).forEach((f) => pendingFiles.push(f));
 	renderFiles();
 }
 /**
- *
+ * Renders pending attachment chips in the new-issue modal.
  */
 function renderFiles() {
 	fileList.innerHTML = pendingFiles
@@ -482,8 +485,10 @@ document.getElementById('confirmNew').addEventListener('click', () => {
 	}, 2200);
 });
 /**
+ * Formats a byte count for display.
  *
- * @param n
+ * @param {number} n File size in bytes.
+ * @returns {string} Human-readable file size.
  */
 function humanSize(n) {
 	if (n < 1024) {
@@ -495,8 +500,10 @@ function humanSize(n) {
 	return (n / 1024 / 1024).toFixed(1) + ' MB';
 }
 /**
+ * Extracts a short uppercase file extension label.
  *
- * @param name
+ * @param {string} name File name.
+ * @returns {string} Extension label.
  */
 function ext(name) {
 	const e = (name.split('.').pop() || '').toUpperCase();
@@ -508,8 +515,9 @@ function ext(name) {
 // ============================================================
 const toast = document.getElementById('toast');
 /**
+ * Shows a temporary toast notification.
  *
- * @param msg
+ * @param {string} msg Message to display.
  */
 function showToast(msg) {
 	toast.textContent = msg;
