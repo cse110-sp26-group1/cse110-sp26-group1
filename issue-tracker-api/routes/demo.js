@@ -1,7 +1,10 @@
 /**
- *
- * @param request
- * @param env
+ * Demo handler for /issues routes (GET all, POST create). Used for early prototyping only.
+ * @param {Request} request - The incoming Worker request.
+ * @param {{ issue_tracker_db: D1Database }} env - Worker environment with the D1 database binding.
+ * @returns {Promise<Response>}
+ *   200 — issues list (GET) or plain-text confirmation (POST)
+ *   404 — route not matched
  */
 export async function handleIssues(request, env) {
 	const url = new URL(request.url);
