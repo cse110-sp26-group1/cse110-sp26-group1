@@ -109,6 +109,16 @@ CREATE TABLE IF NOT EXISTS invites (
   FOREIGN KEY (invited_user_id) REFERENCES users(id)
 );
 
+
+--------------------------------- SESSIONS TABLE ---------------------------------
+CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
 --------------------------------- INDEXES ---------------------------------
 
 CREATE INDEX idx_issues_team_id --- all issues in a team

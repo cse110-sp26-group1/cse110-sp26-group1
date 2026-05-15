@@ -4,14 +4,14 @@ const teamSlugEl = document.getElementById('teamSlug');
 const toast = document.getElementById('toast');
 
 /**
- *
+ * Opens the create-team modal and focuses the team-name input.
  */
 function openModal() {
 	backdrop.classList.add('open');
 	teamNameEl.focus();
 }
 /**
- *
+ * Closes the create-team modal.
  */
 function closeModal() {
 	backdrop.classList.remove('open');
@@ -49,8 +49,9 @@ document.getElementById('confirmCreate').addEventListener('click', () => {
 });
 
 /**
+ * Shows a temporary status message.
  *
- * @param msg
+ * @param {string} msg Message to display.
  */
 function showToast(msg) {
 	toast.textContent = msg;

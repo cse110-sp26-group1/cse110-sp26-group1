@@ -1,25 +1,28 @@
 /**
  * Handle invite-related API endpoints.
  *
- * Supported endpoints:
- * - GET /invites?user_id=X
- *   Fetches invites for a specific invited user.
+ * Endpoints:
  *
- * - POST /invites
- *   Creates a pending invite from one existing team member to another user.
+ * GET /invites?user_id=X
+ * - Returns all invites for a specific invited user
+ * - Includes team_name via join with teams table
  *
- * - PATCH /invites/:id/accept
- *   Accepts a pending invite, updates invite status, and adds the invited user
- *   to the team_members table.
+ * POST /invites
+ * - Creates a pending invite
+ * - Prevents duplicate invites and existing memberships
  *
- * - PATCH /invites/:id/reject
- *   Declines a pending invite and updates invite status.
+ * PATCH /invites/:id/accept
+ * - Marks invite as accepted
+ * - Adds user to team_members
  *
- * - DELETE /invites/:id
- *   Deletes an invite by id.
+ * PATCH /invites/:id/reject
+ * - Marks invite as rejected
  *
- * @param {Request} request Incoming HTTP request.
- * @param {Env} env Cloudflare Worker environment with D1 database binding.
+ * DELETE /invites/:id
+ * - Deletes invite by id
+ *
+ * @param {Request} request
+ * @param {Env} env - Cloudflare Worker environment (D1 bound as issue_tracker_db)
  */
 export async function handleInvites(request, env) {
 	const url = new URL(request.url);
