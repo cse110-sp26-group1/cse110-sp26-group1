@@ -1,7 +1,13 @@
 /**
- *
- * @param request
- * @param _env
+ * Handles all /invites and /teams/:teamId/invite routes (stub — not yet hitting the DB).
+ * Supports GET /invites, POST /invites, DELETE /invites/:id, and POST /teams/:teamId/invite.
+ * @param {Request} request - The incoming Worker request.
+ * @param {unknown} _env - Worker environment (unused; stub implementation returns mock data).
+ * @returns {Promise<Response>}
+ *   200 — invite list (GET)
+ *   201 — invite created (POST /invites or POST /teams/:teamId/invite)
+ *   400 — missing required fields or invite ID
+ *   404 — route not matched
  */
 export async function handleInvites(request, _env) {
 	const url = new URL(request.url);
