@@ -12,8 +12,7 @@ import sqlSchemaRaw from '../schema.sql?raw';
  * @param email
  */
 async function createTestUser(username, email) {
-	const row = await env.DB
-		.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
+	const row = await env.DB.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
 		.bind(username, email, 'mock_hash')
 		.first();
 	return row.id;
@@ -35,8 +34,7 @@ async function createTestTeam(teamName) {
  * @param title
  */
 async function createTestIssue(teamId, createdById, title = 'Sample Bug') {
-	const row = await env.DB
-		.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
+	const row = await env.DB.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
 		.bind(teamId, createdById, title)
 		.first();
 	return row.id;

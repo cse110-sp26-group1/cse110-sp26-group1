@@ -20,8 +20,7 @@ export async function handleIssues(request, env) {
 	if (request.method === 'POST' && url.pathname === '/issues') {
 		const body = await request.json();
 
-		await env.DB
-			.prepare('INSERT INTO issues (team_id, title, description) VALUES (?, ?, ?)')
+		await env.DB.prepare('INSERT INTO issues (team_id, title, description) VALUES (?, ?, ?)')
 			.bind(body.team_id, body.title, body.description)
 			.run();
 
