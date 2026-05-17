@@ -69,6 +69,7 @@ export async function handleIssues(request, env) {
 		}
 
 		const parsedTeamId = Number(body.team_id);
+
 		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
 			return Response.json({ error: 'Invalid team_id. Must be a positive integer.' }, { status: 400 });
 		}
@@ -83,37 +84,12 @@ export async function handleIssues(request, env) {
 		if (status && !ISSUE_STATUSES.includes(status)) {
 			return Response.json({ error: `Invalid status. Must be one of: ${ISSUE_STATUSES.join(', ')}` }, { status: 400 });
 		}
+
 		if (priority && !ISSUE_PRIORITIES.includes(priority)) {
 			return Response.json({ error: `Invalid priority. Must be one of: ${ISSUE_PRIORITIES.join(', ')}` }, { status: 400 });
 		}
+
 		if (category && !ALLOWED_CATEGORIES.includes(category)) {
-			return Response.json({ error: `Invalid category. Must be one of: ${ALLOWED_CATEGORIES.join(', ')}` }, { status: 400 });
-		}
-
-		// Title Type Validation
-		if (typeof body.title !== 'string' || body.title.trim() === '') {
-			return Response.json({ error: 'Invalid title format. Must be a non-empty string.' }, { status: 400 });
-		}
-
-		// IDs Type Validation
-		const parsedTeamId = Number(body.team_id);
-		const parsedCreatedBy = Number(body.created_by);
-
-		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
-			return Response.json({ error: 'Invalid team_id. Must be a positive integer.' }, { status: 400 });
-		}
-		if (!Number.isInteger(parsedCreatedBy) || parsedCreatedBy <= 0) {
-			return Response.json({ error: 'Invalid created_by user ID. Must be a positive integer.' }, { status: 400 });
-		}
-
-		// Enum Value Validations
-		if (body.status && !ISSUE_STATUSES.includes(body.status)) {
-			return Response.json({ error: `Invalid status. Must be one of: ${ISSUE_STATUSES.join(', ')}` }, { status: 400 });
-		}
-		if (body.priority && !ISSUE_PRIORITIES.includes(body.priority)) {
-			return Response.json({ error: `Invalid priority. Must be one of: ${ISSUE_PRIORITIES.join(', ')}` }, { status: 400 });
-		}
-		if (body.category && !ALLOWED_CATEGORIES.includes(body.category)) {
 			return Response.json({ error: `Invalid category. Must be one of: ${ALLOWED_CATEGORIES.join(', ')}` }, { status: 400 });
 		}
 
