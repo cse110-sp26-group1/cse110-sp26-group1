@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS teams (
 CREATE TABLE IF NOT EXISTS team_members (
   team_id INTEGER NOT NULL,
   user_id INTEGER NOT NULL,
-  role TEXT DEFAULT 'dev',
+  role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
   PRIMARY KEY (team_id, user_id),
   FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -33,10 +33,10 @@ CREATE TABLE IF NOT EXISTS issues (
   title TEXT NOT NULL,
   description TEXT,
   summary TEXT,
-  status TEXT DEFAULT 'open',
-  priority TEXT DEFAULT 'medium',
+  status TEXT DEFAULT 'Open',
+  priority TEXT DEFAULT 'Medium',
   difficulty TEXT DEFAULT 'unknown',
-  category TEXT DEFAULT 'bug',
+  category TEXT DEFAULT 'Bug',
   tags TEXT DEFAULT '[]',
   entry_point TEXT,
   error_type TEXT,
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS agent_attempts (
   token_usage INTEGER,
   FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
   FOREIGN KEY (agent_id) REFERENCES agents(id),
-  UNIQUE(issue_id, agent_id, attempt_number),
+  UNIQUE(issue_id, agent_id, attempt_number)
 );
 
 -- INVITES TABLE

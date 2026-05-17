@@ -1,25 +1,22 @@
-// Validations based on research/backend-research/schema-example.js
+import { requireAuth } from '../src/lib/auth.js';
+import { requireTeamMember } from '../src/lib/teams.js';
+
 const ISSUE_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const ISSUE_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 const ALLOWED_CATEGORIES = ['Bug', 'Feature', 'Task'];
 
 /**
  * Handles all /issues routes: GET (list by team), POST (create), PATCH (update), DELETE (remove).
- * @param {Request} request - The incoming Worker request.
- * @param {{ issue_tracker_db: D1Database }} env - Worker environment with the D1 database binding.
- * @returns {Promise<Response>}
- *   200 — issues list (GET) or update/delete result (PATCH/DELETE)
- *   201 — issue created (POST)
- *   400 — missing team_id param (GET) or missing required fields (POST)
- *   404 — route not matched
+ * @param {Request} request
+ * @param {{ DB: D1Database }} env
  */
 export async function handleIssues(request, env) {
 	const url = new URL(request.url);
 	const method = request.method;
 	const pathParts = url.pathname.split('/');
-	const issueId = pathParts[2]; // /issues/:id
+	const issueId = pathParts[2];
 
-	// Global validation for issueId if present in the URL path
+	// Validate issueId early
 	if (issueId) {
 		const parsedIssueId = Number(issueId);
 		if (!Number.isInteger(parsedIssueId) || parsedIssueId <= 0) {
@@ -27,20 +24,25 @@ export async function handleIssues(request, env) {
 		}
 	}
 
-	// GET /issues?team_id=X (Fetch all issues for a team)
+	// GET /issues?team_id=X
 	if (method === 'GET' && !issueId) {
-		const teamId = url.searchParams.get('team_id');
-		if (!teamId) return Response.json({ error: 'team_id query param required' }, { status: 400 });
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
 
-		// Validate team_id type and structure
-		const parsedTeamId = Number(teamId);
-		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
+		const teamId = Number(url.searchParams.get('team_id'));
+		if (!teamId) {
+			return Response.json({ error: 'team_id query param required' }, { status: 400 });
+		}
+
+		if (!Number.isInteger(teamId) || teamId <= 0) {
 			return Response.json({ error: 'Invalid team_id format. Must be a positive integer.' }, { status: 400 });
 		}
 
-		const { results } = await env.issue_tracker_db.prepare('SELECT * FROM issues WHERE team_id = ?').bind(parsedTeamId).all();
+		const membership = await requireTeamMember(env, auth.userId, teamId);
+		if (membership.error) return membership.error;
 
-		// Parse JSON strings back into arrays for the frontend
+		const { results } = await env.DB.prepare('SELECT * FROM issues WHERE team_id = ?').bind(teamId).all();
+
 		const formatted = results.map((row) => ({
 			...row,
 			tags: JSON.parse(row.tags || '[]'),
@@ -51,63 +53,68 @@ export async function handleIssues(request, env) {
 		return Response.json(formatted);
 	}
 
-	// POST /issues (Create a new user-reported issue)
+	// POST /issues
 	if (method === 'POST') {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
 		const body = await request.json();
 
-		// Existence checks
-		if (!body.title || !body.team_id || !body.created_by) {
-			return Response.json({ error: 'Missing required fields' }, { status: 400 });
+		if (!body.title || !body.team_id) {
+			return Response.json({ error: 'title and team_id are required' }, { status: 400 });
 		}
 
-		// Title Type Validation
 		if (typeof body.title !== 'string' || body.title.trim() === '') {
 			return Response.json({ error: 'Invalid title format. Must be a non-empty string.' }, { status: 400 });
 		}
 
-		// IDs Type Validation
 		const parsedTeamId = Number(body.team_id);
-		const parsedCreatedBy = Number(body.created_by);
 
 		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
 			return Response.json({ error: 'Invalid team_id. Must be a positive integer.' }, { status: 400 });
 		}
-		if (!Number.isInteger(parsedCreatedBy) || parsedCreatedBy <= 0) {
-			return Response.json({ error: 'Invalid created_by user ID. Must be a positive integer.' }, { status: 400 });
-		}
 
-		// Enum Value Validations
-		if (body.status && !ISSUE_STATUSES.includes(body.status)) {
+		const membership = await requireTeamMember(env, auth.userId, parsedTeamId);
+		if (membership.error) return membership.error;
+
+		const status = body.status?.trim();
+		const priority = body.priority?.trim();
+		const category = body.category?.trim();
+
+		if (status && !ISSUE_STATUSES.includes(status)) {
 			return Response.json({ error: `Invalid status. Must be one of: ${ISSUE_STATUSES.join(', ')}` }, { status: 400 });
 		}
-		if (body.priority && !ISSUE_PRIORITIES.includes(body.priority)) {
+
+		if (priority && !ISSUE_PRIORITIES.includes(priority)) {
 			return Response.json({ error: `Invalid priority. Must be one of: ${ISSUE_PRIORITIES.join(', ')}` }, { status: 400 });
 		}
-		if (body.category && !ALLOWED_CATEGORIES.includes(body.category)) {
+
+		if (category && !ALLOWED_CATEGORIES.includes(category)) {
 			return Response.json({ error: `Invalid category. Must be one of: ${ALLOWED_CATEGORIES.join(', ')}` }, { status: 400 });
 		}
 
 		const now = new Date().toISOString();
-		const { success } = await env.issue_tracker_db
-			.prepare(
-				`
-            INSERT INTO issues (
-                team_id, created_by, title, description, summary, 
-                status, priority, category, tags, difficulty, entry_point, 
-                error_type, error_message, stack_trace, affected_files,
-                created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `,
+
+		const { success } = await env.DB.prepare(
+			`
+			INSERT INTO issues (
+				team_id, created_by, title, description, summary,
+				status, priority, category, tags, difficulty,
+				entry_point, error_type, error_message, stack_trace,
+				affected_files, created_at, updated_at
 			)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`,
+		)
 			.bind(
 				parsedTeamId,
-				parsedCreatedBy,
+				auth.userId,
 				body.title.trim(),
 				body.description || null,
 				body.summary || null,
-				body.status || 'Open',
-				body.priority || 'Medium',
-				body.category || 'Bug',
+				status || 'Open',
+				priority || 'Medium',
+				category || 'Bug',
 				JSON.stringify(body.tags || []),
 				body.difficulty || null,
 				body.details?.entry_point || null,
@@ -123,38 +130,57 @@ export async function handleIssues(request, env) {
 		return Response.json({ success }, { status: 201 });
 	}
 
-	// PATCH /issues/:id (Update status, priority, or details)
+	// PATCH /issues/:id
 	if (method === 'PATCH' && issueId) {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		const issue = await env.DB.prepare('SELECT team_id FROM issues WHERE id = ?').bind(Number(issueId)).first();
+
+		if (!issue) {
+			return Response.json({ error: 'Issue not found' }, { status: 404 });
+		}
+
+		const membership = await requireTeamMember(env, auth.userId, issue.team_id);
+		if (membership.error) return membership.error;
+
 		const body = await request.json();
 
-		// Validate incoming updates if they exist
-		if (body.status && !ISSUE_STATUSES.includes(body.status)) {
+		if (!body.status && !body.priority && !body.assigned_to) {
+			return Response.json({ error: 'No valid fields provided' }, { status: 400 });
+		}
+
+		const status = body.status?.trim();
+		const priority = body.priority?.trim();
+
+		if (status && !ISSUE_STATUSES.includes(status)) {
 			return Response.json({ error: 'Invalid status value' }, { status: 400 });
 		}
-		if (body.priority && !ISSUE_PRIORITIES.includes(body.priority)) {
+		if (priority && !ISSUE_PRIORITIES.includes(priority)) {
 			return Response.json({ error: 'Invalid priority value' }, { status: 400 });
 		}
-		if (body.assigned_to) {
-			const parsedAssignedTo = Number(body.assigned_to);
-			if (!Number.isInteger(parsedAssignedTo) || parsedAssignedTo <= 0) {
+
+		let assignedTo = null;
+		if (body.assigned_to !== undefined) {
+			assignedTo = Number(body.assigned_to);
+			if (!Number.isInteger(assignedTo) || assignedTo <= 0) {
 				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
 			}
 		}
 
 		const now = new Date().toISOString();
 
-		const { success } = await env.issue_tracker_db
-			.prepare(
-				`
-            UPDATE issues SET 
-                status = COALESCE(?, status),
-                priority = COALESCE(?, priority),
-                assigned_to = COALESCE(?, assigned_to),
-                updated_at = ?
-            WHERE id = ?
-        `,
-			)
-			.bind(body.status || null, body.priority || null, body.assigned_to || null, now, Number(issueId))
+		const { success } = await env.DB.prepare(
+			`
+			UPDATE issues SET
+				status = COALESCE(?, status),
+				priority = COALESCE(?, priority),
+				assigned_to = COALESCE(?, assigned_to),
+				updated_at = ?
+			WHERE id = ?
+			`,
+		)
+			.bind(status || null, priority || null, assignedTo, now, Number(issueId))
 			.run();
 
 		return Response.json({ success });
@@ -162,7 +188,20 @@ export async function handleIssues(request, env) {
 
 	// DELETE /issues/:id
 	if (method === 'DELETE' && issueId) {
-		const { success } = await env.issue_tracker_db.prepare('DELETE FROM issues WHERE id = ?').bind(Number(issueId)).run();
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		const issue = await env.DB.prepare('SELECT team_id FROM issues WHERE id = ?').bind(Number(issueId)).first();
+
+		if (!issue) {
+			return Response.json({ error: 'Issue not found' }, { status: 404 });
+		}
+
+		const membership = await requireTeamMember(env, auth.userId, issue.team_id);
+		if (membership.error) return membership.error;
+
+		const { success } = await env.DB.prepare('DELETE FROM issues WHERE id = ?').bind(Number(issueId)).run();
+
 		return Response.json({ success });
 	}
 

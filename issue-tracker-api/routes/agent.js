@@ -1,16 +1,12 @@
 /**
- * Handles all agent-related API routes.
- *
- * Routes:
- *   GET    /agents       - List all agents
- *   GET    /agents/:id   - Get a specific agent by ID
- *   POST   /agents       - Create a new agent
- *   PATCH  /agents/:id   - Partially update an agent by ID
- *   DELETE /agents/:id   - Delete an agent by ID
- *
- * @param {Request} request - Incoming HTTP request.
- * @param {object} env - Cloudflare Worker environment bindings.
- * @returns {Promise<Response>} HTTP response for the matched route.
+ * Handles all /agents routes: GET (list or by id), POST (create), PATCH (update), DELETE.
+ * @param {Request} request - The incoming Worker request.
+ * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
+ * @returns {Promise<Response>}
+ *   200 — agent list (GET), single agent (GET :id), update/delete confirmation (PATCH/DELETE)
+ *   201 — agent created (POST)
+ *   400 — invalid id, invalid JSON, or validation errors
+ *   404 — agent not found or route not matched
  */
 export async function handleAgents(request, env) {
 	const url = new URL(request.url);
@@ -24,7 +20,7 @@ export async function handleAgents(request, env) {
 	const allowedFields = ['name', 'type', 'token'];
 
 	if (request.method === 'GET' && pathname === '/agents') {
-		const { results } = await env.issue_tracker_db.prepare('SELECT * FROM agents').all();
+		const { results } = await env.DB.prepare('SELECT * FROM agents').all();
 
 		return Response.json(results);
 	}
@@ -34,7 +30,7 @@ export async function handleAgents(request, env) {
 	}
 
 	if (request.method === 'GET' && agentId) {
-		const agent = await env.issue_tracker_db.prepare('SELECT * FROM agents WHERE id = ?').bind(agentId).first();
+		const agent = await env.DB.prepare('SELECT * FROM agents WHERE id = ?').bind(agentId).first();
 
 		if (!agent) {
 			return new Response('Agent not found', { status: 404 });
@@ -68,8 +64,7 @@ export async function handleAgents(request, env) {
 			return new Response("Field 'token' must be a string or null", { status: 400 });
 		}
 
-		await env.issue_tracker_db
-			.prepare('INSERT INTO agents (name, type, token) VALUES (?, ?, ?)')
+		await env.DB.prepare('INSERT INTO agents (name, type, token) VALUES (?, ?, ?)')
 			.bind(body.name.trim(), body.type.trim(), body.token === undefined ? null : body.token)
 			.run();
 
@@ -122,8 +117,7 @@ export async function handleAgents(request, env) {
 			return body[key];
 		});
 
-		const result = await env.issue_tracker_db
-			.prepare(`UPDATE agents SET ${setClause} WHERE id = ?`)
+		const result = await env.DB.prepare(`UPDATE agents SET ${setClause} WHERE id = ?`)
 			.bind(...values, agentId)
 			.run();
 
@@ -135,7 +129,7 @@ export async function handleAgents(request, env) {
 	}
 
 	if (request.method === 'DELETE' && agentId) {
-		const result = await env.issue_tracker_db.prepare('DELETE FROM agents WHERE id = ?').bind(agentId).run();
+		const result = await env.DB.prepare('DELETE FROM agents WHERE id = ?').bind(agentId).run();
 
 		if (result.meta.changes === 0) {
 			return new Response('Agent not found', { status: 404 });
