@@ -1,28 +1,17 @@
+import { requireAuth } from '../src/lib/auth.js';
+import { requireTeamAdmin } from '../src/lib/teams.js';
+
 /**
- * Handle invite-related API endpoints.
- *
- * Endpoints:
- *
- * GET /invites?user_id=X
- * - Returns all invites for a specific invited user
- * - Includes team_name via join with teams table
- *
- * POST /invites
- * - Creates a pending invite
- * - Prevents duplicate invites and existing memberships
- *
- * PATCH /invites/:id/accept
- * - Marks invite as accepted
- * - Adds user to team_members
- *
- * PATCH /invites/:id/reject
- * - Marks invite as rejected
- *
- * DELETE /invites/:id
- * - Deletes invite by id
- *
- * @param {Request} request
- * @param {Env} env - Cloudflare Worker environment (D1 bound as issue_tracker_db)
+ * Handles all /invites routes: GET (list by user), POST (create), PATCH accept/reject, DELETE.
+ * @param {Request} request - The incoming Worker request.
+ * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
+ * @returns {Promise<Response>}
+ *   200 — invites list (GET), accept/reject result (PATCH), delete result (DELETE)
+ *   201 — invite created (POST)
+ *   400 — missing or invalid query/body fields or invite id
+ *   403 — not team admin (POST/DELETE) or not the invited user (PATCH accept/reject)
+ *   404 — invite not found or route not matched
+ *   409 — user already on team, duplicate pending invite, or invite already handled
  */
 export async function handleInvites(request, env) {
 	const url = new URL(request.url);
@@ -30,85 +19,69 @@ export async function handleInvites(request, env) {
 	const pathParts = url.pathname.split('/');
 	const inviteId = pathParts[2];
 
-	// GET /invites?user_id=X
+	// GET /invites — pending invites for logged-in user
 	if (method === 'GET' && !inviteId) {
-		const userId = url.searchParams.get('user_id');
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
 
-		if (!userId) {
-			return Response.json({ error: 'user_id query param required' }, { status: 400 });
-		}
-
-		if (Number.isNaN(Number(userId))) {
-			return Response.json({ error: 'user_id must be a number' }, { status: 400 });
-		}
-
-		const { results } = await env.issue_tracker_db
-			.prepare(
-				`
-				SELECT invites.*, teams.team_name
-				FROM invites
-				JOIN teams
-				ON invites.team_id = teams.id
+		const { results } = await env.DB.prepare(
+			`
+				SELECT invites.*, teams.team_name FROM invites
+				JOIN teams ON invites.team_id = teams.id
 				WHERE invites.invited_user_id = ?
 			`,
-			)
-			.bind(userId)
+		)
+			.bind(auth.userId)
 			.all();
 
 		return Response.json(results);
 	}
 
-	// POST /invites
+	// POST /invites — admin only; invited_username in body
 	if (method === 'POST' && !inviteId) {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
 		const body = await request.json();
-
-		if (!body.team_id || !body.inviter_user_id || !body.invited_user_id) {
-			return Response.json({ error: 'Missing required fields' }, { status: 400 });
+		if (!body.team_id || !body.invited_username) {
+			return Response.json({ error: 'team_id and invited_username are required' }, { status: 400 });
 		}
 
-		if (Number.isNaN(Number(body.team_id)) || Number.isNaN(Number(body.inviter_user_id)) || Number.isNaN(Number(body.invited_user_id))) {
-			return Response.json({ error: 'team_id, inviter_user_id, and invited_user_id must be numbers' }, { status: 400 });
+		const parsedTeamId = Number(body.team_id);
+		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
+			return Response.json({ error: 'team_id must be a positive integer' }, { status: 400 });
 		}
 
-		const inviterMembership = await env.issue_tracker_db
-			.prepare(
-				`
+		const admin = await requireTeamAdmin(env, auth.userId, parsedTeamId);
+		if (admin.error) return admin.error;
+
+		const invited = await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(body.invited_username.trim()).first();
+		if (!invited) {
+			return Response.json({ error: 'User not found' }, { status: 404 });
+		}
+
+		const existingMember = await env.DB.prepare(
+			`
 				SELECT *
 				FROM team_members
 				WHERE team_id = ? AND user_id = ?
 			`,
-			)
-			.bind(body.team_id, body.inviter_user_id)
-			.first();
-
-		if (!inviterMembership) {
-			return Response.json({ error: 'Inviter is not a member of this team' }, { status: 403 });
-		}
-
-		const existingMember = await env.issue_tracker_db
-			.prepare(
-				`
-				SELECT *
-				FROM team_members
-				WHERE team_id = ? AND user_id = ?
-			`,
-			)
-			.bind(body.team_id, body.invited_user_id)
+		)
+			.bind(parsedTeamId, invited.id)
 			.first();
 
 		if (existingMember) {
 			return Response.json({ error: 'User is already a team member' }, { status: 409 });
 		}
 
-		const existingInvite = await env.issue_tracker_db
-			.prepare(
-				`
+		const existingInvite = await env.DB.prepare(
+			`
 				SELECT *
 				FROM invites
 				WHERE team_id = ? AND invited_user_id = ? AND status = 'pending'
 			`,
-			)
-			.bind(body.team_id, body.invited_user_id)
+		)
+			.bind(parsedTeamId, invited.id)
 			.first();
 
 		if (existingInvite) {
@@ -117,20 +90,13 @@ export async function handleInvites(request, env) {
 
 		const now = new Date().toISOString();
 
-		const result = await env.issue_tracker_db
-			.prepare(
-				`
-				INSERT INTO invites (
-					team_id,
-					inviter_user_id,
-					invited_user_id,
-					status,
-					created_at
-				)
-				VALUES (?, ?, ?, ?, ?)
+		const result = await env.DB.prepare(
+			`
+				INSERT INTO invites (team_id, inviter_user_id, invited_user_id, status, created_at)
+				VALUES (?, ?, ?, 'pending', ?)
 			`,
-			)
-			.bind(body.team_id, body.inviter_user_id, body.invited_user_id, 'pending', now)
+		)
+			.bind(parsedTeamId, auth.userId, invited.id, now)
 			.run();
 
 		return Response.json(
@@ -142,57 +108,48 @@ export async function handleInvites(request, env) {
 		);
 	}
 
-	// PATCH /invites/:id/accept
+	// PATCH /invites/:id/accept — invitee only; join as member
 	if (method === 'PATCH' && inviteId && pathParts[3] === 'accept') {
-		if (Number.isNaN(Number(inviteId))) {
-			return Response.json({ error: 'invite id must be a number' }, { status: 400 });
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		const invite = await env.DB.prepare('SELECT * FROM invites WHERE id = ?').bind(inviteId).first();
+		if (!invite) return Response.json({ error: 'Invite not found' }, { status: 404 });
+		if (invite.invited_user_id !== auth.userId) {
+			return Response.json({ error: 'Forbidden' }, { status: 403 });
 		}
-
-		const invite = await env.issue_tracker_db.prepare('SELECT * FROM invites WHERE id = ?').bind(inviteId).first();
-
-		if (!invite) {
-			return Response.json({ error: 'Invite not found' }, { status: 404 });
-		}
-
 		if (invite.status !== 'pending') {
 			return Response.json({ error: 'Invite already handled' }, { status: 409 });
 		}
 
-		await env.issue_tracker_db.prepare("UPDATE invites SET status = 'accepted' WHERE id = ?").bind(inviteId).run();
-
-		const { success } = await env.issue_tracker_db
-			.prepare(
-				`
-				INSERT INTO team_members (user_id, team_id, role)
-				VALUES (?, ?, ?)
-			`,
-			)
-			.bind(invite.invited_user_id, invite.team_id, 'dev')
+		await env.DB.prepare("UPDATE invites SET status = 'accepted' WHERE id = ?").bind(inviteId).run();
+		await env.DB.prepare('INSERT INTO team_members (user_id, team_id, role) VALUES (?, ?, ?)')
+			.bind(auth.userId, invite.team_id, 'member')
 			.run();
 
-		return Response.json({
-			success,
-			message: 'Invite accepted',
-		});
+		return Response.json({ success: true, message: 'Invite accepted' });
 	}
 
-	// PATCH /invites/:id/reject
+	// PATCH /invites/:id/reject — invitee only
 	if (method === 'PATCH' && inviteId && pathParts[3] === 'reject') {
-		if (Number.isNaN(Number(inviteId))) {
-			return Response.json({ error: 'invite id must be a number' }, { status: 400 });
-		}
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
 
-		const invite = await env.issue_tracker_db.prepare('SELECT * FROM invites WHERE id = ?').bind(inviteId).first();
+		const invite = await env.DB.prepare('SELECT * FROM invites WHERE id = ?').bind(inviteId).first();
 
 		if (!invite) {
 			return Response.json({ error: 'Invite not found' }, { status: 404 });
+		}
+
+		if (invite.invited_user_id !== auth.userId) {
+			return Response.json({ error: 'Forbidden' }, { status: 403 });
 		}
 
 		if (invite.status !== 'pending') {
 			return Response.json({ error: 'Invite already handled' }, { status: 409 });
 		}
 
-		const { success } = await env.issue_tracker_db.prepare("UPDATE invites SET status = 'declined' WHERE id = ?").bind(inviteId).run();
+		const { success } = await env.DB.prepare("UPDATE invites SET status = 'declined' WHERE id = ?").bind(inviteId).run();
 
 		return Response.json({
 			success,
@@ -200,15 +157,19 @@ export async function handleInvites(request, env) {
 		});
 	}
 
-	// DELETE /invites/:id
+	// DELETE /invites/:id — team admin only
 	if (method === 'DELETE' && inviteId) {
-		if (Number.isNaN(Number(inviteId))) {
-			return Response.json({ error: 'invite id must be a number' }, { status: 400 });
-		}
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
 
-		const { success } = await env.issue_tracker_db.prepare('DELETE FROM invites WHERE id = ?').bind(inviteId).run();
+		const invite = await env.DB.prepare('SELECT * FROM invites WHERE id = ?').bind(inviteId).first();
+		if (!invite) return Response.json({ error: 'Invite not found' }, { status: 404 });
 
-		return Response.json({ success });
+		const admin = await requireTeamAdmin(env, auth.userId, invite.team_id);
+		if (admin.error) return admin.error;
+
+		await env.DB.prepare('DELETE FROM invites WHERE id = ?').bind(inviteId).run();
+		return Response.json({ success: true });
 	}
 
 	return Response.json({ error: 'Not Found' }, { status: 404 });
