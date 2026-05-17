@@ -14,7 +14,7 @@
 	"compatibility_flags": ["nodejs_compat"],
 	"d1_databases": [
 		{
-			"binding": "issue_tracker_db",
+			"binding": "DB",
 			"database_name": "issue-tracker-db",
 			"database_id": "9f845578-0391-4e87-a3ee-77d73b8d2bb9",
 		},
