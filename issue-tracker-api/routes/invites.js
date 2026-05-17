@@ -1,5 +1,6 @@
 import { requireAuth } from '../src/lib/auth.js';
 import { requireTeamAdmin } from '../src/lib/teams.js';
+// test comment to push
 
 /**
  * Handles all /invites routes: GET (list by user), POST (create), PATCH accept/reject, DELETE.
