@@ -1,0 +1,44 @@
+{
+	"teams": {
+		"studio-ai": { "name": "Studio · AI Tools", "mark": "SA", "color": 38 },
+		"group-eight": { "name": "Group 8 · Capstone", "mark": "G8", "color": 200 },
+		"side-quest": { "name": "Side Quest", "mark": "SQ", "color": 130 },
+		"hearth-os": { "name": "Hearth OS", "mark": "HO", "color": 320 },
+		"invited": { "name": "Dawn Kernel", "mark": "DK", "color": 200 }
+	},
+	"issues": [
+		{
+			"id": 142,
+			"title": "Login redirect loops after session expiry",
+			"summary": "When a session expires mid-session, the redirect to /login bounces back to the original protected page, which redirects again. Missing return-URL guard.",
+			"description": "<p>Reproduces consistently when sitting on a protected route past the session TTL (currently 30m).</p><p><strong>Steps to reproduce</strong></p><ul><li>Sign in.</li><li>Open <code>/issues/142</code>.</li><li>Wait 31 minutes (or invalidate the cookie in devtools).</li><li>Refresh.</li></ul><p><strong>Expected:</strong> sign-in page with a return URL; after auth, return to <code>/issues/142</code>.</p><p><strong>Actual:</strong> sign-in → protected page → sign-in → … loop.</p><p><strong>Stack (abridged):</strong></p><pre>at requireAuth (middleware/auth.ts:42)\nat handleRedirect (router/index.ts:118)\n… 12 frames omitted …</pre>",
+			"status": "in-progress",
+			"priority": "high",
+			"difficulty": 2,
+			"labels": ["bug", "auth"],
+			"attachments": [
+				{ "name": "trace-2026-05-09.log", "size": "8.4 KB", "ic": "LOG" },
+				{ "name": "browser-console.txt", "size": "1.2 KB", "ic": "TXT" }
+			],
+			"activity": [
+				{ "who": "JK", "what": "moved to In progress", "when": "2h ago" },
+				{ "who": "AL", "what": "added label auth", "when": "5h ago" },
+				{ "who": "AL", "what": "created issue", "when": "5h ago" }
+			],
+			"updated": "2h ago"
+		},
+		{
+			"id": 144,
+			"title": "OAuth callback hangs on slow networks",
+			"summary": "On 3G-throttled connections, the OAuth callback page never finalizes; spinner sits indefinitely with no error surfaced.",
+			"description": "<p>Spinner appears, no timeout, no fallback.</p>",
+			"status": "open",
+			"priority": "urgent",
+			"difficulty": 3,
+			"labels": ["bug", "auth"],
+			"attachments": [],
+			"activity": [{ "who": "MN", "what": "created issue", "when": "30m ago" }],
+			"updated": "30m ago"
+		}
+	]
+}
