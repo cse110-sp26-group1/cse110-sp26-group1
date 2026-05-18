@@ -242,6 +242,7 @@ select.input:focus {
 
 /* ------- chips ------- */
 .chip {
+	width: fit-content;
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
