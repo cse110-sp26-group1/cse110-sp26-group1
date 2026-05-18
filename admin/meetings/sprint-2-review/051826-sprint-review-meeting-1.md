@@ -21,8 +21,15 @@ May 18, 2026 | 3:30-5:30pm @ Triton Transfer Hub
   - team leads need to carefully review PRs more
   - suggest in-person synchronous working sessions
 
-### Decisions Made:
-- 
+### Review Notes:
+What did we get working?
+
+
+What needs fixing?
+
+
+How can we work together more efficiently?
+  - 
 
 ### Upcoming tasks:
 - Entire team looks at current issues with our entire project and address all the fixes with a strict deadline of Tuesday morning
