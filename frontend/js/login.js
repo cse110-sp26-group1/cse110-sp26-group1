@@ -39,7 +39,7 @@ authForm.addEventListener('submit', async (e) => {
 	e.preventDefault();
 	const emailEl = document.getElementById('email');
 	const passwordEl = document.getElementById('password');
-	
+
 	const email = emailEl.value.trim();
 	const password = passwordEl.value;
 

@@ -75,13 +75,16 @@ document.querySelectorAll('.invite .actions .primary').forEach((b) => {
 	});
 });
 
-const gridEl = document.querySelector('.grid');
-
+/**
+ *
+ */
 async function initTeams() {
 	try {
 		const teams = await fetchTeams();
 
-		const teamsHtml = teams.map(t => `
+		const teamsHtml = teams
+			.map(
+				(t) => `
 			<a class="team" href="tracker.html?team=${t.slug}">
 				<div class="team-head">
 					<div class="team-mark" style="background: oklch(0.92 0.04 ${t.color}); color: oklch(0.4 0.12 ${t.color});">${t.mark}</div>
@@ -97,7 +100,9 @@ async function initTeams() {
 					<span class="last-active">active recently</span>
 				</div>
 			</a>
-		`).join('');
+		`,
+			)
+			.join('');
 
 		const createBtnHtml = `
 			<button class="team new" id="createTeam2">
@@ -115,9 +120,8 @@ async function initTeams() {
 			e.preventDefault();
 			openModal();
 		});
-
 	} catch (err) {
-		showToast("Failed to load your workspaces.");
+		showToast('Failed to load your workspaces.');
 	}
 }
 
@@ -138,7 +142,7 @@ confirmCreateBtn.addEventListener('click', async () => {
 		await createTeam(name, slug, desc);
 		location.href = `tracker.html?team=${encodeURIComponent(slug)}`;
 	} catch (err) {
-		showToast("Failed to create team.");
+		showToast('Failed to create team.');
 		confirmCreateBtn.textContent = originalText;
 		confirmCreateBtn.disabled = false;
 	}
