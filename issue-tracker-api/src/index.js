@@ -52,7 +52,7 @@ function withCors(response, request) {
  * Main Cloudflare Worker entry point. Routes requests to the appropriate handler
  * and wraps every response with CORS headers.
  * @param {Request} request - The incoming HTTP request.
- * @param {Env} env - Worker environment bindings (includes `issue_tracker_db` D1 binding).
+ * @param {{ DB: D1Database }} env - Worker environment with D1 database binding.
  * @param {ExecutionContext} _ctx - Execution context (unused).
  * @returns {Promise<Response>}
  */
@@ -70,27 +70,26 @@ export default {
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		// routes use env.DB; wrangler.jsonc binds issue_tracker_db
-		const envWithDb = { ...env, DB: env.issue_tracker_db };
-
+		// frontend runs on dif url from api, so use withCors func to allow cors for
+		// each route
 		if (path.startsWith('/auth')) {
-			return withCors(await handleAuth(request, envWithDb), request);
+			return withCors(await handleAuth(request, env), request);
 		}
 
 		if (path.startsWith('/issues')) {
-			return withCors(await handleIssues(request, envWithDb), request);
+			return withCors(await handleIssues(request, env), request);
 		}
 
 		if (path.startsWith('/teams')) {
-			return handleTeams(request, envWithDb);
+			return withCors(await handleTeams(request, env), request);
 		}
 
 		if (path.startsWith('/invites')) {
-			return handleInvites(request, envWithDb);
+			return withCors(await handleInvites(request, env), request);
 		}
 
 		if (path.startsWith('/agents')) {
-			return handleAgents(request, envWithDb);
+			return withCors(await handleAgents(request, env), request);
 		}
 
 		return withCors(new Response('Not Found', { status: 404 }), request);
