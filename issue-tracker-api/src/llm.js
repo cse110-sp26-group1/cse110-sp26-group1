@@ -47,6 +47,17 @@ RULES:
 USER INPUT:{raw_user_input}
 `;
 
+/**
+ * Takes in raw user input and sends it to DeepSeek, which
+ * processes the input and returns a JSON object.
+ *
+ * @async
+ * @function processIssue
+ * @param {string} rawUserInput - The raw issue or message provided by the user.
+ * @returns {Promise<Object>} A JSON object containing the LLM response.
+ * @throws {Error} Throws if the API request fails.
+ */
+
 export async function processIssue(rawUserInput) {
 	const response = await client.chat.completions.create({
 		model: 'deepseek-v4-flash',
