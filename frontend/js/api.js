@@ -4,6 +4,7 @@ const API_BASE = '/api'; // Replace with your actual backend URL
 /**
  * Core request handler to manage headers, tokens, and errors globally.
  * * @param {string} endpoint - The API route (e.g., '/issues')
+ * @param endpoint
  * @param {object} options - Fetch options (method, body, headers)
  */
 async function request(endpoint, options = {}) {

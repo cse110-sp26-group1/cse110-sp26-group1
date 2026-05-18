@@ -27,6 +27,8 @@ async function initDB() {
 
 /**
  * Replaces: POST /api/auth/login
+ * @param email
+ * @param password
  */
 export async function login(email, password) {
     // === REAL API CALL (Replace mock logic below with this) ===
@@ -67,6 +69,7 @@ export async function fetchTeams() {
 
 /**
  * Replaces: GET /api/issues?team_id={teamId}
+ * @param teamId
  */
 export async function fetchIssues(teamId) {
     // === REAL API CALL (Replace mock logic below with this) ===
@@ -86,6 +89,7 @@ export async function fetchIssues(teamId) {
 
 /**
  * Replaces: POST /api/issues
+ * @param formData
  */
 export async function createIssue(formData) {
     // === REAL API CALL (Replace mock logic below with this) ===
@@ -131,6 +135,8 @@ export async function createIssue(formData) {
 
 /**
  * Replaces: PATCH /api/issues/:id
+ * @param id
+ * @param updates
  */
 export async function updateIssue(id, updates) {
     // === REAL API CALL (Replace mock logic below with this) ===
