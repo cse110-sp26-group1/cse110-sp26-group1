@@ -1,6 +1,11 @@
+import { login } from './mock-api.js';
+
 const tabLogin = document.getElementById('tabLogin');
 const tabSignup = document.getElementById('tabSignup');
 const body = document.body;
+
+const authForm = document.getElementById('authForm');
+const submitBtn = document.getElementById('submitBtn');
 
 /**
  * Switches the auth form between login and signup modes.
@@ -28,4 +33,34 @@ document.getElementById('authForm').addEventListener('submit', (e) => {
 		return;
 	}
 	location.href = 'teams.html';
+});
+
+authForm.addEventListener('submit', async (e) => {
+	e.preventDefault();
+	const emailEl = document.getElementById('email');
+	const passwordEl = document.getElementById('password');
+	
+	const email = emailEl.value.trim();
+	const password = passwordEl.value;
+
+	if (!email || !password) {
+		if (!email) emailEl.focus();
+		else passwordEl.focus();
+		return;
+	}
+
+	const originalText = submitBtn.textContent;
+	submitBtn.textContent = 'Authenticating...';
+	submitBtn.disabled = true;
+
+	try {
+		await login(email, password);
+
+		location.href = 'teams.html';
+	} catch (err) {
+		console.error(err);
+		alert('Login failed. Please check your credentials.');
+		submitBtn.textContent = originalText;
+		submitBtn.disabled = false;
+	}
 });
