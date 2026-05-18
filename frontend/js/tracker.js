@@ -113,8 +113,9 @@ function renderList() {
 }
 
 /**
- *
- * @param i
+ * Build HTML for a single issue row in the list.
+ * @param {object} i - Issue record.
+ * @returns {string} HTML string for the row.
  */
 function rowHtml(i) {
 	const isSel = state.selected === i.id;
@@ -223,6 +224,7 @@ const searchClearBtn = document.getElementById('issueSearchClear');
 
 /**
  * Show or hide the search clear control based on input value.
+ * @returns {void}
  */
 function syncSearchClear() {
 	if (!searchInput || !searchClearBtn) {
@@ -395,8 +397,9 @@ dropzone.addEventListener('drop', (e) => {
 	addFiles(e.dataTransfer.files);
 });
 /**
- *
- * @param files
+ * Queue files from drag-and-drop or file input for a new issue.
+ * @param {FileList|File[]} files - Files to attach.
+ * @returns {void}
  */
 function addFiles(files) {
 	Array.from(files).forEach((f) => pendingFiles.push(f));
@@ -457,7 +460,7 @@ confirmNewBtn.addEventListener('click', async () => {
 		closeNew();
 		renderList();
 		renderDetail();
-	} catch (err) {
+	} catch {
 		showToast('Failed to create issue.');
 	} finally {
 		confirmNewBtn.textContent = originalText;
@@ -470,8 +473,9 @@ confirmNewBtn.addEventListener('click', async () => {
 // ============================================================
 const toast = document.getElementById('toast');
 /**
- *
- * @param msg
+ * Show a short-lived toast notification.
+ * @param {string} msg - Message to display.
+ * @returns {void}
  */
 function showToast(msg) {
 	toast.textContent = msg;
@@ -527,7 +531,7 @@ detailEl.addEventListener('click', async (e) => {
 			renderList();
 			renderDetail();
 			showToast('Issue marked as done');
-		} catch (err) {
+		} catch {
 			btn.textContent = 'Mark done';
 			btn.disabled = false;
 			showToast('Failed to update status');
@@ -558,8 +562,7 @@ detailEl.addEventListener('click', async (e) => {
 			renderList();
 			renderDetail();
 			showToast('Issue updated successfully');
-		} catch (err) {
-			console.error(err);
+		} catch {
 			showToast('Failed to save edits');
 			btn.textContent = 'Edit';
 			btn.disabled = false;
@@ -588,9 +591,8 @@ async function initTracker() {
 
 		renderList();
 		renderDetail();
-	} catch (err) {
+	} catch {
 		showToast('Failed to load mock data.');
-		console.error(err);
 	}
 }
 
