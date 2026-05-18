@@ -58,6 +58,10 @@ USER INPUT:{raw_user_input}
  * @throws {Error} Throws if the API request fails.
  */
 
+/**
+ *
+ * @param rawUserInput
+ */
 export async function processIssue(rawUserInput) {
 	const response = await client.chat.completions.create({
 		model: 'deepseek-v4-flash',
