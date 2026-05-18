@@ -2,15 +2,21 @@ import { requireAuth } from '../src/lib/auth.js';
 import { requireTeamMember } from '../src/lib/teams.js';
 
 /**
- * Handles all /teams routes: GET (list by user), POST (create), GET /teams/:teamId/members.
- * @param {Request} request - The incoming Worker request.
- * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
+ * Handles all /teams routes.
+ *
+ * Endpoints:
+ * GET /teams
+ * - Returns teams for the authenticated user.
+ *
+ * POST /teams
+ * - Creates a team and adds the authenticated user as admin.
+ *
+ * GET /teams/:teamId/members
+ * - Returns members for a team if authenticated user belongs to that team.
+ *
+ * @param {Request} request - Incoming Worker request.
+ * @param {Env} env - Worker environment with D1 database binding.
  * @returns {Promise<Response>}
- *   200 — teams list (GET) or team members (GET …/members)
- *   201 — team created (POST)
- *   400 — missing team_name (POST)
- *   403 — not a team member (GET …/members)
- *   404 — route not matched
  */
 export async function handleTeams(request, env) {
 	const url = new URL(request.url);
@@ -18,13 +24,14 @@ export async function handleTeams(request, env) {
 	const pathParts = url.pathname.split('/');
 	const teamId = pathParts[2];
 
+	// GET /teams
 	if (method === 'GET' && !teamId) {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
 
 		const { results } = await env.DB.prepare(
 			`
-				SELECT teams.*
+				SELECT teams.*, team_members.role
 				FROM teams
 				JOIN team_members
 				ON teams.id = team_members.team_id
@@ -85,6 +92,7 @@ export async function handleTeams(request, env) {
 		if (auth.error) return auth.error;
 
 		const parsedTeamId = Number(teamId);
+
 		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
 			return Response.json({ error: 'Invalid team ID format. Must be a positive integer.' }, { status: 400 });
 		}
