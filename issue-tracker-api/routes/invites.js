@@ -4,25 +4,31 @@
  * Endpoints:
  *
  * GET /invites?user_id=X
- * - Returns all invites for a specific invited user
- * - Includes team_name via join with teams table
+ * - Returns pending invites for a specific invited user
+ * - Includes team_name and inviter_username for frontend display
+ *
+ * GET /invites/:id
+ * - Returns one invite with team and inviter details
  *
  * POST /invites
  * - Creates a pending invite
- * - Prevents duplicate invites and existing memberships
+ * - Prevents self-invites
+ * - Validates numeric IDs
+ * - Checks inviter is already in the team
+ * - Prevents duplicate pending invites and existing memberships
  *
  * PATCH /invites/:id/accept
  * - Marks invite as accepted
- * - Adds user to team_members
+ * - Adds invited user to team_members
  *
  * PATCH /invites/:id/reject
- * - Marks invite as rejected
+ * - Marks invite as declined
  *
  * DELETE /invites/:id
  * - Deletes invite by id
  *
  * @param {Request} request
- * @param {Env} env - Cloudflare Worker environment (D1 bound as issue_tracker_db)
+ * @param {Env} env - Cloudflare Worker environment with D1 bound as issue_tracker_db
  */
 export async function handleInvites(request, env) {
 	const url = new URL(request.url);
@@ -45,17 +51,54 @@ export async function handleInvites(request, env) {
 		const { results } = await env.issue_tracker_db
 			.prepare(
 				`
-				SELECT invites.*, teams.team_name
+				SELECT
+					invites.*,
+					teams.team_name,
+					inviter.username AS inviter_username
 				FROM invites
 				JOIN teams
 				ON invites.team_id = teams.id
+				JOIN users AS inviter
+				ON invites.inviter_user_id = inviter.id
 				WHERE invites.invited_user_id = ?
+				AND invites.status = 'pending'
 			`,
 			)
 			.bind(userId)
 			.all();
 
 		return Response.json(results);
+	}
+
+	// GET /invites/:id
+	if (method === 'GET' && inviteId) {
+		if (Number.isNaN(Number(inviteId))) {
+			return Response.json({ error: 'invite id must be a number' }, { status: 400 });
+		}
+
+		const invite = await env.issue_tracker_db
+			.prepare(
+				`
+				SELECT
+					invites.*,
+					teams.team_name,
+					inviter.username AS inviter_username
+				FROM invites
+				JOIN teams
+				ON invites.team_id = teams.id
+				JOIN users AS inviter
+				ON invites.inviter_user_id = inviter.id
+				WHERE invites.id = ?
+			`,
+			)
+			.bind(inviteId)
+			.first();
+
+		if (!invite) {
+			return Response.json({ error: 'Invite not found' }, { status: 404 });
+		}
+
+		return Response.json(invite);
 	}
 
 	// POST /invites
@@ -68,6 +111,10 @@ export async function handleInvites(request, env) {
 
 		if (Number.isNaN(Number(body.team_id)) || Number.isNaN(Number(body.inviter_user_id)) || Number.isNaN(Number(body.invited_user_id))) {
 			return Response.json({ error: 'team_id, inviter_user_id, and invited_user_id must be numbers' }, { status: 400 });
+		}
+
+		if (Number(body.inviter_user_id) === Number(body.invited_user_id)) {
+			return Response.json({ error: 'Users cannot invite themselves' }, { status: 400 });
 		}
 
 		const inviterMembership = await env.issue_tracker_db
@@ -115,7 +162,43 @@ export async function handleInvites(request, env) {
 			return Response.json({ error: 'Pending invite already exists' }, { status: 409 });
 		}
 
+		const oldInvite = await env.issue_tracker_db
+			.prepare(
+				`
+				SELECT *
+				FROM invites
+				WHERE team_id = ? 
+				AND inviter_user_id = ?
+				AND invited_user_id = ?
+				AND status = 'declined'
+			`,
+			)
+			.bind(body.team_id, body.inviter_user_id, body.invited_user_id)
+			.first();
+
 		const now = new Date().toISOString();
+
+		if (oldInvite) {
+			const { success } = await env.issue_tracker_db
+				.prepare(
+					`
+					UPDATE invites
+					SET status = 'pending', created_at = ?
+					WHERE id = ?
+				`,
+				)
+				.bind(now, oldInvite.id)
+				.run();
+
+			return Response.json(
+				{
+					success,
+					invite_id: oldInvite.id,
+					message: 'Invite resent',
+				},
+				{ status: 200 },
+			);
+		}
 
 		const result = await env.issue_tracker_db
 			.prepare(
@@ -156,6 +239,21 @@ export async function handleInvites(request, env) {
 
 		if (invite.status !== 'pending') {
 			return Response.json({ error: 'Invite already handled' }, { status: 409 });
+		}
+
+		const existingMember = await env.issue_tracker_db
+			.prepare(
+				`
+				SELECT *
+				FROM team_members
+				WHERE team_id = ? AND user_id = ?
+			`,
+			)
+			.bind(invite.team_id, invite.invited_user_id)
+			.first();
+
+		if (existingMember) {
+			return Response.json({ error: 'User is already a team member' }, { status: 409 });
 		}
 
 		await env.issue_tracker_db.prepare("UPDATE invites SET status = 'accepted' WHERE id = ?").bind(inviteId).run();
