@@ -15,40 +15,39 @@ let dbTeamMembers = null;
 // const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function persistDB() {
-    localStorage.setItem('mock_db_issues', JSON.stringify(dbIssues));
-    localStorage.setItem('mock_db_teams', JSON.stringify(dbTeams));
-    localStorage.setItem('mock_db_users', JSON.stringify(dbUsers));
-    localStorage.setItem('mock_db_teamMembers', JSON.stringify(dbTeamMembers));
+	localStorage.setItem('mock_db_issues', JSON.stringify(dbIssues));
+	localStorage.setItem('mock_db_teams', JSON.stringify(dbTeams));
+	localStorage.setItem('mock_db_users', JSON.stringify(dbUsers));
+	localStorage.setItem('mock_db_teamMembers', JSON.stringify(dbTeamMembers));
 }
 
 /**
- * Lazy-loads the mock database. 
+ * Lazy-loads the mock database.
  * Now checks localStorage FIRST so your changes persist across reloads!
  */
 async function initDB() {
-    if (!dbIssues || !dbTeams || !dbUsers || !dbTeamMembers) {
-    
-        const savedIssues = localStorage.getItem('mock_db_issues');
-        const savedTeams = localStorage.getItem('mock_db_teams');
-        
-        if (savedIssues && savedTeams) {
-            dbIssues = JSON.parse(savedIssues);
-            dbTeams = JSON.parse(savedTeams);
-            dbUsers = JSON.parse(localStorage.getItem('mock_db_users'));
-            dbTeamMembers = JSON.parse(localStorage.getItem('mock_db_teamMembers'));
-        } else {
-            const response = await fetch('../js/db.json');
-            if (!response.ok) throw new Error('Failed to load mock database');
+	if (!dbIssues || !dbTeams || !dbUsers || !dbTeamMembers) {
+		const savedIssues = localStorage.getItem('mock_db_issues');
+		const savedTeams = localStorage.getItem('mock_db_teams');
 
-            const data = await response.json();
-            dbIssues = data.issues;
-            dbTeams = data.teams;
-            dbUsers = data.users;
-            dbTeamMembers = data.team_members;
+		if (savedIssues && savedTeams) {
+			dbIssues = JSON.parse(savedIssues);
+			dbTeams = JSON.parse(savedTeams);
+			dbUsers = JSON.parse(localStorage.getItem('mock_db_users'));
+			dbTeamMembers = JSON.parse(localStorage.getItem('mock_db_teamMembers'));
+		} else {
+			const response = await fetch('../js/db.json');
+			if (!response.ok) throw new Error('Failed to load mock database');
 
-            persistDB();
-        }
-    }
+			const data = await response.json();
+			dbIssues = data.issues;
+			dbTeams = data.teams;
+			dbUsers = data.users;
+			dbTeamMembers = data.team_members;
+
+			persistDB();
+		}
+	}
 }
 
 // Auth
@@ -99,8 +98,8 @@ export async function fetchTeams() {
  * Replaces: POST /api/teams
  */
 export async function createTeam(teamData) {
-    // === REAL API CALL ===
-    /*
+	// === REAL API CALL ===
+	/*
     const res = await fetch(`${API_BASE}/api/teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -110,29 +109,32 @@ export async function createTeam(teamData) {
     return await res.json();
     */
 
-    await initDB();
+	await initDB();
 
-    // If the user didn't provide a custom slug, generate one from the name
-    const rawSlug = teamData.slug || teamData.name;
-    const slug = rawSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+	// If the user didn't provide a custom slug, generate one from the name
+	const rawSlug = teamData.slug || teamData.name;
+	const slug = rawSlug
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/(^-|-$)/g, '');
 
-    if (dbTeams[slug]) throw new Error(`Team slug "${slug}" already exists`);
+	if (dbTeams[slug]) throw new Error(`Team slug "${slug}" already exists`);
 
-    const maxId = Math.max(0, ...Object.values(dbTeams).map((t) => t.id));
+	const maxId = Math.max(0, ...Object.values(dbTeams).map((t) => t.id));
 
-    const newTeam = {
-        id: maxId + 1,
-        name: teamData.name,
-        mark: teamData.mark,
-        color: teamData.color ?? Math.floor(Math.random() * 360),
-        created_at: new Date().toISOString(),
-    };
+	const newTeam = {
+		id: maxId + 1,
+		name: teamData.name,
+		mark: teamData.mark,
+		color: teamData.color ?? Math.floor(Math.random() * 360),
+		created_at: new Date().toISOString(),
+	};
 
-    dbTeams[slug] = newTeam;
+	dbTeams[slug] = newTeam;
 
-    persistDB();
+	persistDB();
 
-    return { slug, ...newTeam };
+	return { slug, ...newTeam };
 }
 
 // Team Members
@@ -181,9 +183,7 @@ export async function addTeamMember(teamId, userId, role = 'member') {
 
 	await initDB();
 
-	const alreadyMember = dbTeamMembers.some(
-		(m) => m.team_id === teamId && m.user_id === userId,
-	);
+	const alreadyMember = dbTeamMembers.some((m) => m.team_id === teamId && m.user_id === userId);
 	if (alreadyMember) throw new Error('User is already a member of this team');
 
 	const user = dbUsers.find((u) => u.id === userId);
@@ -200,8 +200,8 @@ export async function addTeamMember(teamId, userId, role = 'member') {
  * Replaces: POST /api/invitations/:slug/accept
  */
 export async function acceptInvite(teamSlug) {
-    // === REAL API CALL (Replace mock logic below with this) ===
-    /*
+	// === REAL API CALL (Replace mock logic below with this) ===
+	/*
     const res = await fetch(`${API_BASE}/api/invitations/${encodeURIComponent(teamSlug)}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
@@ -210,23 +210,21 @@ export async function acceptInvite(teamSlug) {
     return await res.json(); // Expected: The unlocked team object
     */
 
-    await initDB();
+	await initDB();
 
-    const CURRENT_USER_ID = 1;
+	const CURRENT_USER_ID = 1;
 
-    const targetTeam = Object.values(dbTeams).find(t => t.slug === teamSlug || teamSlug === 'invited');
-    if (!targetTeam) throw new Error("Team not found");
+	const targetTeam = Object.values(dbTeams).find((t) => t.slug === teamSlug || teamSlug === 'invited');
+	if (!targetTeam) throw new Error('Team not found');
 
-    const alreadyMember = dbTeamMembers.some(
-        (m) => m.team_id === targetTeam.id && m.user_id === CURRENT_USER_ID
-    );
-    
-    if (!alreadyMember) {
-        dbTeamMembers.push({ team_id: targetTeam.id, user_id: CURRENT_USER_ID, role: 'member' });
-        persistDB();
-    }
-    
-    return targetTeam;
+	const alreadyMember = dbTeamMembers.some((m) => m.team_id === targetTeam.id && m.user_id === CURRENT_USER_ID);
+
+	if (!alreadyMember) {
+		dbTeamMembers.push({ team_id: targetTeam.id, user_id: CURRENT_USER_ID, role: 'member' });
+		persistDB();
+	}
+
+	return targetTeam;
 }
 
 // Users
@@ -254,7 +252,7 @@ export async function fetchUsers() {
  * @param {number|null} teamId  - integer team ID (not slug)
  */
 export async function fetchIssues(teamId = null) {
-    /*
+	/*
     const url = teamId
         ? `${API_BASE}/api/issues?team_id=${encodeURIComponent(teamId)}`
         : `${API_BASE}/api/issues`;
@@ -263,16 +261,16 @@ export async function fetchIssues(teamId = null) {
     return await res.json();
     */
 
-    await initDB();
-    const issues = teamId ? dbIssues.filter((i) => i.team_id === teamId) : [...dbIssues];
-    return issues;
+	await initDB();
+	const issues = teamId ? dbIssues.filter((i) => i.team_id === teamId) : [...dbIssues];
+	return issues;
 }
 
 /**
  * Replaces: POST /api/issues
  */
 export async function createIssue(formData) {
-    /*
+	/*
     const res = await fetch(`${API_BASE}/api/issues`, {
         method: 'POST',
         body: formData, 
@@ -281,93 +279,92 @@ export async function createIssue(formData) {
     return await res.json();
     */
 
-    await initDB();
+	await initDB();
 
-    const title = formData.get('title');
-    const description = formData.get('description') ?? '';
-    const teamId = Number(formData.get('team_id')) || 1; // Default to team 1 if missing
-    const files = formData.getAll('attachments');
+	const title = formData.get('title');
+	const description = formData.get('description') ?? '';
+	const teamId = Number(formData.get('team_id')) || 1; // Default to team 1 if missing
+	const files = formData.getAll('attachments');
 
-    // ============================================================
-    // 🧠 MOCK AI DATA GENERATOR
-    // Randomly picks categories, tags, and writes a hypothesis
-    // ============================================================
-    const categories = ['bug', 'ui', 'logic', 'infra', 'perf'];
-    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+	// ============================================================
+	// 🧠 MOCK AI DATA GENERATOR
+	// Randomly picks categories, tags, and writes a hypothesis
+	// ============================================================
+	const categories = ['bug', 'ui', 'logic', 'infra', 'perf'];
+	const randomCategory = categories[Math.floor(Math.random() * categories.length)];
 
-    const allTags = ['auth', 'database', 'frontend', 'api', 'css', 'state', 'network'];
-    // Pick two random unique tags
-    const randomTags = [...new Set([
-        allTags[Math.floor(Math.random() * allTags.length)],
-        allTags[Math.floor(Math.random() * allTags.length)]
-    ])];
+	const allTags = ['auth', 'database', 'frontend', 'api', 'css', 'state', 'network'];
+	// Pick two random unique tags
+	const randomTags = [
+		...new Set([allTags[Math.floor(Math.random() * allTags.length)], allTags[Math.floor(Math.random() * allTags.length)]]),
+	];
 
-    const errorTypes = ['NullReferenceError', 'StateSyncConflict', 'TimeoutException', 'ValidationError', 'NetworkDisconnect'];
-    const randomErrorType = randomCategory === 'bug' ? errorTypes[Math.floor(Math.random() * errorTypes.length)] : null;
+	const errorTypes = ['NullReferenceError', 'StateSyncConflict', 'TimeoutException', 'ValidationError', 'NetworkDisconnect'];
+	const randomErrorType = randomCategory === 'bug' ? errorTypes[Math.floor(Math.random() * errorTypes.length)] : null;
 
-    const hypotheses = [
-        "The component is rendering before the API data resolves.",
-        "There is a race condition in the state update cycle.",
-        "The database query is missing a crucial index causing a timeout.",
-        "The CSS grid template columns are overflowing on smaller viewports.",
-        "The authentication token is expiring but the UI isn't catching the 401."
-    ];
-    const randomHypothesis = hypotheses[Math.floor(Math.random() * hypotheses.length)];
+	const hypotheses = [
+		'The component is rendering before the API data resolves.',
+		'There is a race condition in the state update cycle.',
+		'The database query is missing a crucial index causing a timeout.',
+		'The CSS grid template columns are overflowing on smaller viewports.',
+		"The authentication token is expiring but the UI isn't catching the 401.",
+	];
+	const randomHypothesis = hypotheses[Math.floor(Math.random() * hypotheses.length)];
 
-    const difficulties = [1, 2, 3];
-    const randomDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
+	const difficulties = [1, 2, 3];
+	const randomDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
 
-    // ============================================================
+	// ============================================================
 
-    const CURRENT_USER_ID = 1;
-    const CURRENT_USER_INITIALS = 'AL';
+	const CURRENT_USER_ID = 1;
+	const CURRENT_USER_INITIALS = 'AL';
 
-    const newId = dbIssues.length > 0 ? Math.max(...dbIssues.map((x) => x.id)) + 1 : 1;
-    const now = new Date().toISOString();
+	const newId = dbIssues.length > 0 ? Math.max(...dbIssues.map((x) => x.id)) + 1 : 1;
+	const now = new Date().toISOString();
 
-    const newIssue = {
-        id: newId,
-        team_id: teamId,
-        created_by: CURRENT_USER_ID,
-        assigned_to: null,
-        title,
-        // AI summarizes the title/description
-        summary: title.length > 40 ? title.substring(0, 40) + "..." : title,
-        description: `<p>${description.replace(/\n/g, '</p><p>')}</p>`,
-        status: 'open',
-        priority: 'med',
-        category: randomCategory,
-        tags: randomTags,
-        entry_point: "/auto-detected/route",
-        error_type: randomErrorType,
-        error_message: randomErrorType ? "Unhandled exception encountered during execution." : null,
-        stack_trace: randomErrorType ? "at UnknownComponent (src/components/Unknown.tsx:42)\nat render (src/index.ts:12)" : null,
-        affected_files: "src/generated/file.ts",
-        expected_behavior: "System should handle the action gracefully without errors.",
-        actual_behavior: "System unexpectedly failed or behaved incorrectly based on user report.",
-        missing_information: "Exact steps to reproduce are vague.",
-        steps_to_reproduce: "1. Open app\n2. Perform action\n3. Observe result",
-        hypothesis: randomHypothesis,
-        token_usage: Math.floor(Math.random() * 1500) + 300, // Random token usage between 300-1800
-        resolution_notes: null,
-        difficulty: randomDifficulty,
-        labels: [randomCategory, ...randomTags],
-        attachments: files.map((f) => ({
-            name: f.name,
-            size: (f.size / 1024).toFixed(1) + ' KB',
-            ic: (f.name.split('.').pop() ?? '').toUpperCase().slice(0, 3),
-        })),
-        activity: [{ who: CURRENT_USER_INITIALS, what: 'created issue', when: 'just now' }],
-        updated: 'just now',
-        created_at: now,
-        updated_at: now,
-    };
+	const newIssue = {
+		id: newId,
+		team_id: teamId,
+		created_by: CURRENT_USER_ID,
+		assigned_to: null,
+		title,
+		// AI summarizes the title/description
+		summary: title.length > 40 ? title.substring(0, 40) + '...' : title,
+		description: `<p>${description.replace(/\n/g, '</p><p>')}</p>`,
+		status: 'open',
+		priority: 'med',
+		category: randomCategory,
+		tags: randomTags,
+		entry_point: '/auto-detected/route',
+		error_type: randomErrorType,
+		error_message: randomErrorType ? 'Unhandled exception encountered during execution.' : null,
+		stack_trace: randomErrorType ? 'at UnknownComponent (src/components/Unknown.tsx:42)\nat render (src/index.ts:12)' : null,
+		affected_files: 'src/generated/file.ts',
+		expected_behavior: 'System should handle the action gracefully without errors.',
+		actual_behavior: 'System unexpectedly failed or behaved incorrectly based on user report.',
+		missing_information: 'Exact steps to reproduce are vague.',
+		steps_to_reproduce: '1. Open app\n2. Perform action\n3. Observe result',
+		hypothesis: randomHypothesis,
+		token_usage: Math.floor(Math.random() * 1500) + 300, // Random token usage between 300-1800
+		resolution_notes: null,
+		difficulty: randomDifficulty,
+		labels: [randomCategory, ...randomTags],
+		attachments: files.map((f) => ({
+			name: f.name,
+			size: (f.size / 1024).toFixed(1) + ' KB',
+			ic: (f.name.split('.').pop() ?? '').toUpperCase().slice(0, 3),
+		})),
+		activity: [{ who: CURRENT_USER_INITIALS, what: 'created issue', when: 'just now' }],
+		updated: 'just now',
+		created_at: now,
+		updated_at: now,
+	};
 
-    dbIssues.unshift(newIssue);
+	dbIssues.unshift(newIssue);
 
-    persistDB();
+	persistDB();
 
-    return newIssue;
+	return newIssue;
 }
 
 /**
@@ -404,9 +401,7 @@ export async function updateIssue(id, updates) {
 	if (priority) activityParts.push(`set priority to ${priority}`);
 	if ('assigned_to' in updates) {
 		const assignee = dbUsers.find((u) => u.id === assigned_to);
-		activityParts.push(
-			assignee ? `assigned to ${assignee.username}` : 'unassigned issue',
-		);
+		activityParts.push(assignee ? `assigned to ${assignee.username}` : 'unassigned issue');
 	}
 	if (title) activityParts.push('updated title');
 	if (activityParts.length === 0) activityParts.push('updated issue');

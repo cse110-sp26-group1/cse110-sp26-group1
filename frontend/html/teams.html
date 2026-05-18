@@ -1,107 +1,106 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <title>Your teams - Allegro</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <script>
-            try {
-                if (localStorage.getItem('theme') === 'dark') {
-                    document.documentElement.classList.add('dark');
-                }
-            } catch {
-                /* localStorage unavailable */
-            }
-        </script>
-        <link rel="stylesheet" href="../css/global.css" />
-        <link rel="stylesheet" href="../css/teams.css" />
-    </head>
-    <body>
-        <header class="topbar">
-            <div class="brand">
-                <div class="logo"></div>
-                <span class="name">Allegro</span>
-            </div>
-            <div class="user-menu">
-                <button class="btn ghost sm">Help</button>
-                <button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
-                <div class="avatar" title="Ada Lovelace">AL</div>
-            </div>
-        </header>
+	<head>
+		<meta charset="utf-8" />
+		<title>Your teams - Allegro</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			try {
+				if (localStorage.getItem('theme') === 'dark') {
+					document.documentElement.classList.add('dark');
+				}
+			} catch {
+				/* localStorage unavailable */
+			}
+		</script>
+		<link rel="stylesheet" href="../css/global.css" />
+		<link rel="stylesheet" href="../css/teams.css" />
+	</head>
+	<body>
+		<header class="topbar">
+			<div class="brand">
+				<div class="logo"></div>
+				<span class="name">Allegro</span>
+			</div>
+			<div class="user-menu">
+				<button class="btn ghost sm">Help</button>
+				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
+				<div class="avatar" title="Ada Lovelace">AL</div>
+			</div>
+		</header>
 
-        <main>
-            <div class="hero">
-                <div>
-                    <h1>Your teams</h1>
-                    <p>Each team is its own workspace. Pick one to open its issue tracker.</p>
-                </div>
-                <div class="hero-actions">
-                    <button class="btn">Join with code</button>
-                    <button class="btn primary" id="createTeam">+ New team</button>
-                </div>
-            </div>
+		<main>
+			<div class="hero">
+				<div>
+					<h1>Your teams</h1>
+					<p>Each team is its own workspace. Pick one to open its issue tracker.</p>
+				</div>
+				<div class="hero-actions">
+					<button class="btn">Join with code</button>
+					<button class="btn primary" id="createTeam">+ New team</button>
+				</div>
+			</div>
 
-            <div class="search-row">
-                <input class="input" placeholder="Search teams…" />
-                <button class="btn">Sort: recent ▾</button>
-            </div>
+			<div class="search-row">
+				<input class="input" placeholder="Search teams…" />
+				<button class="btn">Sort: recent ▾</button>
+			</div>
 
-            <div class="grid" id="teamGrid">
-                <button class="team new" id="createTeam2">
-                    <div>
-                        <div class="plus">+</div>
-                        <h2>Create new team</h2>
-                        <p class="new-team-caption">Start a fresh workspace.</p>
-                    </div>
-                </button>
-            </div>
+			<div class="grid" id="teamGrid">
+				<button class="team new" id="createTeam2">
+					<div>
+						<div class="plus">+</div>
+						<h2>Create new team</h2>
+						<p class="new-team-caption">Start a fresh workspace.</p>
+					</div>
+				</button>
+			</div>
 
-            <section class="invites" id="invitesSection">
-                <h3>Pending invitations</h3>
+			<section class="invites" id="invitesSection">
+				<h3>Pending invitations</h3>
 
-                <div class="invite" id="invite-dawn-kernel">
-                    <div class="info">
-                        <div class="team-mark c2">DK</div>
-                        <div>
-                            <p><strong>Dawn Kernel</strong> · invited by ben@dawn.io</p>
-                            <p>3 members · invited 2 days ago</p>
-                        </div>
-                    </div>
-                    <div class="actions">
-                        <button class="btn sm decline-btn">Decline</button>
-                        <button class="btn primary sm accept-btn" data-slug="invited">Accept</button>
-                    </div>
-                </div>
+				<div class="invite" id="invite-dawn-kernel">
+					<div class="info">
+						<div class="team-mark c2">DK</div>
+						<div>
+							<p><strong>Dawn Kernel</strong> · invited by ben@dawn.io</p>
+							<p>3 members · invited 2 days ago</p>
+						</div>
+					</div>
+					<div class="actions">
+						<button class="btn sm decline-btn">Decline</button>
+						<button class="btn primary sm accept-btn" data-slug="invited">Accept</button>
+					</div>
+				</div>
+			</section>
+		</main>
 
-            </section>
-        </main>
+		<div class="backdrop" id="createBackdrop">
+			<div class="modal">
+				<div class="modal-head">
+					<h3>Create a new team</h3>
+					<p>You'll be the first member. Invite others after.</p>
+				</div>
+				<div class="modal-body">
+					<div class="field">
+						<label>Team name <span class="req">*</span></label>
+						<input class="input" id="teamName" placeholder="e.g. Roost Robotics" />
+					</div>
+					<div class="field">
+						<label>Short bio <span class="optional-label">(optional)</span></label>
+						<textarea class="textarea" id="teamBio" placeholder="What does this team work on?"></textarea>
+					</div>
+				</div>
+				<div class="modal-foot">
+					<button class="btn" id="cancelCreate">Cancel</button>
+					<button class="btn primary" id="confirmCreate">Create team</button>
+				</div>
+			</div>
+		</div>
 
-        <div class="backdrop" id="createBackdrop">
-            <div class="modal">
-                <div class="modal-head">
-                    <h3>Create a new team</h3>
-                    <p>You'll be the first member. Invite others after.</p>
-                </div>
-                <div class="modal-body">
-                    <div class="field">
-                        <label>Team name <span class="req">*</span></label>
-                        <input class="input" id="teamName" placeholder="e.g. Roost Robotics" />
-                    </div>
-                    <div class="field">
-                        <label>Short bio <span class="optional-label">(optional)</span></label>
-                        <textarea class="textarea" id="teamBio" placeholder="What does this team work on?"></textarea>
-                    </div>
-                </div>
-                <div class="modal-foot">
-                    <button class="btn" id="cancelCreate">Cancel</button>
-                    <button class="btn primary" id="confirmCreate">Create team</button>
-                </div>
-            </div>
-        </div>
+		<div class="toast" id="toast"></div>
 
-        <div class="toast" id="toast"></div>
-
-        <script src="../js/theme.js"></script>
-        <script type="module" src="../js/teams.js"></script>
-    </body>
+		<script src="../js/theme.js"></script>
+		<script type="module" src="../js/teams.js"></script>
+	</body>
 </html>
