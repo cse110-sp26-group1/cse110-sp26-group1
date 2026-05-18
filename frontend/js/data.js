@@ -209,7 +209,6 @@ Filters: ?status=open&priority=high&tag=ui
 ## Issue shape
 
 {
-  "id": "TKR-142",
   "title": "string",
   "summary": "short, context-window friendly",
   "description": "string (markdown allowed)",
