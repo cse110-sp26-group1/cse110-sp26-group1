@@ -57,9 +57,18 @@
 			</div>
 			<div class="right">
 				<div class="search-wrap">
-					<input class="search-top" placeholder="Search issues, files…" />
+					<input
+						class="search-top"
+						id="issueSearch"
+						type="search"
+						placeholder="Search issues, files…"
+						autocomplete="off"
+						aria-label="Search issues"
+					/>
+					<button type="button" class="search-clear" id="issueSearchClear" aria-label="Clear search" hidden>
+						<span aria-hidden="true">×</span>
+					</button>
 				</div>
-				<button class="btn ghost icon" title="Notifications">◔</button>
 				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
 				<div class="avatar sm" title="Ada Lovelace">AL</div>
 			</div>
@@ -92,7 +101,7 @@
 				</div>
 
 				<div class="nav-section">
-					<div class="label"><span>Labels</span></div>
+					<div class="label"><span>Tags</span></div>
 					<div class="nav-item"><span class="ic dot label-bug"></span> bug <span class="count">9</span></div>
 					<div class="nav-item"><span class="ic dot label-ui"></span> ui <span class="count">7</span></div>
 					<div class="nav-item"><span class="ic dot label-infra"></span> infra <span class="count">5</span></div>
@@ -138,8 +147,9 @@
 							<button class="sort-btn" data-sort="difficulty">difficulty</button>
 						</div>
 						<div class="filter-divider"></div>
+				<!-- Tags: Do we need this ? -->
 						<div class="filter-group">
-							<span class="label">Tag</span>
+							<span class="label">Tags</span>
 							<button class="chip-btn on" data-tag="all">all</button>
 							<button class="chip-btn" data-tag="bug">bug</button>
 							<button class="chip-btn" data-tag="ui">ui</button>

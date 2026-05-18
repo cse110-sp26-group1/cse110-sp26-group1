@@ -7,6 +7,7 @@ import { fetchIssues, fetchTeams, createIssue, updateIssue } from './mock-api.js
 const state = {
 	sort: 'priority',
 	tag: 'all',
+	query: '',
 	selected: null,
 	detailOpen: true,
 	teams: [],
@@ -48,6 +49,16 @@ function renderList() {
 	let items = ISSUES.slice();
 	if (state.tag !== 'all') {
 		items = items.filter((i) => i.labels.includes(state.tag));
+	}
+
+	if (state.query) {
+		const q = state.query.toLowerCase();
+		items = items.filter(
+			(i) =>
+				i.title.toLowerCase().includes(q) ||
+				(i.summary && i.summary.toLowerCase().includes(q)) ||
+				i.labels.some((l) => l.toLowerCase().includes(q)),
+		);
 	}
 
 	if (state.sort === 'priority') {
@@ -111,7 +122,6 @@ function rowHtml(i) {
 	return `
     <div class="issue-row ${isSel ? 'selected' : ''}" data-id="${i.id}">
         <span class="pri-mark ${i.priority}" title="${PRI_NAME[i.priority]}">${PRI_LABEL[i.priority]}</span>
-        <span class="id">TKR-${i.id}</span>
         <div class="title">
             <span>${i.title}</span>
             <span class="sub">${i.summary || ''}</span>
@@ -146,7 +156,6 @@ function renderDetail() {
 
 	detailEl.innerHTML = `
 		<div class="detail-head">
-			<span class="id">TKR-${i.id}</span>
 			${processingBanner}
 			<div class="actions">
 				<button class="btn sm">Copy link</button>
@@ -186,23 +195,6 @@ function renderDetail() {
 			${i.summary ? `<div class="summary-block"><span class="label">Summary</span><p>${i.summary}</p></div>` : ''}
 			<div class="description">${i.description || '<p class="muted">No description.</p>'}</div>
 			${
-				i.attachments && i.attachments.length
-					? `
-			<div class="attachments">
-				<h4>Attachments · error logs &amp; traces</h4>
-				${i.attachments
-					.map(
-						(a) => `
-					<div class="att-row">
-						<div class="nm"><span class="ic">${a.ic}</span>${a.name}</div>
-						<span class="sz">${a.size}</span>
-					</div>`,
-					)
-					.join('')}
-			</div>`
-					: ''
-			}
-			${
 				i.activity && i.activity.length
 					? `
 			<div class="activity">
@@ -224,8 +216,37 @@ function renderDetail() {
 }
 
 // ============================================================
-// CONTROLS — sort, tag
+// CONTROLS — search, sort, tag
 // ============================================================
+const searchInput = document.getElementById('issueSearch');
+const searchClearBtn = document.getElementById('issueSearchClear');
+
+/**
+ * Show or hide the search clear control based on input value.
+ */
+function syncSearchClear() {
+	if (!searchInput || !searchClearBtn) {
+		return;
+	}
+	searchClearBtn.hidden = searchInput.value.length === 0;
+}
+
+if (searchInput && searchClearBtn) {
+	searchInput.addEventListener('input', () => {
+		state.query = searchInput.value.trim();
+		syncSearchClear();
+		renderList();
+	});
+
+	searchClearBtn.addEventListener('click', () => {
+		searchInput.value = '';
+		state.query = '';
+		syncSearchClear();
+		searchInput.focus();
+		renderList();
+	});
+}
+
 document.querySelectorAll('.sort-btn').forEach((b) => {
 	b.addEventListener('click', () => {
 		document.querySelectorAll('.sort-btn').forEach((x) => x.classList.remove('on'));
@@ -436,7 +457,6 @@ confirmNewBtn.addEventListener('click', async () => {
 		closeNew();
 		renderList();
 		renderDetail();
-		showToast(`Created TKR-${newIssue.id}`);
 	} catch (err) {
 		showToast('Failed to create issue.');
 	} finally {
