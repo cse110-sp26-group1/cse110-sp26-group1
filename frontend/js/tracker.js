@@ -11,6 +11,7 @@ const state = {
 	selected: null,
 	detailOpen: true,
 	teams: [],
+	currentTeamId: null,
 };
 
 let ISSUES = [];
@@ -36,9 +37,6 @@ function applyTeamFromUrl() {
 	mark.style.color = `oklch(0.4 0.12 ${t.color})`;
 }
 
-// ============================================================
-// RENDER LIST
-// ============================================================
 const listEl = document.getElementById('issueList');
 const totalCountEl = document.getElementById('totalCount');
 
@@ -110,6 +108,40 @@ function renderList() {
 			if (!state.detailOpen) toggleDetail();
 		});
 	});
+}
+
+function renderTeamMenu() {
+	const teamMenu = document.getElementById('teamMenu');
+	const currentSlug = new URLSearchParams(location.search).get('team');
+
+	const itemsHtml = state.teams
+		.map(
+			(t) => `
+        <div class="item ${t.slug === currentSlug ? 'active' : ''}" data-slug="${t.slug}">
+            <span class="mark" style="background: oklch(0.92 0.04 ${t.color}); color: oklch(0.4 0.12 ${t.color})">${t.mark}</span>
+            ${t.name}
+        </div>
+    `,
+		)
+		.join('');
+
+	teamMenu.innerHTML = `
+        ${itemsHtml}
+        <div class="divider"></div>
+        <div class="item" data-action="all-teams">
+            <span class="mark all-teams-mark">+</span>
+            All teams &amp; settings
+        </div>
+    `;
+
+	teamMenu.querySelectorAll('.item[data-slug]').forEach((it) => {
+		it.addEventListener('click', () => {
+			const slug = it.dataset.slug;
+			window.location.href = `tracker.html?team=${slug}`;
+		});
+	});
+
+	teamMenu.querySelector('[data-action="all-teams"]').addEventListener('click', () => (location.href = 'teams.html'));
 }
 
 /**
@@ -444,6 +476,11 @@ confirmNewBtn.addEventListener('click', async () => {
 	const formData = new FormData();
 	formData.append('title', title);
 	formData.append('description', desc);
+
+	if (state.currentTeamId) {
+		formData.append('team_id', state.currentTeamId);
+	}
+
 	pendingFiles.forEach((f) => formData.append('attachments', f));
 
 	const originalText = confirmNewBtn.textContent;
@@ -460,8 +497,10 @@ confirmNewBtn.addEventListener('click', async () => {
 		closeNew();
 		renderList();
 		renderDetail();
-	} catch {
-		showToast('Failed to create issue.');
+		showToast(`Created TKR-${newIssue.id}`);
+	} catch (err) {
+		console.error('Error creating issue:', err);
+		showToast('Failed to create issue. Check console.');
 	} finally {
 		confirmNewBtn.textContent = originalText;
 		confirmNewBtn.disabled = false;
@@ -576,14 +615,34 @@ detailEl.addEventListener('click', async (e) => {
 /**
  *
  */
+// At the top of tracker.js, ensure you are importing fetchTeams:
+// import { fetchIssues, fetchTeams, createIssue, updateIssue } from './mock-api.js';
+
 async function initTracker() {
+	const qs = new URLSearchParams(location.search);
+	const teamSlug = qs.get('team');
+
 	try {
-		const [teams, issues] = await Promise.all([fetchTeams(), fetchIssues()]);
-
+		const teams = await fetchTeams();
 		state.teams = teams;
-		ISSUES = issues;
 
-		applyTeamFromUrl();
+		renderTeamMenu();
+
+		const currentTeam = teams.find((t) => t.slug === teamSlug);
+
+		if (currentTeam) {
+			document.getElementById('teamLabel').textContent = currentTeam.name;
+			const mark = document.querySelector('.team-switch > .mark');
+			if (mark) {
+				mark.textContent = currentTeam.mark;
+				mark.style.background = `oklch(0.92 0.04 ${currentTeam.color})`;
+				mark.style.color = `oklch(0.4 0.12 ${currentTeam.color})`;
+			}
+		}
+
+		state.currentTeamId = currentTeam ? currentTeam.id : null;
+
+		ISSUES = await fetchIssues(state.currentTeamId);
 
 		if (ISSUES.length > 0 && !ISSUES.find((i) => i.id === state.selected)) {
 			state.selected = ISSUES[0].id;
@@ -591,8 +650,9 @@ async function initTracker() {
 
 		renderList();
 		renderDetail();
-	} catch {
-		showToast('Failed to load mock data.');
+	} catch (err) {
+		console.error('Initialization error:', err);
+		showToast('Failed to load workspace data.');
 	}
 }
 
