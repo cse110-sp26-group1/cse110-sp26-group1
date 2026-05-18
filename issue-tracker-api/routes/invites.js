@@ -6,7 +6,10 @@ import { requireTeamAdmin } from '../src/lib/teams.js';
  *
  * Endpoints:
  * GET    /invites
+ * GET    /invites/:id
  * POST   /invites
+ * PATCH  /invites/:id/accept
+ * PATCH  /invites/:id/reject
  * DELETE /invites/:id
  * POST   /teams/:teamId/invite
  *
@@ -18,6 +21,7 @@ export async function handleInvites(request, env) {
 	const url = new URL(request.url);
 	const method = request.method;
 	const pathParts = url.pathname.split('/');
+	const inviteId = pathParts[2];
 
 	// GET /invites
 	if (url.pathname === '/invites' && method === 'GET') {
@@ -26,10 +30,12 @@ export async function handleInvites(request, env) {
 
 		const { results } = await env.DB.prepare(
 			`
-				SELECT invites.*, teams.team_name
+				SELECT invites.*, teams.team_name, inviter.username AS inviter_username
 				FROM invites
 				JOIN teams
 				ON invites.team_id = teams.id
+				JOIN users AS inviter
+				ON invites.inviter_user_id = inviter.id
 				WHERE invites.invited_user_id = ?
 				AND invites.status = 'pending'
 			`,
@@ -40,6 +46,40 @@ export async function handleInvites(request, env) {
 		return Response.json(results);
 	}
 
+	// GET /invites/:id
+	if (url.pathname.startsWith('/invites/') && method === 'GET') {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		if (!Number.isInteger(Number(inviteId))) {
+			return Response.json({ error: 'Invalid invite ID' }, { status: 400 });
+		}
+
+		const invite = await env.DB.prepare(
+			`
+				SELECT invites.*, teams.team_name, inviter.username AS inviter_username
+				FROM invites
+				JOIN teams
+				ON invites.team_id = teams.id
+				JOIN users AS inviter
+				ON invites.inviter_user_id = inviter.id
+				WHERE invites.id = ?
+			`,
+		)
+			.bind(inviteId)
+			.first();
+
+		if (!invite) {
+			return Response.json({ error: 'Invite not found' }, { status: 404 });
+		}
+
+		if (invite.invited_user_id !== auth.userId && invite.inviter_user_id !== auth.userId) {
+			return Response.json({ error: 'Forbidden' }, { status: 403 });
+		}
+
+		return Response.json(invite);
+	}
+
 	// POST /invites
 	if (url.pathname === '/invites' && method === 'POST') {
 		const auth = await requireAuth(request, env);
@@ -47,22 +87,31 @@ export async function handleInvites(request, env) {
 
 		const body = await request.json();
 
-		if (
-			!body.team_id ||
-			!body.invited_user_id ||
-			!Number.isInteger(Number(body.team_id)) ||
-			!Number.isInteger(Number(body.invited_user_id))
-		) {
-			return Response.json({ error: 'Invalid team_id or invited_user_id' }, { status: 400 });
+		return createInvite(env, auth.userId, body.team_id, body.invited_user_id);
+	}
+
+	// PATCH /invites/:id/accept
+	if (url.pathname.startsWith('/invites/') && pathParts[3] === 'accept' && method === 'PATCH') {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		if (!Number.isInteger(Number(inviteId))) {
+			return Response.json({ error: 'Invalid invite ID' }, { status: 400 });
 		}
 
-		if (Number(body.invited_user_id) === Number(auth.userId)) {
-			return Response.json({ error: 'Cannot invite yourself' }, { status: 400 });
+		const invite = await env.DB.prepare('SELECT * FROM invites WHERE id = ?').bind(inviteId).first();
+
+		if (!invite) {
+			return Response.json({ error: 'Invite not found' }, { status: 404 });
 		}
 
-		const adminCheck = await requireTeamAdmin(env, auth.userId, Number(body.team_id));
+		if (invite.invited_user_id !== auth.userId) {
+			return Response.json({ error: 'Forbidden' }, { status: 403 });
+		}
 
-		if (adminCheck.error) return adminCheck.error;
+		if (invite.status !== 'pending') {
+			return Response.json({ error: 'Invite already handled' }, { status: 409 });
+		}
 
 		const existingMember = await env.DB.prepare(
 			`
@@ -71,61 +120,65 @@ export async function handleInvites(request, env) {
 				WHERE team_id = ? AND user_id = ?
 			`,
 		)
-			.bind(body.team_id, body.invited_user_id)
+			.bind(invite.team_id, invite.invited_user_id)
 			.first();
 
 		if (existingMember) {
 			return Response.json({ error: 'User already in team' }, { status: 409 });
 		}
 
-		const existingInvite = await env.DB.prepare(
+		await env.DB.prepare("UPDATE invites SET status = 'accepted' WHERE id = ?").bind(inviteId).run();
+
+		await env.DB.prepare(
 			`
-				SELECT *
-				FROM invites
-				WHERE team_id = ?
-				AND invited_user_id = ?
-				AND status = 'pending'
+				INSERT INTO team_members (team_id, user_id, role)
+				VALUES (?, ?, ?)
 			`,
 		)
-			.bind(body.team_id, body.invited_user_id)
-			.first();
-
-		if (existingInvite) {
-			return Response.json({ error: 'Pending invite already exists' }, { status: 409 });
-		}
-
-		const now = new Date().toISOString();
-
-		const result = await env.DB.prepare(
-			`
-				INSERT INTO invites (
-					team_id,
-					inviter_user_id,
-					invited_user_id,
-					status,
-					created_at
-				)
-				VALUES (?, ?, ?, ?, ?)
-			`,
-		)
-			.bind(body.team_id, auth.userId, body.invited_user_id, 'pending', now)
+			.bind(invite.team_id, invite.invited_user_id, 'member')
 			.run();
 
-		return Response.json(
-			{
-				success: true,
-				invite_id: result.meta.last_row_id,
-			},
-			{ status: 201 },
-		);
+		return Response.json({
+			success: true,
+			message: 'Invite accepted',
+		});
+	}
+
+	// PATCH /invites/:id/reject
+	if (url.pathname.startsWith('/invites/') && pathParts[3] === 'reject' && method === 'PATCH') {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		if (!Number.isInteger(Number(inviteId))) {
+			return Response.json({ error: 'Invalid invite ID' }, { status: 400 });
+		}
+
+		const invite = await env.DB.prepare('SELECT * FROM invites WHERE id = ?').bind(inviteId).first();
+
+		if (!invite) {
+			return Response.json({ error: 'Invite not found' }, { status: 404 });
+		}
+
+		if (invite.invited_user_id !== auth.userId) {
+			return Response.json({ error: 'Forbidden' }, { status: 403 });
+		}
+
+		if (invite.status !== 'pending') {
+			return Response.json({ error: 'Invite already handled' }, { status: 409 });
+		}
+
+		await env.DB.prepare("UPDATE invites SET status = 'declined' WHERE id = ?").bind(inviteId).run();
+
+		return Response.json({
+			success: true,
+			message: 'Invite declined',
+		});
 	}
 
 	// DELETE /invites/:id
 	if (url.pathname.startsWith('/invites/') && method === 'DELETE') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
-
-		const inviteId = pathParts[2];
 
 		if (!Number.isInteger(Number(inviteId))) {
 			return Response.json({ error: 'Invalid invite ID' }, { status: 400 });
@@ -151,50 +204,107 @@ export async function handleInvites(request, env) {
 		if (auth.error) return auth.error;
 
 		const teamId = pathParts[2];
-
-		if (!Number.isInteger(Number(teamId))) {
-			return Response.json({ error: 'Invalid team ID' }, { status: 400 });
-		}
-
 		const body = await request.json();
 
-		if (!body.invited_user_id || !Number.isInteger(Number(body.invited_user_id))) {
-			return Response.json({ error: 'Invalid invited_user_id' }, { status: 400 });
+		return createInvite(env, auth.userId, teamId, body.invited_user_id);
+	}
+
+	return Response.json({ error: 'Not Found' }, { status: 404 });
+}
+
+/**
+ * Creates or reactivates an invite.
+ * @param {Env} env - Worker environment.
+ * @param {number} inviterUserId - Authenticated inviter user ID.
+ * @param {number|string} teamId - Team ID.
+ * @param {number|string} invitedUserId - Invited user ID.
+ * @returns {Promise<Response>}
+ */
+async function createInvite(env, inviterUserId, teamId, invitedUserId) {
+	if (!teamId || !invitedUserId || !Number.isInteger(Number(teamId)) || !Number.isInteger(Number(invitedUserId))) {
+		return Response.json({ error: 'Invalid team_id or invited_user_id' }, { status: 400 });
+	}
+
+	if (Number(invitedUserId) === Number(inviterUserId)) {
+		return Response.json({ error: 'Cannot invite yourself' }, { status: 400 });
+	}
+
+	const adminCheck = await requireTeamAdmin(env, inviterUserId, Number(teamId));
+	if (adminCheck.error) return adminCheck.error;
+
+	const existingMember = await env.DB.prepare(
+		`
+			SELECT *
+			FROM team_members
+			WHERE team_id = ? AND user_id = ?
+		`,
+	)
+		.bind(teamId, invitedUserId)
+		.first();
+
+	if (existingMember) {
+		return Response.json({ error: 'User already in team' }, { status: 409 });
+	}
+
+	const existingInvite = await env.DB.prepare(
+		`
+			SELECT *
+			FROM invites
+			WHERE team_id = ?
+			AND inviter_user_id = ?
+			AND invited_user_id = ?
+		`,
+	)
+		.bind(teamId, inviterUserId, invitedUserId)
+		.first();
+
+	const now = new Date().toISOString();
+
+	if (existingInvite) {
+		if (existingInvite.status === 'pending') {
+			return Response.json({ error: 'Pending invite already exists' }, { status: 409 });
 		}
 
-		if (Number(body.invited_user_id) === Number(auth.userId)) {
-			return Response.json({ error: 'Cannot invite yourself' }, { status: 400 });
-		}
-
-		const adminCheck = await requireTeamAdmin(env, auth.userId, Number(teamId));
-
-		if (adminCheck.error) return adminCheck.error;
-
-		const now = new Date().toISOString();
-
-		const result = await env.DB.prepare(
+		const { success } = await env.DB.prepare(
 			`
-				INSERT INTO invites (
-					team_id,
-					inviter_user_id,
-					invited_user_id,
-					status,
-					created_at
-				)
-				VALUES (?, ?, ?, ?, ?)
+				UPDATE invites
+				SET status = 'pending', created_at = ?
+				WHERE id = ?
 			`,
 		)
-			.bind(teamId, auth.userId, body.invited_user_id, 'pending', now)
+			.bind(now, existingInvite.id)
 			.run();
 
 		return Response.json(
 			{
-				success: true,
-				invite_id: result.meta.last_row_id,
+				success,
+				invite_id: existingInvite.id,
+				message: 'Invite resent',
 			},
-			{ status: 201 },
+			{ status: 200 },
 		);
 	}
 
-	return Response.json({ error: 'Not Found' }, { status: 404 });
+	const result = await env.DB.prepare(
+		`
+			INSERT INTO invites (
+				team_id,
+				inviter_user_id,
+				invited_user_id,
+				status,
+				created_at
+			)
+			VALUES (?, ?, ?, ?, ?)
+		`,
+	)
+		.bind(teamId, inviterUserId, invitedUserId, 'pending', now)
+		.run();
+
+	return Response.json(
+		{
+			success: true,
+			invite_id: result.meta.last_row_id,
+		},
+		{ status: 201 },
+	);
 }
