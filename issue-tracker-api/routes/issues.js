@@ -8,7 +8,7 @@ const ALLOWED_CATEGORIES = ['Bug', 'Feature', 'Task'];
 /**
  * Handles all /issues routes: GET (list by team), POST (create), PATCH (update), DELETE (remove).
  * @param {Request} request
- * @param {{ DB: D1Database }} env
+ * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
  */
 export async function handleIssues(request, env) {
 	const url = new URL(request.url);

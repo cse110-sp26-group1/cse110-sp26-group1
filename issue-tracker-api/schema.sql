@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS teams (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   team_name TEXT NOT NULL,
+  bio TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -113,11 +114,11 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 --------------------------------- INDEXES ---------------------------------
 
-CREATE INDEX idx_issues_team_id --- all issues in a team
+CREATE INDEX IF NOT EXISTS idx_issues_team_id --- all issues in a team
 ON issues(team_id);
 
-CREATE INDEX idx_issues_assigned_to -- all issues assigned to user 
+CREATE INDEX IF NOT EXISTS idx_issues_assigned_to -- all issues assigned to user 
 ON issues(assigned_to);
 
-CREATE INDEX idx_team_members_user_id --- all teams a user is in
+CREATE INDEX IF NOT EXISTS idx_team_members_user_id --- all teams a user is in
 ON team_members(user_id);

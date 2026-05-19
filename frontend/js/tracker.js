@@ -110,6 +110,9 @@ function renderList() {
 	});
 }
 
+/**
+ *
+ */
 function renderTeamMenu() {
 	const teamMenu = document.getElementById('teamMenu');
 	const currentSlug = new URLSearchParams(location.search).get('team');
