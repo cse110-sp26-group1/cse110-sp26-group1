@@ -3,6 +3,8 @@
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
+  first_name TEXT UNIQUE NOT NULL,
+  last_name TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL, --- i'm assuming we keep this
   password_hash TEXT NOT NULL,
   created_at TEXT DEFAULT (datetime('now'))
@@ -44,6 +46,7 @@ CREATE TABLE IF NOT EXISTS issues (
   category TEXT DEFAULT 'Bug',
   tags TEXT DEFAULT '[]',
 
+  --  users don't need to see all this info, agents do
   entry_point TEXT,
   error_type TEXT,
   error_message TEXT,
@@ -59,6 +62,7 @@ CREATE TABLE IF NOT EXISTS issues (
   token_usage INTEGER,
   attempt_notes TEXT,
   resolution_notes TEXT,
+  ---
 
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
@@ -69,19 +73,19 @@ CREATE TABLE IF NOT EXISTS issues (
 );
 
 --------------------------------- AGENT ATTEMPTS TABLE ---------------------------------
-CREATE TABLE IF NOT EXISTS agent_attempts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  issue_id INTEGER NOT NULL,
+-- CREATE TABLE IF NOT EXISTS agent_attempts (
+--   id INTEGER PRIMARY KEY AUTOINCREMENT,
+--   issue_id INTEGER NOT NULL,
 
-  agent_attempted_at TEXT DEFAULT (datetime('now')), --- may be unnecessary
-  attempt_number INTEGER,
-  result TEXT,
-  notes TEXT,
-  token_usage INTEGER,
+--   agent_attempted_at TEXT DEFAULT (datetime('now')), --- may be unnecessary
+--   attempt_number INTEGER,
+--   result TEXT,
+--   notes TEXT,
+--   token_usage INTEGER,
 
-  FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
-  UNIQUE(issue_id, attempt_number) 
-);
+--   FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+--   UNIQUE(issue_id, attempt_number) 
+-- );
 
 --------------------------------- INVITES TABLE ---------------------------------
 CREATE TABLE IF NOT EXISTS invites (
