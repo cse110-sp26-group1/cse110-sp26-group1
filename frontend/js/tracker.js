@@ -111,7 +111,7 @@ function renderList() {
 }
 
 /**
- *
+ * Creates team menu
  */
 function renderTeamMenu() {
 	const teamMenu = document.getElementById('teamMenu');
