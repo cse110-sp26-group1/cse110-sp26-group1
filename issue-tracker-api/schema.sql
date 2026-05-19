@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS issues (
   hypothesis TEXT,
 
   token_usage INTEGER,
+  attempt_notes TEXT,
   resolution_notes TEXT,
 
   created_at TEXT DEFAULT (datetime('now')),
@@ -66,23 +67,11 @@ CREATE TABLE IF NOT EXISTS issues (
   FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL
 );
 
---------------------------------- AGENTS TABLE ---------------------------------e
-CREATE TABLE IF NOT EXISTS agents (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL,
-  token TEXT,
-  created_at TEXT DEFAULT (datetime('now'))
-);
-
 --------------------------------- AGENT ATTEMPTS TABLE ---------------------------------
 CREATE TABLE IF NOT EXISTS agent_attempts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   issue_id INTEGER NOT NULL,
 
-  --- maybe have a user_id field -> which user authorized this agent to work
-  --- on this issue
-  agent_id INTEGER NOT NULL, --- prob remove this 
   agent_attempted_at TEXT DEFAULT (datetime('now')), --- may be unnecessary
   attempt_number INTEGER,
   result TEXT,
@@ -90,8 +79,7 @@ CREATE TABLE IF NOT EXISTS agent_attempts (
   token_usage INTEGER,
 
   FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
-  FOREIGN KEY (agent_id) REFERENCES agents(id), --- remove this
-  UNIQUE(issue_id, agent_id, attempt_number) --- change this
+  UNIQUE(issue_id, attempt_number) 
 );
 
 --------------------------------- INVITES TABLE ---------------------------------
