@@ -4,6 +4,12 @@ import { requireTeamAdmin } from '../src/lib/teams.js';
 /**
  * Handles invite-related endpoints.
  *
+ * This file controls invite creation, invite viewing, accepting/declining
+ * invites, and deleting/canceling invites.
+ *
+ * All protected routes use requireAuth so we know which user is making
+ * the request. Admin-only invite creation uses requireTeamAdmin.
+ *
  * Endpoints:
  * GET    /invites
  * GET    /invites/:id
@@ -13,9 +19,9 @@ import { requireTeamAdmin } from '../src/lib/teams.js';
  * DELETE /invites/:id
  * POST   /teams/:teamId/invite
  *
- * @param {Request} request
- * @param {Env} env
- * @returns {Promise<Response>}
+ * @param {Request} request - Incoming HTTP request.
+ * @param {Env} env - Cloudflare Worker environment with DB binding.
+ * @returns {Promise<Response>} JSON response.
  */
 export async function handleInvites(request, env) {
 	const url = new URL(request.url);
@@ -24,6 +30,9 @@ export async function handleInvites(request, env) {
 	const inviteId = pathParts[2];
 
 	// GET /invites
+	// Returns only pending invites for the logged-in user.
+	// The join includes team_name and inviter_username so the frontend can show:
+	// "@alex invited you to Backend Team."
 	if (url.pathname === '/invites' && method === 'GET') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
@@ -47,6 +56,8 @@ export async function handleInvites(request, env) {
 	}
 
 	// GET /invites/:id
+	// Returns one invite with team and inviter details.
+	// Used when a user clicks an invite notification and needs full info.
 	if (url.pathname.startsWith('/invites/') && method === 'GET') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
@@ -73,6 +84,7 @@ export async function handleInvites(request, env) {
 			return Response.json({ error: 'Invite not found' }, { status: 404 });
 		}
 
+		// Only the invited user or inviter can view this invite.
 		if (invite.invited_user_id !== auth.userId && invite.inviter_user_id !== auth.userId) {
 			return Response.json({ error: 'Forbidden' }, { status: 403 });
 		}
@@ -81,6 +93,8 @@ export async function handleInvites(request, env) {
 	}
 
 	// POST /invites
+	// Creates an invite using team_id and invited_user_id from the body.
+	// The inviter is always auth.userId, so users cannot spoof who sent it.
 	if (url.pathname === '/invites' && method === 'POST') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
@@ -91,6 +105,7 @@ export async function handleInvites(request, env) {
 	}
 
 	// PATCH /invites/:id/accept
+	// Accepts a pending invite and adds the invited user to team_members.
 	if (url.pathname.startsWith('/invites/') && pathParts[3] === 'accept' && method === 'PATCH') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
@@ -105,6 +120,7 @@ export async function handleInvites(request, env) {
 			return Response.json({ error: 'Invite not found' }, { status: 404 });
 		}
 
+		// Only the invited user can accept their invite.
 		if (invite.invited_user_id !== auth.userId) {
 			return Response.json({ error: 'Forbidden' }, { status: 403 });
 		}
@@ -113,6 +129,7 @@ export async function handleInvites(request, env) {
 			return Response.json({ error: 'Invite already handled' }, { status: 409 });
 		}
 
+		// Extra guardrail: make sure user is not already in the team.
 		const existingMember = await env.DB.prepare(
 			`
 				SELECT *
@@ -145,6 +162,7 @@ export async function handleInvites(request, env) {
 	}
 
 	// PATCH /invites/:id/reject
+	// Declines a pending invite by changing status to declined.
 	if (url.pathname.startsWith('/invites/') && pathParts[3] === 'reject' && method === 'PATCH') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
@@ -159,6 +177,7 @@ export async function handleInvites(request, env) {
 			return Response.json({ error: 'Invite not found' }, { status: 404 });
 		}
 
+		// Only the invited user can reject their invite.
 		if (invite.invited_user_id !== auth.userId) {
 			return Response.json({ error: 'Forbidden' }, { status: 403 });
 		}
@@ -176,6 +195,7 @@ export async function handleInvites(request, env) {
 	}
 
 	// DELETE /invites/:id
+	// Deletes/cancels an invite by ID.
 	if (url.pathname.startsWith('/invites/') && method === 'DELETE') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
@@ -199,6 +219,7 @@ export async function handleInvites(request, env) {
 	}
 
 	// POST /teams/:teamId/invite
+	// Alternate invite route for when the frontend is already inside a team page.
 	if (url.pathname.startsWith('/teams/') && url.pathname.endsWith('/invite') && method === 'POST') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
@@ -214,24 +235,32 @@ export async function handleInvites(request, env) {
 
 /**
  * Creates or reactivates an invite.
- * @param {Env} env - Worker environment.
- * @param {number} inviterUserId - Authenticated inviter user ID.
+ *
+ * This helper is shared by POST /invites and POST /teams/:teamId/invite
+ * so both routes use the same validation and DB behavior.
+ *
+ * @param {Env} env - Cloudflare Worker environment.
+ * @param {number} inviterUserId - Logged-in user sending the invite.
  * @param {number|string} teamId - Team ID.
- * @param {number|string} invitedUserId - Invited user ID.
- * @returns {Promise<Response>}
+ * @param {number|string} invitedUserId - User ID being invited.
+ * @returns {Promise<Response>} JSON response.
  */
 async function createInvite(env, inviterUserId, teamId, invitedUserId) {
+	// Validate IDs before doing DB work.
 	if (!teamId || !invitedUserId || !Number.isInteger(Number(teamId)) || !Number.isInteger(Number(invitedUserId))) {
 		return Response.json({ error: 'Invalid team_id or invited_user_id' }, { status: 400 });
 	}
 
+	// Users cannot invite themselves.
 	if (Number(invitedUserId) === Number(inviterUserId)) {
 		return Response.json({ error: 'Cannot invite yourself' }, { status: 400 });
 	}
 
+	// Only team admins can invite users.
 	const adminCheck = await requireTeamAdmin(env, inviterUserId, Number(teamId));
 	if (adminCheck.error) return adminCheck.error;
 
+	// Do not invite users who are already members.
 	const existingMember = await env.DB.prepare(
 		`
 			SELECT *
@@ -246,6 +275,9 @@ async function createInvite(env, inviterUserId, teamId, invitedUserId) {
 		return Response.json({ error: 'User already in team' }, { status: 409 });
 	}
 
+	// Look for any existing invite between the same inviter, invitee, and team.
+	// This matters because schema uniqueness can block inserting a new row
+	// if a declined invite already exists.
 	const existingInvite = await env.DB.prepare(
 		`
 			SELECT *
@@ -261,10 +293,12 @@ async function createInvite(env, inviterUserId, teamId, invitedUserId) {
 	const now = new Date().toISOString();
 
 	if (existingInvite) {
+		// If the invite is still pending, do not create a duplicate.
 		if (existingInvite.status === 'pending') {
 			return Response.json({ error: 'Pending invite already exists' }, { status: 409 });
 		}
 
+		// If the invite was declined/handled before, reactivate it as pending.
 		const { success } = await env.DB.prepare(
 			`
 				UPDATE invites
@@ -285,6 +319,7 @@ async function createInvite(env, inviterUserId, teamId, invitedUserId) {
 		);
 	}
 
+	// No existing invite, so create a new pending invite.
 	const result = await env.DB.prepare(
 		`
 			INSERT INTO invites (
