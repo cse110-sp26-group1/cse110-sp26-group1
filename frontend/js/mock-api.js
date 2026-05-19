@@ -14,6 +14,9 @@ let dbTeamMembers = null;
 
 // const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ *
+ */
 function persistDB() {
 	localStorage.setItem('mock_db_issues', JSON.stringify(dbIssues));
 	localStorage.setItem('mock_db_teams', JSON.stringify(dbTeams));
@@ -96,6 +99,7 @@ export async function fetchTeams() {
 
 /**
  * Replaces: POST /api/teams
+ * @param teamData
  */
 export async function createTeam(teamData) {
 	// === REAL API CALL ===
@@ -198,6 +202,7 @@ export async function addTeamMember(teamId, userId, role = 'member') {
 
 /**
  * Replaces: POST /api/invitations/:slug/accept
+ * @param teamSlug
  */
 export async function acceptInvite(teamSlug) {
 	// === REAL API CALL (Replace mock logic below with this) ===
@@ -268,6 +273,7 @@ export async function fetchIssues(teamId = null) {
 
 /**
  * Replaces: POST /api/issues
+ * @param formData
  */
 export async function createIssue(formData) {
 	/*
