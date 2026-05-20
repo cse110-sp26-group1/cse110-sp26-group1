@@ -36,10 +36,10 @@ export async function handleAuth(request, env) {
 		// hash the password before storing, never store plaintext.
 		const password_hash = await hashPassword(body.password);
 
-		// insert the new user row into the database.
-		const { success } = await env.DB.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)')
+		// insert the new user row and return the new user's id in the same query.
+		const row = await env.DB.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
 			.bind(body.username, body.email, password_hash)
-			.run();
+			.first();
 
 		// ----- USER SUCCESSFULLY REGISTERED AND STORED IN THE DATABASE -----
 
@@ -47,8 +47,8 @@ export async function handleAuth(request, env) {
 		const token = crypto.randomUUID();
 		const expires_at = sessionExpiresAt();
 
-		// insert new row into the sessions table that references the user's id. 
-		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(user.id, token, expires_at).run();
+		// insert new row into the sessions table that references the new user's id.
+		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(row.id, token, expires_at).run();
 
 		return Response.json({ success: true, token, expires_at }, { status: 201 });
 	}
