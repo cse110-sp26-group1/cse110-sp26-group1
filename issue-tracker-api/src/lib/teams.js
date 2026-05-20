@@ -13,18 +13,18 @@ export const ALLOWED_ROLES = ['admin', 'member'];
  * @returns {{ role: TeamRole } | { error: Response }}
  */
 export function validateRole(role, defaultRole = 'member') {
-	const r = role ?? defaultRole;
-	if (!ALLOWED_ROLES.includes(r)) {
-		return {
-			error: Response.json(
-				{
-					error: `Invalid role. Must be one of: ${ALLOWED_ROLES.join(', ')}`,
-				},
-				{ status: 400 },
-			),
-		};
-	}
-	return { role: r };
+    const r = role ?? defaultRole;
+    if (!ALLOWED_ROLES.includes(r)) {
+        return {
+            error: Response.json(
+                {
+                    error: `Invalid role. Must be one of: ${ALLOWED_ROLES.join(', ')}`,
+                },
+                { status: 400 },
+            ),
+        };
+    }
+    return { role: r };
 }
 
 /**
@@ -35,14 +35,14 @@ export function validateRole(role, defaultRole = 'member') {
  * @returns {Promise<{ role: TeamRole } | { error: Response }>}
  */
 export async function requireTeamMember(env, userId, teamId) {
-	const row = await env.DB.prepare('SELECT role FROM team_members WHERE user_id = ? AND team_id = ?').bind(userId, teamId).first();
+    const row = await env.DB.prepare('SELECT role FROM team_members WHERE user_id = ? AND team_id = ?').bind(userId, teamId).first();
 
-	if (!row) {
-		return {
-			error: Response.json({ error: 'Forbidden' }, { status: 403 }),
-		};
-	}
-	return { role: row.role };
+    if (!row) {
+        return {
+            error: Response.json({ error: 'Forbidden' }, { status: 403 }),
+        };
+    }
+    return { role: row.role };
 }
 
 /**
@@ -53,12 +53,12 @@ export async function requireTeamMember(env, userId, teamId) {
  * @returns {Promise<{ role: 'admin' } | { error: Response }>}
  */
 export async function requireTeamAdmin(env, userId, teamId) {
-	const membership = await requireTeamMember(env, userId, teamId);
-	if (membership.error) return membership;
-	if (membership.role !== 'admin') {
-		return {
-			error: Response.json({ error: 'Forbidden' }, { status: 403 }),
-		};
-	}
-	return { role: 'admin' };
+    const membership = await requireTeamMember(env, userId, teamId);
+    if (membership.error) return membership;
+    if (membership.role !== 'admin') {
+        return {
+            error: Response.json({ error: 'Forbidden' }, { status: 403 }),
+        };
+    }
+    return { role: 'admin' };
 }

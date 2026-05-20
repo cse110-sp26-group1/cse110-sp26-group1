@@ -8,10 +8,10 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 // export default {
-// 	// underscore prefixes as these variables are not currently being used
-// 	async fetch(_request, _env, _ctx) {
-// 		return new Response('Hello World!');
-// 	},
+//     // underscore prefixes as these variables are not currently being used
+//     async fetch(_request, _env, _ctx) {
+//         return new Response('Hello World!');
+//     },
 // };
 
 import { handleIssues } from '../routes/issues.js';
@@ -21,14 +21,14 @@ import { handleTeams } from '../routes/teams.js';
 import { handleAuth } from '../routes/auth.js';
 
 const ALLOWED_ORIGINS = [
-	'http://localhost:3000',
-	// 'https://your-org.github.io',
-	// 'https://issue-tracker-api.your-subdomain.workers.dev',
+    'http://localhost:3000',
+    // 'https://your-org.github.io',
+    // 'https://issue-tracker-api.your-subdomain.workers.dev',
 ];
 
 const CORS_HEADERS = {
-	'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 /**
@@ -38,18 +38,18 @@ const CORS_HEADERS = {
  * @returns {Response} A new Response with CORS headers applied.
  */
 function withCors(response, request) {
-	const origin = request.headers.get('Origin');
-	const res = new Response(response.body, response);
+    const origin = request.headers.get('Origin');
+    const res = new Response(response.body, response);
 
-	if (ALLOWED_ORIGINS.includes(origin)) {
-		res.headers.set('Access-Control-Allow-Origin', origin);
-	}
+    if (ALLOWED_ORIGINS.includes(origin)) {
+        res.headers.set('Access-Control-Allow-Origin', origin);
+    }
 
-	Object.entries(CORS_HEADERS).forEach(([key, value]) => {
-		res.headers.set(key, value);
-	});
+    Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+        res.headers.set(key, value);
+    });
 
-	return res;
+    return res;
 }
 
 /**
@@ -60,41 +60,41 @@ function withCors(response, request) {
  * @returns {Promise<Response>}
  */
 export default {
-	async fetch(request, env, _ctx) {
-		if (request.method === 'OPTIONS') {
-			const origin = request.headers.get('Origin');
-			const headers = { ...CORS_HEADERS };
+    async fetch(request, env, _ctx) {
+        if (request.method === 'OPTIONS') {
+            const origin = request.headers.get('Origin');
+            const headers = { ...CORS_HEADERS };
 
-			if (ALLOWED_ORIGINS.includes(origin)) {
-				headers['Access-Control-Allow-Origin'] = origin;
-			}
+            if (ALLOWED_ORIGINS.includes(origin)) {
+                headers['Access-Control-Allow-Origin'] = origin;
+            }
 
-			return new Response(null, { status: 204, headers });
-		}
+            return new Response(null, { status: 204, headers });
+        }
 
-		const url = new URL(request.url);
-		const path = url.pathname;
+        const url = new URL(request.url);
+        const path = url.pathname;
 
-		if (path.startsWith('/auth')) {
-			return withCors(await handleAuth(request, env), request);
-		}
+        if (path.startsWith('/auth')) {
+            return withCors(await handleAuth(request, env), request);
+        }
 
-		if (path.startsWith('/issues')) {
-			return withCors(await handleIssues(request, env), request);
-		}
+        if (path.startsWith('/issues')) {
+            return withCors(await handleIssues(request, env), request);
+        }
 
-		if (path.startsWith('/teams')) {
-			return withCors(await handleTeams(request, env), request);
-		}
+        if (path.startsWith('/teams')) {
+            return withCors(await handleTeams(request, env), request);
+        }
 
-		if (path.startsWith('/invites')) {
-			return withCors(await handleInvites(request, env), request);
-		}
+        if (path.startsWith('/invites')) {
+            return withCors(await handleInvites(request, env), request);
+        }
 
-		if (path.startsWith('/agents')) {
-			return withCors(await handleAgents(request, env), request);
-		}
+        if (path.startsWith('/agents')) {
+            return withCors(await handleAgents(request, env), request);
+        }
 
-		return withCors(new Response('Not Found', { status: 404 }), request);
-	},
+        return withCors(new Response('Not Found', { status: 404 }), request);
+    },
 };

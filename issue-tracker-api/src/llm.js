@@ -1,8 +1,8 @@
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-	apiKey: '',
-	baseURL: 'https://api.deepseek.com',
+    apiKey: '',
+    baseURL: 'https://api.deepseek.com',
 });
 
 const PROMPT = `You are an issue triage agent for a software team. Given a user's raw issue description, produce a structured JSON object ready for the issue tracker API.
@@ -63,15 +63,15 @@ USER INPUT:{raw_user_input}
  * @param rawUserInput
  */
 export async function processIssue(rawUserInput) {
-	const response = await client.chat.completions.create({
-		model: 'deepseek-v4-flash',
-		messages: [
-			{
-				role: 'user',
-				content: PROMPT.replace('{raw_user_input}', rawUserInput),
-			},
-		],
-	});
+    const response = await client.chat.completions.create({
+        model: 'deepseek-v4-flash',
+        messages: [
+            {
+                role: 'user',
+                content: PROMPT.replace('{raw_user_input}', rawUserInput),
+            },
+        ],
+    });
 
-	return response.choices[0].message.content;
+    return response.choices[0].message.content;
 }
