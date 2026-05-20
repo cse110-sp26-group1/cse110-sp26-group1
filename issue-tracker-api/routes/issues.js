@@ -150,6 +150,15 @@ export async function handleIssues(request, env) {
 			}
 		}
 
+		// Point 6 Change: Strict Array Schema Validation for Tags in POST payload
+		// Assures type-safety to prevent runtime exceptions upon JSON parsing of malicious payloads.
+		//Checks that tag is array not invalid object type to protect GET fetches that parse tags with JSON.parse; if tags is provided in the body, it must be an array of strings. If it's not, return a 400 error indicating invalid format. This validation ensures that the tags field adheres to the expected structure, preventing potential issues during data processing and retrieval.
+		if (body.tags !== undefined && body.tags !== null) {
+			if (!Array.isArray(body.tags) || !body.tags.every((t) => typeof t === 'string')) {
+				return Response.json({ error: 'Invalid tags format' }, { status: 400 });
+			}
+		}
+
 		const status = body.status?.trim();
 		const priority = body.priority?.trim();
 		const category = body.category?.trim();
@@ -241,6 +250,15 @@ export async function handleIssues(request, env) {
 		if (body.title !== undefined) {
 			if (typeof body.title !== 'string' || body.title.trim() === '') {
 				return Response.json({ error: 'Invalid title format. Must be a non-empty string.' }, { status: 400 });
+			}
+		}
+
+		// Point 6 Change: Strict Array Schema Validation for Tags in PATCH payload
+		// Rejects variations to guard downstream workflows when updating tags.
+		//Checks that tag is array not invalid object type to protect GET fetches that parse tags with JSON.parse; if invalid, returns a 400 error indicating invalid tags format. This ensures that the tags field maintains consistent data structure for proper handling in retrieval and display logic.
+		if (body.tags !== undefined && body.tags !== null) {
+			if (!Array.isArray(body.tags) || !body.tags.every((t) => typeof t === 'string')) {
+				return Response.json({ error: 'Invalid tags format' }, { status: 400 });
 			}
 		}
 
