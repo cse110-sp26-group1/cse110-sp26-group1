@@ -1,5 +1,5 @@
-import { fetchTeams, fetchIssues, createTeam, acceptInvite } from './mock-api.js';
-import { requireAuth } from './api.js';
+import { fetchIssues, createTeam, acceptInvite } from './mock-api.js';
+import { fetchTeams, requireAuth, rejectInvite, fetchInvites } from './api.js';
 
 import './components/team-card.js';
 
@@ -32,52 +32,6 @@ document.getElementById('cancelCreate').addEventListener('click', closeModal);
 backdrop.addEventListener('click', (e) => {
 	if (e.target === backdrop) {
 		closeModal();
-	}
-});
-
-// createTeam
-document.getElementById('confirmCreate').addEventListener('click', async () => {
-	const nameEl = document.getElementById('teamName');
-	const slugEl = document.getElementById('teamSlug');
-
-	const name = nameEl.value.trim();
-	const slug = slugEl.value.trim();
-
-	if (!name) {
-		nameEl.focus();
-		return;
-	}
-
-	const confirmBtn = document.getElementById('confirmCreate');
-	const originalText = confirmBtn.textContent;
-	confirmBtn.textContent = 'Creating...';
-	confirmBtn.disabled = true;
-
-	try {
-		const words = name.split(' ');
-		let mark = words[0].substring(0, 2).toUpperCase();
-		if (words.length > 1) {
-			mark = (words[0][0] + words[1][0]).toUpperCase();
-		}
-
-		const newTeam = await createTeam({
-			name: name,
-			slug: slug,
-			mark: mark,
-		});
-
-		showToast(`Workspace created! Redirecting...`);
-
-		closeModal();
-
-		setTimeout(() => {
-			location.href = `tracker.html?team=${encodeURIComponent(newTeam.slug)}`;
-		}, 800);
-	} catch (err) {
-		showToast(err.message || 'Failed to create team.');
-	} finally {
-		confirmBtn.textContent = originalText;
-		confirmBtn.disabled = false;
 	}
 });
 
@@ -127,10 +81,10 @@ document.querySelectorAll('.decline-btn').forEach((btn) => {
 
 document.getElementById('confirmCreate').addEventListener('click', async () => {
 	const nameEl = document.getElementById('teamName');
-	const bioEl = document.getElementById('teamBio');
+	const _bioEl = document.getElementById('teamBio'); // add bio support next (STRETCH GOAL)
 
 	const name = nameEl.value.trim();
-	const bio = bioEl.value.trim();
+	const _bio = _bioEl.value.trim();
 
 	if (!name) {
 		nameEl.focus();
@@ -150,16 +104,14 @@ document.getElementById('confirmCreate').addEventListener('click', async () => {
 		}
 
 		const newTeam = await createTeam({
-			name: name,
-			bio: bio,
-			mark: mark,
+			team_name: name,
 		});
 
 		showToast(`Workspace created! Redirecting...`);
 		closeModal();
 
 		setTimeout(() => {
-			location.href = `tracker.html?team=${encodeURIComponent(newTeam.slug)}`;
+			location.href = `tracker.html?team_id=${newTeam.team_id}`;
 		}, 800);
 	} catch (err) {
 		showToast(err.message || 'Failed to create team.');
@@ -172,28 +124,103 @@ document.getElementById('confirmCreate').addEventListener('click', async () => {
 /**
  *
  */
+async function loadInvites() {
+	const section = document.getElementById('invitesSection');
+	if (!section) return;
+
+	let invites;
+	try {
+		invites = await fetchInvites();
+	} catch {
+		section.hidden = true;
+		return;
+	}
+
+	if (!invites.length) {
+		section.hidden = true;
+		return;
+	}
+
+	section.hidden = false;
+
+	const list = invites
+		.map(
+			(inv) => `
+		<div class="invite" data-invite-id="${inv.id}">
+		<div class="info">
+			<div class="team-mark">${inv.team_name.substring(0, 2).toUpperCase()}</div>
+			<div>
+			<p><strong>${inv.team_name}</strong> · invited by ${inv.inviter_username}</p>
+			<p>Invited ${inv.created_at}</p>
+			</div>
+		</div>
+		<div class="actions">
+			<button class="btn sm decline-btn" data-invite-id="${inv.id}">Decline</button>
+			<button class="btn primary sm accept-btn" data-invite-id="${inv.id}">Accept</button>
+		</div>
+		</div>
+	`,
+		)
+		.join('');
+
+	section.querySelector('h3').insertAdjacentHTML('afterend', list);
+
+	section.querySelectorAll('.accept-btn').forEach((btn) => {
+		btn.addEventListener('click', async (e) => {
+			const inviteId = Number(e.target.dataset.inviteId);
+			e.target.textContent = 'Accepting...';
+			e.target.disabled = true;
+			try {
+				await acceptInvite(inviteId);
+				showToast('Invitation accepted!');
+				e.target.closest('.invite').remove();
+				initTeamsPage();
+			} catch {
+				showToast('Failed to accept invite.');
+				e.target.textContent = 'Accept';
+				e.target.disabled = false;
+			}
+		});
+	});
+
+	section.querySelectorAll('.decline-btn').forEach((btn) => {
+		btn.addEventListener('click', async (e) => {
+			const inviteId = Number(e.target.dataset.inviteId);
+			e.target.textContent = 'Declining...';
+			e.target.disabled = true;
+			try {
+				await rejectInvite(inviteId);
+				e.target.closest('.invite').remove();
+				showToast('Invitation declined.');
+				if (!section.querySelectorAll('.invite').length) section.hidden = true;
+			} catch {
+				showToast('Failed to decline invite.');
+				e.target.textContent = 'Decline';
+				e.target.disabled = false;
+			}
+		});
+	});
+}
+
+/**
+ *
+ */
 async function initTeamsPage() {
 	try {
-		const [teams, issues] = await Promise.all([fetchTeams(), fetchIssues()]);
-
+		const teams = await fetchTeams();
 		const grid = document.getElementById('teamGrid');
-
 		const createBtnHtml = grid.querySelector('.team.new').outerHTML;
 
 		const teamCards = teams.map((team) => {
-			const teamIssues = issues.filter((i) => i.team_id === team.id);
-			const openCount = teamIssues.filter((i) => i.status === 'open').length;
-			const progCount = teamIssues.filter((i) => i.status === 'in-progress').length;
-			const doneCount = teamIssues.filter((i) => i.status === 'done' || i.status === 'closed').length;
-
 			const card = document.createElement('team-card');
-			card.setAttribute('slug', team.slug);
-			card.setAttribute('name', team.name);
-			card.setAttribute('mark', team.mark);
-			card.setAttribute('color', String(team.color));
-			card.setAttribute('open', String(openCount));
-			card.setAttribute('prog', String(progCount));
-			card.setAttribute('done', String(doneCount));
+			card.setAttribute('team-id', String(team.id));
+			card.setAttribute('name', team.team_name);
+
+			const words = team.team_name.trim().split(' ');
+			const mark = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : team.team_name.substring(0, 2).toUpperCase();
+			card.setAttribute('mark', mark);
+			card.setAttribute('color', '220');
+			card.setAttribute('role', team.role);
 			return card;
 		});
 
@@ -204,6 +231,8 @@ async function initTeamsPage() {
 			e.preventDefault();
 			openModal();
 		});
+
+		await loadInvites();
 	} catch {
 		showToast('Failed to load dashboard.');
 	}

@@ -26,8 +26,8 @@
 					<span class="sep">/</span>
 				</div>
 				<div class="team-switch" id="teamSwitch">
-					<span class="mark">SA</span>
-					<span id="teamLabel">Studio · AI Tools</span>
+					<span class="mark"></span>
+					<span id="teamLabel">Loading...</span>
 					<span class="chev">▾</span>
 
 					<div class="team-menu" id="teamMenu">
@@ -125,13 +125,11 @@
 				</div>
 
 				<div class="nav-section">
-					<div class="label"><span>Team</span></div>
-					<div class="members">
-						<div class="avatar">AL</div>
-						<div class="avatar">JK</div>
-						<div class="avatar">MN</div>
-						<div class="avatar">BS</div>
+					<div class="label" style="display: flex; justify-content: space-between; align-items: center">
+						<span>Team</span>
+						<button class="btn ghost sm" id="openInviteModal" style="padding: 0 6px" title="Invite user">+</button>
 					</div>
+					<div class="members"></div>
 				</div>
 
 				<div class="skill-card">
@@ -218,6 +216,25 @@
 				<div class="modal-foot">
 					<button class="btn" id="cancelNew">Cancel</button>
 					<button class="btn primary" id="confirmNew">Create issue</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="backdrop" id="inviteBackdrop">
+			<div class="modal" style="max-width: 400px">
+				<div class="modal-head">
+					<h3>Invite to team</h3>
+					<p>Send an invitation to a colleague.</p>
+				</div>
+				<div class="modal-body">
+					<div class="field">
+						<label>Username or Email <span class="req">*</span></label>
+						<input class="input" id="inviteInput" placeholder="e.g. ada@example.com or adalovelace" />
+					</div>
+				</div>
+				<div class="modal-foot">
+					<button class="btn" id="cancelInvite">Cancel</button>
+					<button class="btn primary" id="confirmInvite">Send invite</button>
 				</div>
 			</div>
 		</div>

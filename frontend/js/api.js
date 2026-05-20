@@ -103,3 +103,176 @@ export async function createAccount(data) {
 		body: JSON.stringify(data),
 	});
 }
+
+/**
+ * GET /teams
+ * Returns all teams the authenticated user belongs to, each with their role.
+ * @returns {Promise<Array<{ id: number, team_name: string, role: string, created_at: string }>>}
+ */
+export async function fetchTeams() {
+	return request('/teams');
+}
+
+/**
+ * GET /teams/:teamId
+ * @param {number} teamId
+ * @returns {Promise<{ id: number, team_name: string, role: string, created_at: string }>}
+ */
+export async function fetchTeam(teamId) {
+	return request(`/teams/${teamId}`);
+}
+
+/**
+ * POST /teams
+ * Creates a new team. The authenticated user becomes its first admin.
+ * @param {{ team_name: string }} data
+ * @returns {Promise<{ success: boolean, team_id: number }>}
+ */
+export async function createTeam(data) {
+	return request('/teams', {
+		method: 'POST',
+		body: JSON.stringify(data),
+	});
+}
+
+/**
+ * PATCH /teams/:teamId
+ * Renames a team. Requires admin role.
+ * @param {number} teamId
+ * @param {{ team_name: string }} data
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function updateTeam(teamId, data) {
+	return request(`/teams/${teamId}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data),
+	});
+}
+
+/**
+ * DELETE /teams/:teamId
+ * Deletes a team entirely. Requires admin role.
+ * @param {number} teamId
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function deleteTeam(teamId) {
+	return request(`/teams/${teamId}`, { method: 'DELETE' });
+}
+
+/**
+ * GET /teams/:teamId/members
+ * Returns members with their role. Requires team membership.
+ * @param {number} teamId
+ * @returns {Promise<Array<{ id: number, username: string, email: string, role: string }>>}
+ */
+export async function fetchTeamMembers(teamId) {
+	return request(`/teams/${teamId}/members`);
+}
+
+/**
+ * DELETE /teams/:teamId/members/:userId
+ * Removes a member from the team. Requires admin role.
+ * Cannot be used to remove yourself — use leaveTeam() instead.
+ * @param {number} teamId
+ * @param {number} userId
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function removeTeamMember(teamId, userId) {
+	return request(`/teams/${teamId}/members/${userId}`, { method: 'DELETE' });
+}
+
+/**
+ * DELETE /teams/:teamId/leave
+ * Lets the authenticated user leave a team.
+ * Admins cannot leave if other members still exist (409).
+ * If the admin is the last member, the team is deleted automatically.
+ * @param {number} teamId
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function leaveTeam(teamId) {
+	return request(`/teams/${teamId}/leave`, { method: 'DELETE' });
+}
+
+// api.js
+
+/**
+ * GET /invites
+ * Returns all pending invites for the authenticated user.
+ * Each invite includes team_name and inviter_username.
+ * @returns {Promise<Array<{ id: number, team_id: number, team_name: string, inviter_username: string, status: string, created_at: string }>>}
+ */
+export async function fetchInvites() {
+	return request('/invites');
+}
+
+/**
+ * GET /invites/:id
+ * Returns a single invite with team and inviter details.
+ * Accessible by the invited user, the inviter, or a team admin.
+ * @param {number} inviteId
+ * @returns {Promise<object>}
+ */
+export async function fetchInvite(inviteId) {
+	return request(`/invites/${inviteId}`);
+}
+
+/**
+ * POST /invites
+ * Creates an invite from the authenticated user to another user.
+ * The authenticated user must be a team admin.
+ * @param {{ team_id: number, invited_user_id?: number, username?: string, email?: string }} data
+ * @returns {Promise<{ success: boolean, invite_id: number }>}
+ */
+export async function createInvite(data) {
+	return request('/invites', {
+		method: 'POST',
+		body: JSON.stringify(data),
+	});
+}
+
+/**
+ * POST /teams/:teamId/invite
+ * Alternate invite route for use within a team context (e.g. team settings page).
+ * teamId comes from the URL. Body requires one of: invited_user_id, username, or email.
+ * @param {number} teamId
+ * @param {{ invited_user_id?: number, username?: string, email?: string }} data
+ * @returns {Promise<{ success: boolean, invite_id: number }>}
+ */
+export async function inviteToTeam(teamId, data) {
+	return request(`/teams/${teamId}/invite`, {
+		method: 'POST',
+		body: JSON.stringify(data),
+	});
+}
+
+/**
+ * PATCH /invites/:id/accept
+ * Accepts a pending invite. Only the invited user can call this.
+ * Adds the user to team_members and marks the invite accepted in one batch.
+ * @param {number} inviteId
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function acceptInvite(inviteId) {
+	return request(`/invites/${inviteId}/accept`, { method: 'PATCH' });
+}
+
+/**
+ * PATCH /invites/:id/reject
+ * Declines a pending invite. Only the invited user can call this.
+ * @param {number} inviteId
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function rejectInvite(inviteId) {
+	return request(`/invites/${inviteId}/reject`, { method: 'PATCH' });
+}
+
+/**
+ * DELETE /invites/:id
+ * Cancels/deletes an invite.
+ * Accessible by the invited user, the inviter, or a team admin.
+ * @param {number} inviteId
+ * @returns {Promise<{ success: boolean }>}
+ */
+export async function deleteInvite(inviteId) {
+	return request(`/invites/${inviteId}`, { method: 'DELETE' });
+}
