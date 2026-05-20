@@ -41,7 +41,44 @@ export async function handleIssues(request, env) {
 		const membership = await requireTeamMember(env, auth.userId, teamId);
 		if (membership.error) return membership.error;
 
-		const { results } = await env.DB.prepare('SELECT * FROM issues WHERE team_id = ?').bind(teamId).all();
+		// Point 3 Change: Dynamic filtering logic based on optional query string parameters
+		// Rather than executing a blanket select, we check for presence of individual filters
+		let query = 'SELECT * FROM issues WHERE team_id = ?';
+		const bindings = [teamId];
+
+		const statusParam = url.searchParams.get('status');
+		if (statusParam !== null) {
+			query += ' AND status = ?';
+			bindings.push(statusParam);
+		}
+
+		const priorityParam = url.searchParams.get('priority');
+		if (priorityParam !== null) {
+			query += ' AND priority = ?';
+			bindings.push(priorityParam);
+		}
+
+		const assignedToParam = url.searchParams.get('assigned_to');
+		if (assignedToParam !== null) {
+			query += ' AND assigned_to = ?';
+			bindings.push(Number(assignedToParam));
+		}
+
+		const categoryParam = url.searchParams.get('category');
+		if (categoryParam !== null) {
+			query += ' AND category = ?';
+			bindings.push(categoryParam);
+		}
+
+		const difficultyParam = url.searchParams.get('difficulty');
+		if (difficultyParam !== null) {
+			query += ' AND difficulty = ?';
+			bindings.push(difficultyParam);
+		}
+
+		const { results } = await env.DB.prepare(query)
+			.bind(...bindings)
+			.all();
 
 		const formatted = results.map((row) => ({
 			...row,
