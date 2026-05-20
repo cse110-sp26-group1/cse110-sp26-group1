@@ -5,7 +5,7 @@
 // helper entirely.
 // ============================================================
 
-const API_BASE = 'https://your-api.your-subdomain.workers.dev';
+// API_BASE = 'https://your-api.your-subdomain.workers.dev'; // used when fetch calls below are uncommented
 
 let dbIssues = null;
 let dbTeams = null;
@@ -76,7 +76,8 @@ export async function login(email, password) {
 	const user = dbUsers.find((u) => u.email === email);
 	if (!user || !password) throw new Error('Invalid credentials');
 
-	const { password_hash, ...safeUser } = user;
+	const safeUser = { ...user };
+	delete safeUser.password_hash;
 	return { token: 'mock_jwt_token_12345', user: safeUser };
 }
 
@@ -162,7 +163,8 @@ export async function fetchTeamMembers(teamId) {
 		.map((m) => {
 			const user = dbUsers.find((u) => u.id === m.user_id);
 			if (!user) return null;
-			const { password_hash, ...safeUser } = user;
+			const safeUser = { ...user };
+			delete safeUser.password_hash;
 			return { ...safeUser, role: m.role };
 		})
 		.filter(Boolean);
@@ -246,7 +248,11 @@ export async function fetchUsers() {
 	*/
 
 	await initDB();
-	return dbUsers.map(({ password_hash, ...u }) => u);
+	return dbUsers.map((u) => {
+		const safe = { ...u };
+		delete safe.password_hash;
+		return safe;
+	});
 }
 
 // ISSUES

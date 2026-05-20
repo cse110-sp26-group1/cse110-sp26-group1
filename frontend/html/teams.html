@@ -24,7 +24,15 @@
 			</div>
 			<div class="user-menu">
 				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
-				<div class="avatar" title="Ada Lovelace">AL</div>
+				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
+				<div class="user-switch" id="userSwitch">
+					<button type="button" class="avatar user-avatar" id="userAvatar" aria-haspopup="true" aria-expanded="false" title="Ada Lovelace">
+						AL
+					</button>
+					<div class="user-dropdown" id="userDropdown" role="menu">
+						<button type="button" class="item" id="signOutBtn" role="menuitem">Sign out</button>
+					</div>
+				</div>
 			</div>
 		</header>
 
@@ -101,6 +109,8 @@
 		<div class="toast" id="toast"></div>
 
 		<script src="../js/theme.js"></script>
+		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
+		<script src="../js/user-menu.js"></script>
 		<script type="module" src="../js/teams.js"></script>
 	</body>
 </html>

@@ -8,10 +8,10 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 // export default {
-// 	// underscore prefixes as these variables are not currently being used
-// 	async fetch(_request, _env, _ctx) {
-// 		return new Response('Hello World!');
-// 	},
+//     // underscore prefixes as these variables are not currently being used
+//     async fetch(_request, _env, _ctx) {
+//         return new Response('Hello World!');
+//     },
 // };
 
 import { handleIssues } from '../routes/issues.js';
@@ -22,7 +22,7 @@ import { handleAuth } from '../routes/auth.js';
 
 const ALLOWED_ORIGINS = [
 	'http://localhost:3000',
-	// 'https://your-org.github.io',
+	'https://cse110-sp26-group1.github.io',
 	// 'https://issue-tracker-api.your-subdomain.workers.dev',
 ];
 

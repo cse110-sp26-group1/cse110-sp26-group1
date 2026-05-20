@@ -1,9 +1,10 @@
 import { PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './constants.js';
 import { fetchIssues, fetchTeams, createIssue, updateIssue } from './mock-api.js';
+import { requireAuth } from './api.js';
 
-// ============================================================
+requireAuth(); // forces the user to sign up if this page is accessed without credentials
+
 // STATE
-// ============================================================
 const state = {
 	sort: 'priority',
 	tag: 'all',
@@ -16,9 +17,6 @@ const state = {
 
 let ISSUES = [];
 
-// ============================================================
-// TEAM SWITCH from query string
-// ============================================================
 /**
  *
  */
@@ -191,64 +189,64 @@ function renderDetail() {
 	const processingBanner = i.status === 'pending' ? '<span class="processing">AI is enriching this issue…</span>' : '';
 
 	detailEl.innerHTML = `
-		<div class="detail-head">
-			${processingBanner}
-			<div class="actions">
-				<button class="btn sm">Copy link</button>
-				<button class="btn sm edit-issue-btn">Edit</button>
-				<button class="btn sm primary mark-done-btn">Mark done</button>
-			</div>
-		</div>
-		<div class="detail-body">
-			<h1 class="issue-title">${i.title}</h1>
-			<div class="meta-strip">
-				<div class="cell">
-					<span class="label">Status</span>
-					<span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
-				</div>
-				<div class="cell">
-					<span class="label">Priority</span>
-					<span class="chip pri-${i.priority}"><span class="dot"></span>${PRI_NAME[i.priority]}</span>
-				</div>
-				<div class="cell">
-					<span class="label">Difficulty</span>
-					<span class="diff">${diffPips}</span>
-				</div>
-				<div class="cell" style="flex:1; min-width:160px;">
-					<span class="label">Labels</span>
-					<div style="display:flex; gap:4px; flex-wrap:wrap;">
-						${i.labels.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}
-					</div>
-				</div>
-				<div class="cell">
-					<span class="label">Assignee</span>
-					<div style="display:flex; align-items:center; gap:6px;">
-						<span class="avatar sm">JK</span>
-						<span style="font-size:13px;">Jon K.</span>
-					</div>
-				</div>
-			</div>
-			${i.summary ? `<div class="summary-block"><span class="label">Summary</span><p>${i.summary}</p></div>` : ''}
-			<div class="description">${i.description || '<p class="muted">No description.</p>'}</div>
-			${
-				i.activity && i.activity.length
-					? `
-			<div class="activity">
-				<h4>Activity</h4>
-				${i.activity
-					.map(
-						(a) => `
-					<div class="item">
-						<span class="avatar sm">${a.who}</span>
-						<span>${a.what}</span>
-						<span class="when">${a.when}</span>
-					</div>`,
-					)
-					.join('')}
-			</div>`
-					: ''
-			}
-		</div>`;
+        <div class="detail-head">
+            ${processingBanner}
+            <div class="actions">
+                <button class="btn sm">Copy link</button>
+                <button class="btn sm edit-issue-btn">Edit</button>
+                <button class="btn sm primary mark-done-btn">Mark done</button>
+            </div>
+        </div>
+        <div class="detail-body">
+            <h1 class="issue-title">${i.title}</h1>
+            <div class="meta-strip">
+                <div class="cell">
+                    <span class="label">Status</span>
+                    <span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
+                </div>
+                <div class="cell">
+                    <span class="label">Priority</span>
+                    <span class="chip pri-${i.priority}"><span class="dot"></span>${PRI_NAME[i.priority]}</span>
+                </div>
+                <div class="cell">
+                    <span class="label">Difficulty</span>
+                    <span class="diff">${diffPips}</span>
+                </div>
+                <div class="cell" style="flex:1; min-width:160px;">
+                    <span class="label">Labels</span>
+                    <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                        ${i.labels.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}
+                    </div>
+                </div>
+                <div class="cell">
+                    <span class="label">Assignee</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="avatar sm">JK</span>
+                        <span style="font-size:13px;">Jon K.</span>
+                    </div>
+                </div>
+            </div>
+            ${i.summary ? `<div class="summary-block"><span class="label">Summary</span><p>${i.summary}</p></div>` : ''}
+            <div class="description">${i.description || '<p class="muted">No description.</p>'}</div>
+            ${
+							i.activity && i.activity.length
+								? `
+            <div class="activity">
+                <h4>Activity</h4>
+                ${i.activity
+									.map(
+										(a) => `
+                    <div class="item">
+                        <span class="avatar sm">${a.who}</span>
+                        <span>${a.what}</span>
+                        <span class="when">${a.when}</span>
+                    </div>`,
+									)
+									.join('')}
+            </div>`
+								: ''
+						}
+        </div>`;
 }
 
 // ============================================================
@@ -501,9 +499,8 @@ confirmNewBtn.addEventListener('click', async () => {
 		renderList();
 		renderDetail();
 		showToast(`Created TKR-${newIssue.id}`);
-	} catch (err) {
-		console.error('Error creating issue:', err);
-		showToast('Failed to create issue. Check console.');
+	} catch {
+		showToast('Failed to create issue.');
 	} finally {
 		confirmNewBtn.textContent = originalText;
 		confirmNewBtn.disabled = false;
@@ -634,13 +631,7 @@ async function initTracker() {
 		const currentTeam = teams.find((t) => t.slug === teamSlug);
 
 		if (currentTeam) {
-			document.getElementById('teamLabel').textContent = currentTeam.name;
-			const mark = document.querySelector('.team-switch > .mark');
-			if (mark) {
-				mark.textContent = currentTeam.mark;
-				mark.style.background = `oklch(0.92 0.04 ${currentTeam.color})`;
-				mark.style.color = `oklch(0.4 0.12 ${currentTeam.color})`;
-			}
+			applyTeamFromUrl();
 		}
 
 		state.currentTeamId = currentTeam ? currentTeam.id : null;
@@ -653,8 +644,7 @@ async function initTracker() {
 
 		renderList();
 		renderDetail();
-	} catch (err) {
-		console.error('Initialization error:', err);
+	} catch {
 		showToast('Failed to load workspace data.');
 	}
 }

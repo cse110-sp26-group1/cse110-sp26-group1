@@ -1,13 +1,37 @@
 // api.js
-const API_BASE = '/api'; // Replace with your actual backend URL
+const API_BASE = 'https://issue-tracker-api.amorbuks25.workers.dev';
+
+/**
+ * Checks if the user is authenticated and redirects to the login page if not.
+ *
+ * Ensures that an 'allegro_token' exists in local storage. If the token
+ * is missing, the user is immediately redirected to login.html.
+ */
+export function requireAuth() {
+	if (!localStorage.getItem('allegro_token')) {
+		location.replace('login.html');
+	}
+}
+
+/**
+ * Checks if the user is authenticated and redirects to the team if so.
+ *
+ * Ensures that an 'allegro_token' exists in local storage. If the token
+ * is missing, the user is immediately redirected to login.html.
+ */
+export function requireNoAuth() {
+	if (localStorage.getItem('allegro_token')) {
+		location.replace('teams.html');
+	}
+}
 
 /**
  * Core request handler to manage headers, tokens, and errors globally.
- * * @param {string} endpoint - The API route (e.g., '/issues')
- * @param endpoint
- * @param {object} options - Fetch options (method, body, headers)
+ * @param {string} endpoint - The API route (e.g., '/issues')
+ * @param {RequestInit} [options] - Fetch options (method, body, headers)
+ * @returns {Promise<unknown|null>}
  */
-async function request(endpoint, options = {}) {
+export async function request(endpoint, options = {}) {
 	// Retrieve auth token if you are using JWT or similar token-based auth
 	const token = localStorage.getItem('allegro_token');
 
@@ -37,7 +61,7 @@ async function request(endpoint, options = {}) {
 			try {
 				const errorData = await response.json();
 				if (errorData.message) errorMessage = errorData.message;
-			} catch (e) {
+			} catch {
 				/* ignore JSON parse error on non-JSON error responses */
 			}
 
@@ -49,7 +73,33 @@ async function request(endpoint, options = {}) {
 
 		return await response.json();
 	} catch (error) {
-		console.error(`Network or Parse Error on ${endpoint}:`, error);
 		throw error; // Re-throw to let the UI handle the specific error state
 	}
+}
+
+/**
+ * POST /api/auth/login
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<{ token: string, user: object }>}
+ */
+export async function login(email, password) {
+	return request('/auth/login', {
+		method: 'POST',
+		body: JSON.stringify({ email, password }),
+	});
+}
+
+/**
+ * POST /auth/register
+ * Returns { success: true } on 201. (As of 05/20 does not return a token)
+ *
+ * @param {{ username: string, first_name: string, last_name: string, email: string, password: string }} data
+ * @returns {Promise<{ success: boolean }>}
+ */
+export async function createAccount(data) {
+	return request('/auth/register', {
+		method: 'POST',
+		body: JSON.stringify(data),
+	});
 }

@@ -41,15 +41,15 @@ export async function handleInvites(request, env) {
 
 		const { results } = await env.DB.prepare(
 			`
-				SELECT invites.*, teams.team_name, inviter.username AS inviter_username
-				FROM invites
-				JOIN teams
-				ON invites.team_id = teams.id
-				JOIN users AS inviter
-				ON invites.inviter_user_id = inviter.id
-				WHERE invites.invited_user_id = ?
-				AND invites.status = 'pending'
-			`,
+                SELECT invites.*, teams.team_name, inviter.username AS inviter_username
+                FROM invites
+                JOIN teams
+                ON invites.team_id = teams.id
+                JOIN users AS inviter
+                ON invites.inviter_user_id = inviter.id
+                WHERE invites.invited_user_id = ?
+                AND invites.status = 'pending'
+            `,
 		)
 			.bind(auth.userId)
 			.all();
@@ -72,14 +72,14 @@ export async function handleInvites(request, env) {
 
 		const invite = await env.DB.prepare(
 			`
-				SELECT invites.*, teams.team_name, inviter.username AS inviter_username
-				FROM invites
-				JOIN teams
-				ON invites.team_id = teams.id
-				JOIN users AS inviter
-				ON invites.inviter_user_id = inviter.id
-				WHERE invites.id = ?
-			`,
+                SELECT invites.*, teams.team_name, inviter.username AS inviter_username
+                FROM invites
+                JOIN teams
+                ON invites.team_id = teams.id
+                JOIN users AS inviter
+                ON invites.inviter_user_id = inviter.id
+                WHERE invites.id = ?
+            `,
 		)
 			.bind(inviteId)
 			.first();
@@ -148,10 +148,10 @@ export async function handleInvites(request, env) {
 		// was added some other way after the invite was sent.
 		const existingMember = await env.DB.prepare(
 			`
-				SELECT *
-				FROM team_members
-				WHERE team_id = ? AND user_id = ?
-			`,
+                SELECT *
+                FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            `,
 		)
 			.bind(invite.team_id, invite.invited_user_id)
 			.first();
@@ -168,16 +168,16 @@ export async function handleInvites(request, env) {
 		await env.DB.batch([
 			env.DB.prepare(
 				`
-					INSERT INTO team_members (team_id, user_id, role)
-					VALUES (?, ?, ?)
-				`,
+                    INSERT INTO team_members (team_id, user_id, role)
+                    VALUES (?, ?, ?)
+                `,
 			).bind(invite.team_id, invite.invited_user_id, 'member'),
 			env.DB.prepare(
 				`
-					UPDATE invites
-					SET status = 'accepted'
-					WHERE id = ?
-				`,
+                    UPDATE invites
+                    SET status = 'accepted'
+                    WHERE id = ?
+                `,
 			).bind(inviteId),
 		]);
 
@@ -254,9 +254,9 @@ export async function handleInvites(request, env) {
 
 		await env.DB.prepare(
 			`
-				DELETE FROM invites
-				WHERE id = ?
-			`,
+                DELETE FROM invites
+                WHERE id = ?
+            `,
 		)
 			.bind(inviteId)
 			.run();
@@ -318,10 +318,10 @@ async function createInvite(env, inviterUserId, teamId, invitedUserId) {
 	// Do not invite users who are already members.
 	const existingMember = await env.DB.prepare(
 		`
-			SELECT *
-			FROM team_members
-			WHERE team_id = ? AND user_id = ?
-		`,
+            SELECT *
+            FROM team_members
+            WHERE team_id = ? AND user_id = ?
+        `,
 	)
 		.bind(teamId, invitedUserId)
 		.first();
@@ -335,12 +335,12 @@ async function createInvite(env, inviterUserId, teamId, invitedUserId) {
 	// team/user pair, even if different admins try to invite the same user.
 	const existingInvite = await env.DB.prepare(
 		`
-			SELECT *
-			FROM invites
-			WHERE team_id = ?
-			AND invited_user_id = ?
-			AND status = 'pending'
-		`,
+            SELECT *
+            FROM invites
+            WHERE team_id = ?
+            AND invited_user_id = ?
+            AND status = 'pending'
+        `,
 	)
 		.bind(teamId, invitedUserId)
 		.first();
@@ -355,12 +355,12 @@ async function createInvite(env, inviterUserId, teamId, invitedUserId) {
 	// one and violating UNIQUE(team_id, inviter_user_id, invited_user_id).
 	const priorInvite = await env.DB.prepare(
 		`
-			SELECT *
-			FROM invites
-			WHERE team_id = ?
-			AND inviter_user_id = ?
-			AND invited_user_id = ?
-		`,
+            SELECT *
+            FROM invites
+            WHERE team_id = ?
+            AND inviter_user_id = ?
+            AND invited_user_id = ?
+        `,
 	)
 		.bind(teamId, inviterUserId, invitedUserId)
 		.first();
@@ -373,10 +373,10 @@ async function createInvite(env, inviterUserId, teamId, invitedUserId) {
 		// creating a duplicate row."
 		const result = await env.DB.prepare(
 			`
-				UPDATE invites
-				SET status = 'pending', created_at = ?
-				WHERE id = ?
-			`,
+                UPDATE invites
+                SET status = 'pending', created_at = ?
+                WHERE id = ?
+            `,
 		)
 			.bind(now, priorInvite.id)
 			.run();
@@ -394,15 +394,15 @@ async function createInvite(env, inviterUserId, teamId, invitedUserId) {
 	// No matching history row exists, so create a fresh pending invite.
 	const result = await env.DB.prepare(
 		`
-			INSERT INTO invites (
-				team_id,
-				inviter_user_id,
-				invited_user_id,
-				status,
-				created_at
-			)
-			VALUES (?, ?, ?, ?, ?)
-		`,
+            INSERT INTO invites (
+                team_id,
+                inviter_user_id,
+                invited_user_id,
+                status,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+        `,
 	)
 		.bind(teamId, inviterUserId, invitedUserId, 'pending', now)
 		.run();
