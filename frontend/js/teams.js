@@ -1,5 +1,9 @@
 import { fetchTeams, fetchIssues, createTeam, acceptInvite } from './mock-api.js';
+import { requireAuth } from './api.js';
+
 import './components/team-card.js';
+
+requireAuth(); // forces the user to sign up if this page is accessed without credentials
 
 const backdrop = document.getElementById('createBackdrop');
 const teamNameEl = document.getElementById('teamName');

@@ -97,14 +97,14 @@ export async function handleIssues(request, env) {
 
 		const { success } = await env.DB.prepare(
 			`
-			INSERT INTO issues (
-				team_id, created_by, title, description, summary,
-				status, priority, category, tags, difficulty,
-				entry_point, error_type, error_message, stack_trace,
-				affected_files, created_at, updated_at
-			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			`,
+            INSERT INTO issues (
+                team_id, created_by, title, description, summary,
+                status, priority, category, tags, difficulty,
+                entry_point, error_type, error_message, stack_trace,
+                affected_files, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
 		)
 			.bind(
 				parsedTeamId,
@@ -172,13 +172,13 @@ export async function handleIssues(request, env) {
 
 		const { success } = await env.DB.prepare(
 			`
-			UPDATE issues SET
-				status = COALESCE(?, status),
-				priority = COALESCE(?, priority),
-				assigned_to = COALESCE(?, assigned_to),
-				updated_at = ?
-			WHERE id = ?
-			`,
+            UPDATE issues SET
+                status = COALESCE(?, status),
+                priority = COALESCE(?, priority),
+                assigned_to = COALESCE(?, assigned_to),
+                updated_at = ?
+            WHERE id = ?
+            `,
 		)
 			.bind(status || null, priority || null, assignedTo, now, Number(issueId))
 			.run();

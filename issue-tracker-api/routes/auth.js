@@ -41,12 +41,10 @@ export async function handleAuth(request, env) {
 			return Response.json({ error: 'Fields cannot be empty' }, { status: 400 });
 		}
 
-		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ? OR first_name = ? OR last_name = ?')
-			.bind(email, username, firstName, lastName)
-			.first();
+		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?').bind(email, username).first();
 
 		if (existing) {
-			return Response.json({ error: 'Email, username, first name, or last name already in use' }, { status: 409 });
+			return Response.json({ error: 'Email or username is already in use' }, { status: 409 });
 		}
 
 		const password_hash = await hashPassword(body.password);

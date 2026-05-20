@@ -7,6 +7,14 @@ const userAvatar = document.getElementById('userAvatar');
 const userDropdown = document.getElementById('userDropdown');
 const signOutBtn = document.getElementById('signOutBtn');
 
+try {
+	const user = JSON.parse(localStorage.getItem('allegro_user') ?? '{}');
+	if (user.initials && userAvatar) userAvatar.textContent = user.initials;
+	if (user.name && userAvatar) userAvatar.title = user.name;
+} catch {
+	/* stored value malformed */
+}
+
 // Pages without the user menu (login, signup, etc.) skip setup entirely.
 if (userSwitch && userAvatar && userDropdown && signOutBtn) {
 	/**
@@ -34,3 +42,10 @@ if (userSwitch && userAvatar && userDropdown && signOutBtn) {
 		location.href = 'login.html';
 	});
 }
+
+// Sign Out Button Logic
+signOutBtn.addEventListener('click', () => {
+	localStorage.removeItem('allegro_token');
+	localStorage.removeItem('allegro_user');
+	location.href = 'login.html';
+});

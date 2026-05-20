@@ -1,3 +1,7 @@
+import { login, requireNoAuth } from './api.js';
+
+requireNoAuth();
+
 const authForm = document.getElementById('authForm');
 
 /**
@@ -6,7 +10,7 @@ const authForm = document.getElementById('authForm');
  *
  * @param {SubmitEvent} e Form submit event.
  */
-function handleLoginSubmit(e) {
+async function handleLoginSubmit(e) {
 	e.preventDefault();
 	const emailEl = document.getElementById('email');
 	const passwordEl = document.getElementById('password');
@@ -20,7 +24,15 @@ function handleLoginSubmit(e) {
 		return;
 	}
 
-	location.href = 'teams.html';
+	try {
+		const { token, expires_at } = await login(email, password);
+		localStorage.setItem('allegro_token', token);
+		localStorage.setItem('allegro_token_expires', expires_at);
+		location.href = 'teams.html';
+	} catch (err) {
+		emailEl.setCustomValidity(err.message ?? 'Invalid credentials');
+		emailEl.reportValidity();
+	}
 }
 
 authForm.addEventListener('submit', handleLoginSubmit);

@@ -8,10 +8,10 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 // export default {
-// 	// underscore prefixes as these variables are not currently being used
-// 	async fetch(_request, _env, _ctx) {
-// 		return new Response('Hello World!');
-// 	},
+//     // underscore prefixes as these variables are not currently being used
+//     async fetch(_request, _env, _ctx) {
+//         return new Response('Hello World!');
+//     },
 // };
 
 import { handleIssues } from '../routes/issues.js';
