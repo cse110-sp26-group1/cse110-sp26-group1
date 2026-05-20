@@ -5,9 +5,6 @@ const backdrop = document.getElementById('createBackdrop');
 const teamNameEl = document.getElementById('teamName');
 const toast = document.getElementById('toast');
 
-const gridEl = document.querySelector('.grid');
-const confirmCreateBtn = document.getElementById('confirmCreate');
-
 /**
  * Opens the create-team modal and focuses the team-name input.
  */
@@ -73,7 +70,6 @@ document.getElementById('confirmCreate').addEventListener('click', async () => {
 			location.href = `tracker.html?team=${encodeURIComponent(newTeam.slug)}`;
 		}, 800);
 	} catch (err) {
-		console.error(err);
 		showToast(err.message || 'Failed to create team.');
 	} finally {
 		confirmBtn.textContent = originalText;
@@ -110,8 +106,7 @@ document.querySelectorAll('.accept-btn').forEach((btn) => {
 
 			// Re-render the grid to show the newly unlocked team
 			initTeamsPage();
-		} catch (err) {
-			console.error(err);
+		} catch {
 			showToast('Failed to accept invite.');
 			e.target.textContent = originalText;
 			e.target.disabled = false;
@@ -163,7 +158,6 @@ document.getElementById('confirmCreate').addEventListener('click', async () => {
 			location.href = `tracker.html?team=${encodeURIComponent(newTeam.slug)}`;
 		}, 800);
 	} catch (err) {
-		console.error(err);
 		showToast(err.message || 'Failed to create team.');
 	} finally {
 		confirmBtn.textContent = originalText;
@@ -206,8 +200,7 @@ async function initTeamsPage() {
 			e.preventDefault();
 			openModal();
 		});
-	} catch (err) {
-		console.error('Failed to load teams:', err);
+	} catch {
 		showToast('Failed to load dashboard.');
 	}
 }

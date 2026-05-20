@@ -4,6 +4,7 @@ let teamCardTemplate;
 
 /**
  * Loads the team card markup from the shared HTML component file.
+ * @returns {Promise<HTMLTemplateElement>}
  */
 async function loadTeamCardTemplate() {
 	if (teamCardTemplate) return teamCardTemplate;
@@ -29,7 +30,7 @@ async function loadTeamCardTemplate() {
  */
 class TeamCard extends HTMLElement {
 	/**
-	 *
+	 * @returns {string[]}
 	 */
 	static get observedAttributes() {
 		return ['slug', 'name', 'mark', 'color', 'open', 'prog', 'done'];
@@ -37,9 +38,7 @@ class TeamCard extends HTMLElement {
 
 	#rendered = false;
 
-	/**
-	 *
-	 */
+	/** @returns {void} */
 	connectedCallback() {
 		if (this.#rendered) {
 			this.#update();
@@ -52,16 +51,12 @@ class TeamCard extends HTMLElement {
 		this.#update();
 	}
 
-	/**
-	 *
-	 */
+	/** @returns {void} */
 	attributeChangedCallback() {
 		if (this.#rendered) this.#update();
 	}
 
-	/**
-	 *
-	 */
+	/** @returns {void} */
 	#update() {
 		const slug = this.getAttribute('slug') ?? '';
 		const name = this.getAttribute('name') ?? '';

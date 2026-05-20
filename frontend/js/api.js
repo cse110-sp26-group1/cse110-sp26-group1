@@ -3,11 +3,11 @@ const API_BASE = '/api'; // Replace with your actual backend URL
 
 /**
  * Core request handler to manage headers, tokens, and errors globally.
- * * @param {string} endpoint - The API route (e.g., '/issues')
- * @param endpoint
- * @param {object} options - Fetch options (method, body, headers)
+ * @param {string} endpoint - The API route (e.g., '/issues')
+ * @param {RequestInit} [options] - Fetch options (method, body, headers)
+ * @returns {Promise<unknown|null>}
  */
-async function request(endpoint, options = {}) {
+export async function request(endpoint, options = {}) {
 	// Retrieve auth token if you are using JWT or similar token-based auth
 	const token = localStorage.getItem('allegro_token');
 
@@ -37,7 +37,7 @@ async function request(endpoint, options = {}) {
 			try {
 				const errorData = await response.json();
 				if (errorData.message) errorMessage = errorData.message;
-			} catch (e) {
+			} catch {
 				/* ignore JSON parse error on non-JSON error responses */
 			}
 
@@ -49,7 +49,6 @@ async function request(endpoint, options = {}) {
 
 		return await response.json();
 	} catch (error) {
-		console.error(`Network or Parse Error on ${endpoint}:`, error);
 		throw error; // Re-throw to let the UI handle the specific error state
 	}
 }

@@ -5,15 +5,15 @@
 
 :root {
 	/* surfaces */
-	--bg: #faf8f4;                           /* background color */
-	--surface: #ffffff;                      /* main surface color */
+	--bg: #faf8f4; /* background color */
+	--surface: #ffffff; /* main surface color */
 	--surface-2: #f5f2eb;
 	--surface-3: #ece8de;
 
 	/* ink */
-	--ink: #1a1a1a;                          /* main text color */
+	--ink: #1a1a1a; /* main text color */
 	--ink-2: #3d3a35;
-	--muted: #8a8478;                        /* muted text color */
+	--muted: #8a8478; /* muted text color */
 	--muted-2: #b5afa1;
 
 	/* lines */

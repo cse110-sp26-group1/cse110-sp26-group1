@@ -10,8 +10,8 @@ const signOutBtn = document.getElementById('signOutBtn');
 // Pages without the user menu (login, signup, etc.) skip setup entirely.
 if (userSwitch && userAvatar && userDropdown && signOutBtn) {
 	/**
-	 *
-	 * @param open
+	 * Toggles dropdown visibility and aria-expanded on the avatar.
+	 * @param {boolean} open - Whether the menu should be open.
 	 */
 	function setOpen(open) {
 		userDropdown.classList.toggle('open', open);

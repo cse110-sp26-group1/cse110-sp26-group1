@@ -501,9 +501,8 @@ confirmNewBtn.addEventListener('click', async () => {
 		renderList();
 		renderDetail();
 		showToast(`Created TKR-${newIssue.id}`);
-	} catch (err) {
-		console.error('Error creating issue:', err);
-		showToast('Failed to create issue. Check console.');
+	} catch {
+		showToast('Failed to create issue.');
 	} finally {
 		confirmNewBtn.textContent = originalText;
 		confirmNewBtn.disabled = false;
@@ -634,13 +633,7 @@ async function initTracker() {
 		const currentTeam = teams.find((t) => t.slug === teamSlug);
 
 		if (currentTeam) {
-			document.getElementById('teamLabel').textContent = currentTeam.name;
-			const mark = document.querySelector('.team-switch > .mark');
-			if (mark) {
-				mark.textContent = currentTeam.mark;
-				mark.style.background = `oklch(0.92 0.04 ${currentTeam.color})`;
-				mark.style.color = `oklch(0.4 0.12 ${currentTeam.color})`;
-			}
+			applyTeamFromUrl();
 		}
 
 		state.currentTeamId = currentTeam ? currentTeam.id : null;
@@ -653,8 +646,7 @@ async function initTracker() {
 
 		renderList();
 		renderDetail();
-	} catch (err) {
-		console.error('Initialization error:', err);
+	} catch {
 		showToast('Failed to load workspace data.');
 	}
 }
