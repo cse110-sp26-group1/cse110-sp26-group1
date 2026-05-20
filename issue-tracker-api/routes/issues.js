@@ -77,6 +77,21 @@ export async function handleIssues(request, env) {
 		const membership = await requireTeamMember(env, auth.userId, parsedTeamId);
 		if (membership.error) return membership.error;
 
+		// Point 2 Change: Mid-flight workspace membership validation when an assignment is requested during initialization
+		//Checks valid assigned member for new issue
+		let assignedTo = null;
+		if (body.assigned_to !== undefined && body.assigned_to !== null) {
+			assignedTo = Number(body.assigned_to);
+			if (!Number.isInteger(assignedTo) || assignedTo <= 0) {
+				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
+			}
+
+			const assigneeMembership = await requireTeamMember(env, assignedTo, parsedTeamId);
+			if (assigneeMembership.error) {
+				return Response.json({ error: 'Invalid assignment. Assignee must be an established member of the team.' }, { status: 400 });
+			}
+		}
+
 		const status = body.status?.trim();
 		const priority = body.priority?.trim();
 		const category = body.category?.trim();
@@ -101,9 +116,9 @@ export async function handleIssues(request, env) {
 				team_id, created_by, title, description, summary,
 				status, priority, category, tags, difficulty,
 				entry_point, error_type, error_message, stack_trace,
-				affected_files, created_at, updated_at
+				affected_files, assigned_to, created_at, updated_at
 			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`,
 		)
 			.bind(
@@ -122,6 +137,7 @@ export async function handleIssues(request, env) {
 				body.details?.error_message || null,
 				JSON.stringify(body.details?.stack_trace || []),
 				JSON.stringify(body.details?.affected_files || []),
+				assignedTo,
 				now,
 				now,
 			)
@@ -189,6 +205,14 @@ export async function handleIssues(request, env) {
 			assignedTo = Number(body.assigned_to);
 			if (!Number.isInteger(assignedTo) || assignedTo <= 0) {
 				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
+			}
+
+			// Point 2 Change: Mid-flight workspace membership validation when an assignment update is requested
+			//Checks if issue is assigned to member of same team before allowing assignment update; if not, returns a 400 error indicating invalid assignment. This ensures that issues cannot be assigned to users who are not part of the issue's team, maintaining data integrity and proper access control.
+			//Checks valid assigned member for issue update
+			const assigneeMembership = await requireTeamMember(env, assignedTo, issue.team_id);
+			if (assigneeMembership.error) {
+				return Response.json({ error: 'Invalid assignment. Assignee must be an established member of the team.' }, { status: 400 });
 			}
 		}
 
