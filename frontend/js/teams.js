@@ -1,4 +1,5 @@
 import { fetchTeams, fetchIssues, createTeam, acceptInvite } from './mock-api.js';
+import './components/team-card.js';
 
 const backdrop = document.getElementById('createBackdrop');
 const teamNameEl = document.getElementById('teamName');
@@ -181,37 +182,25 @@ async function initTeamsPage() {
 
 		const createBtnHtml = grid.querySelector('.team.new').outerHTML;
 
-		const teamsHtml = teams
-			.map((team) => {
-				const teamIssues = issues.filter((i) => i.team_id === team.id);
-				const openCount = teamIssues.filter((i) => i.status === 'open').length;
-				const progCount = teamIssues.filter((i) => i.status === 'in-progress').length;
-				const doneCount = teamIssues.filter((i) => i.status === 'done' || i.status === 'closed').length;
+		const teamCards = teams.map((team) => {
+			const teamIssues = issues.filter((i) => i.team_id === team.id);
+			const openCount = teamIssues.filter((i) => i.status === 'open').length;
+			const progCount = teamIssues.filter((i) => i.status === 'in-progress').length;
+			const doneCount = teamIssues.filter((i) => i.status === 'done' || i.status === 'closed').length;
 
-				return `
-                <a class="team" href="tracker.html?team=${team.slug}">
-                    <div class="team-head">
-                        <div class="team-mark" style="background: oklch(0.92 0.04 ${team.color}); color: oklch(0.4 0.12 ${team.color})">${team.mark}</div>
-                        <div>
-                            <h2>${team.name}</h2>
-                            <div class="slug">${team.slug}</div>
-                        </div>
-                    </div>
-                    <div class="stats">
-                        <div class="stat"><span class="n">${openCount}</span><span class="l">open</span></div>
-                        <div class="stat"><span class="n">${progCount}</span><span class="l">in prog</span></div>
-                        <div class="stat"><span class="n">${doneCount}</span><span class="l">done</span></div>
-                    </div>
-                    <div class="team-foot">
-                        <div class="members"><span class="avatar">AL</span></div>
-                        <span class="last-active">active recently</span>
-                    </div>
-                </a>
-            `;
-			})
-			.join('');
+			const card = document.createElement('team-card');
+			card.setAttribute('slug', team.slug);
+			card.setAttribute('name', team.name);
+			card.setAttribute('mark', team.mark);
+			card.setAttribute('color', String(team.color));
+			card.setAttribute('open', String(openCount));
+			card.setAttribute('prog', String(progCount));
+			card.setAttribute('done', String(doneCount));
+			return card;
+		});
 
-		grid.innerHTML = teamsHtml + createBtnHtml;
+		grid.replaceChildren(...teamCards);
+		grid.insertAdjacentHTML('beforeend', createBtnHtml);
 
 		document.getElementById('createTeam2').addEventListener('click', (e) => {
 			e.preventDefault();

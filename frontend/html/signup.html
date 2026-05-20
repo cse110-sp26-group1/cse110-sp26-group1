@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<title>Sign in - Allegro</title>
+		<title>Create account - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
 			try {
@@ -24,10 +24,21 @@
 					<span class="name">Allegro</span>
 				</div>
 
-				<h1 class="title">Welcome back</h1>
-				<p class="sub">Sign in to continue to your teams.</p>
+				<h1 class="title">Create your account</h1>
+				<p class="sub">A few details and you're in.</p>
 
 				<form id="authForm" novalidate>
+					<div class="row2">
+						<div class="field">
+							<label for="first">First name</label>
+							<input id="first" class="input" type="text" placeholder="Ada" autocomplete="given-name" required />
+						</div>
+						<div class="field">
+							<label for="last">Last name</label>
+							<input id="last" class="input" type="text" placeholder="Lovelace" autocomplete="family-name" required />
+						</div>
+					</div>
+
 					<div class="field">
 						<label for="email">Email</label>
 						<input id="email" class="input" type="email" placeholder="you@studio.dev" autocomplete="email" required />
@@ -35,19 +46,19 @@
 
 					<div class="field">
 						<label for="password">Password</label>
-						<input id="password" class="input" type="password" placeholder="••••••••" autocomplete="current-password" required />
+						<input id="password" class="input" type="password" placeholder="••••••••" autocomplete="new-password" required />
 					</div>
 
-					<button class="btn primary block" id="submitBtn" type="submit">Sign in</button>
+					<button class="btn primary block" id="submitBtn" type="submit">Create account</button>
 
 					<p class="auth-switch">
-						Don't have an account? <a href="signup.html">Create one</a>
+						Already have an account? <a href="login.html">Sign in</a>
 					</p>
 				</form>
 			</div>
 		</div>
 		<aside class="poster" aria-hidden="true"></aside>
 		<script src="../js/theme.js"></script>
-		<script type="module" src="../js/login.js"></script>
+		<script type="module" src="../js/signup.js"></script>
 	</body>
 </html>
