@@ -12,91 +12,91 @@ import { hashPassword, verifyPassword, sessionExpiresAt } from '../src/lib/auth.
  *   404 — route not matched
  */
 export async function handleAuth(request, env) {
-    const url = new URL(request.url);
-    const method = request.method;
+	const url = new URL(request.url);
+	const method = request.method;
 
-    // POST /auth/register
-    if (url.pathname === '/auth/register' && method === 'POST') {
-        const body = await request.json();
+	// POST /auth/register
+	if (url.pathname === '/auth/register' && method === 'POST') {
+		const body = await request.json();
 
-        if (!body.username || !body.email || !body.password || !body.first_name || !body.last_name) {
-            return Response.json({ error: 'username, email, password, first_name, and last_name are required' }, { status: 400 });
-        }
+		if (!body.username || !body.email || !body.password || !body.first_name || !body.last_name) {
+			return Response.json({ error: 'username, email, password, first_name, and last_name are required' }, { status: 400 });
+		}
 
-        if (
-            typeof body.username !== 'string' ||
-            typeof body.email !== 'string' ||
-            typeof body.first_name !== 'string' ||
-            typeof body.last_name !== 'string'
-        ) {
-            return Response.json({ error: 'Invalid field types' }, { status: 400 });
-        }
+		if (
+			typeof body.username !== 'string' ||
+			typeof body.email !== 'string' ||
+			typeof body.first_name !== 'string' ||
+			typeof body.last_name !== 'string'
+		) {
+			return Response.json({ error: 'Invalid field types' }, { status: 400 });
+		}
 
-        const username = body.username.trim();
-        const email = body.email.trim();
-        const firstName = body.first_name.trim();
-        const lastName = body.last_name.trim();
+		const username = body.username.trim();
+		const email = body.email.trim();
+		const firstName = body.first_name.trim();
+		const lastName = body.last_name.trim();
 
-        if (!username || !email || !firstName || !lastName) {
-            return Response.json({ error: 'Fields cannot be empty' }, { status: 400 });
-        }
+		if (!username || !email || !firstName || !lastName) {
+			return Response.json({ error: 'Fields cannot be empty' }, { status: 400 });
+		}
 
-        const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ? OR first_name = ? OR last_name = ?')
-            .bind(email, username, firstName, lastName)
-            .first();
+		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ? OR first_name = ? OR last_name = ?')
+			.bind(email, username, firstName, lastName)
+			.first();
 
-        if (existing) {
-            return Response.json({ error: 'Email, username, first name, or last name already in use' }, { status: 409 });
-        }
+		if (existing) {
+			return Response.json({ error: 'Email, username, first name, or last name already in use' }, { status: 409 });
+		}
 
-        const password_hash = await hashPassword(body.password);
-        const { success } = await env.DB.prepare(
-            'INSERT INTO users (username, first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?, ?)',
-        )
-            .bind(username, firstName, lastName, email, password_hash)
-            .run();
+		const password_hash = await hashPassword(body.password);
+		const { success } = await env.DB.prepare(
+			'INSERT INTO users (username, first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?, ?)',
+		)
+			.bind(username, firstName, lastName, email, password_hash)
+			.run();
 
-        return Response.json({ success }, { status: 201 });
-    }
+		return Response.json({ success }, { status: 201 });
+	}
 
-    // POST /auth/login
-    if (url.pathname === '/auth/login' && method === 'POST') {
-        const body = await request.json();
+	// POST /auth/login
+	if (url.pathname === '/auth/login' && method === 'POST') {
+		const body = await request.json();
 
-        if (!body.email || !body.password) {
-            return Response.json({ error: 'email and password are required' }, { status: 400 });
-        }
+		if (!body.email || !body.password) {
+			return Response.json({ error: 'email and password are required' }, { status: 400 });
+		}
 
-        const user = await env.DB.prepare('SELECT id, password_hash FROM users WHERE email = ?').bind(body.email).first();
+		const user = await env.DB.prepare('SELECT id, password_hash FROM users WHERE email = ?').bind(body.email).first();
 
-        if (!user || !(await verifyPassword(body.password, user.password_hash))) {
-            return Response.json({ error: 'Invalid email or password' }, { status: 401 });
-        }
+		if (!user || !(await verifyPassword(body.password, user.password_hash))) {
+			return Response.json({ error: 'Invalid email or password' }, { status: 401 });
+		}
 
-        const token = crypto.randomUUID();
-        const expires_at = sessionExpiresAt();
+		const token = crypto.randomUUID();
+		const expires_at = sessionExpiresAt();
 
-        await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(user.id, token, expires_at).run();
+		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(user.id, token, expires_at).run();
 
-        return Response.json({ token, expires_at });
-    }
+		return Response.json({ token, expires_at });
+	}
 
-    // POST /auth/logout
-    if (url.pathname === '/auth/logout' && method === 'POST') {
-        const header = request.headers.get('Authorization');
-        if (!header?.startsWith('Bearer ')) {
-            return Response.json({ error: 'No session provided' }, { status: 400 });
-        }
+	// POST /auth/logout
+	if (url.pathname === '/auth/logout' && method === 'POST') {
+		const header = request.headers.get('Authorization');
+		if (!header?.startsWith('Bearer ')) {
+			return Response.json({ error: 'No session provided' }, { status: 400 });
+		}
 
-        const token = header.slice(7);
-        const { meta } = await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
+		const token = header.slice(7);
+		const { meta } = await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
 
-        if (meta.changes === 0) {
-            return Response.json({ error: 'Invalid or already expired session' }, { status: 401 });
-        }
+		if (meta.changes === 0) {
+			return Response.json({ error: 'Invalid or already expired session' }, { status: 401 });
+		}
 
-        return Response.json({ success: true });
-    }
+		return Response.json({ success: true });
+	}
 
-    return Response.json({ error: 'Not Found' }, { status: 404 });
+	return Response.json({ error: 'Not Found' }, { status: 404 });
 }

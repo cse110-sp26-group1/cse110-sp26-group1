@@ -8,10 +8,10 @@ const API_BASE = 'https://issue-tracker-api.amorbuks25.workers.dev';
  * is missing, the user is immediately redirected to login.html.
  */
 export function requireAuth() {
-    if (!localStorage.getItem('allegro_token')) {
-        location.replace('login.html');
-    }
-    print('AUTH WENT THROUGH');
+	if (!localStorage.getItem('allegro_token')) {
+		location.replace('login.html');
+	}
+	print('AUTH WENT THROUGH');
 }
 
 /**
@@ -21,49 +21,49 @@ export function requireAuth() {
  * @returns {Promise<unknown|null>}
  */
 export async function request(endpoint, options = {}) {
-    // Retrieve auth token if you are using JWT or similar token-based auth
-    const token = localStorage.getItem('allegro_token');
+	// Retrieve auth token if you are using JWT or similar token-based auth
+	const token = localStorage.getItem('allegro_token');
 
-    const headers = { ...options.headers };
+	const headers = { ...options.headers };
 
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
+	if (token) {
+		headers['Authorization'] = `Bearer ${token}`;
+	}
 
-    // Only set Content-Type to application/json if we aren't sending FormData (files).
-    // If it is FormData, the browser needs to automatically set the multipart boundary.
-    if (!(options.body instanceof FormData) && !headers['Content-Type']) {
-        headers['Content-Type'] = 'application/json';
-    }
+	// Only set Content-Type to application/json if we aren't sending FormData (files).
+	// If it is FormData, the browser needs to automatically set the multipart boundary.
+	if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+		headers['Content-Type'] = 'application/json';
+	}
 
-    const config = {
-        ...options,
-        headers,
-    };
+	const config = {
+		...options,
+		headers,
+	};
 
-    try {
-        const response = await fetch(`${API_BASE}${endpoint}`, config);
+	try {
+		const response = await fetch(`${API_BASE}${endpoint}`, config);
 
-        if (!response.ok) {
-            // Try to parse server error messages if available
-            let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-            try {
-                const errorData = await response.json();
-                if (errorData.message) errorMessage = errorData.message;
-            } catch {
-                /* ignore JSON parse error on non-JSON error responses */
-            }
+		if (!response.ok) {
+			// Try to parse server error messages if available
+			let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+			try {
+				const errorData = await response.json();
+				if (errorData.message) errorMessage = errorData.message;
+			} catch {
+				/* ignore JSON parse error on non-JSON error responses */
+			}
 
-            throw new Error(errorMessage);
-        }
+			throw new Error(errorMessage);
+		}
 
-        // Handle 204 No Content or empty responses safely
-        if (response.status === 204) return null;
+		// Handle 204 No Content or empty responses safely
+		if (response.status === 204) return null;
 
-        return await response.json();
-    } catch (error) {
-        throw error; // Re-throw to let the UI handle the specific error state
-    }
+		return await response.json();
+	} catch (error) {
+		throw error; // Re-throw to let the UI handle the specific error state
+	}
 }
 
 /**
@@ -73,10 +73,10 @@ export async function request(endpoint, options = {}) {
  * @returns {Promise<{ token: string, user: object }>}
  */
 export async function login(email, password) {
-    return request('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-    });
+	return request('/auth/login', {
+		method: 'POST',
+		body: JSON.stringify({ email, password }),
+	});
 }
 
 /**
@@ -87,8 +87,8 @@ export async function login(email, password) {
  * @returns {Promise<{ success: boolean }>}
  */
 export async function createAccount(data) {
-    return request('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(data),
-    });
+	return request('/auth/register', {
+		method: 'POST',
+		body: JSON.stringify(data),
+	});
 }

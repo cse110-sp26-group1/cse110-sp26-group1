@@ -1,232 +1,232 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <title>Issues - Allegro</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <script>
-            try {
-                if (localStorage.getItem('theme') === 'dark') {
-                    document.documentElement.classList.add('dark');
-                }
-            } catch {
-                /* localStorage unavailable */
-            }
-        </script>
-        <link rel="stylesheet" href="../css/global.css" />
-        <link rel="stylesheet" href="../css/tracker.css" />
-    </head>
-    <body>
-        <!-- ============ TOP BAR ============ -->
-        <header class="topbar">
-            <div class="left">
-                <a href="teams.html" title="Back to teams"><div class="logo"></div></a>
-                <div class="crumbs">
-                    <a href="teams.html">Teams</a>
-                    <span class="sep">/</span>
-                </div>
-                <div class="team-switch" id="teamSwitch">
-                    <span class="mark">SA</span>
-                    <span id="teamLabel">Studio · AI Tools</span>
-                    <span class="chev">▾</span>
+	<head>
+		<meta charset="utf-8" />
+		<title>Issues - Allegro</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			try {
+				if (localStorage.getItem('theme') === 'dark') {
+					document.documentElement.classList.add('dark');
+				}
+			} catch {
+				/* localStorage unavailable */
+			}
+		</script>
+		<link rel="stylesheet" href="../css/global.css" />
+		<link rel="stylesheet" href="../css/tracker.css" />
+	</head>
+	<body>
+		<!-- ============ TOP BAR ============ -->
+		<header class="topbar">
+			<div class="left">
+				<a href="teams.html" title="Back to teams"><div class="logo"></div></a>
+				<div class="crumbs">
+					<a href="teams.html">Teams</a>
+					<span class="sep">/</span>
+				</div>
+				<div class="team-switch" id="teamSwitch">
+					<span class="mark">SA</span>
+					<span id="teamLabel">Studio · AI Tools</span>
+					<span class="chev">▾</span>
 
-                    <div class="team-menu" id="teamMenu">
-                        <div class="item active" data-slug="studio-ai">
-                            <span class="mark c1">SA</span>
-                            Studio · AI Tools
-                        </div>
-                        <div class="item" data-slug="group-eight">
-                            <span class="mark c2">G8</span>
-                            Group 8 · Capstone
-                        </div>
-                        <div class="item" data-slug="side-quest">
-                            <span class="mark c3">SQ</span>
-                            Side Quest
-                        </div>
-                        <div class="item" data-slug="hearth-os">
-                            <span class="mark c4">HO</span>
-                            Hearth OS
-                        </div>
-                        <div class="divider"></div>
-                        <div class="item" data-action="all-teams">
-                            <span class="mark all-teams-mark">+</span>
-                            All teams &amp; settings
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="right">
-                <div class="search-wrap">
-                    <input
-                        class="search-top"
-                        id="issueSearch"
-                        type="search"
-                        placeholder="Search issues, files…"
-                        autocomplete="off"
-                        aria-label="Search issues"
-                    />
-                    <button type="button" class="search-clear" id="issueSearchClear" aria-label="Clear search" hidden>
-                        <span aria-hidden="true">×</span>
-                    </button>
-                </div>
-                <button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
-                <!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
-                <div class="user-switch" id="userSwitch">
-                    <button
-                        type="button"
-                        class="avatar sm user-avatar"
-                        id="userAvatar"
-                        aria-haspopup="true"
-                        aria-expanded="false"
-                        title="Ada Lovelace"
-                    >
-                        AL
-                    </button>
-                    <div class="user-dropdown" id="userDropdown" role="menu">
-                        <button type="button" class="item" id="signOutBtn" role="menuitem">Sign out</button>
-                    </div>
-                </div>
-            </div>
-        </header>
+					<div class="team-menu" id="teamMenu">
+						<div class="item active" data-slug="studio-ai">
+							<span class="mark c1">SA</span>
+							Studio · AI Tools
+						</div>
+						<div class="item" data-slug="group-eight">
+							<span class="mark c2">G8</span>
+							Group 8 · Capstone
+						</div>
+						<div class="item" data-slug="side-quest">
+							<span class="mark c3">SQ</span>
+							Side Quest
+						</div>
+						<div class="item" data-slug="hearth-os">
+							<span class="mark c4">HO</span>
+							Hearth OS
+						</div>
+						<div class="divider"></div>
+						<div class="item" data-action="all-teams">
+							<span class="mark all-teams-mark">+</span>
+							All teams &amp; settings
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="right">
+				<div class="search-wrap">
+					<input
+						class="search-top"
+						id="issueSearch"
+						type="search"
+						placeholder="Search issues, files…"
+						autocomplete="off"
+						aria-label="Search issues"
+					/>
+					<button type="button" class="search-clear" id="issueSearchClear" aria-label="Clear search" hidden>
+						<span aria-hidden="true">×</span>
+					</button>
+				</div>
+				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
+				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
+				<div class="user-switch" id="userSwitch">
+					<button
+						type="button"
+						class="avatar sm user-avatar"
+						id="userAvatar"
+						aria-haspopup="true"
+						aria-expanded="false"
+						title="Ada Lovelace"
+					>
+						AL
+					</button>
+					<div class="user-dropdown" id="userDropdown" role="menu">
+						<button type="button" class="item" id="signOutBtn" role="menuitem">Sign out</button>
+					</div>
+				</div>
+			</div>
+		</header>
 
-        <!-- ============ APP ============ -->
-        <div class="app">
-            <!-- SIDEBAR -->
-            <aside class="sidebar">
-                <div class="nav-section">
-                    <div class="label"><span>Views</span></div>
-                    <div class="nav-item active"><span class="ic sq fill"></span> All issues <span class="count">23</span></div>
-                    <div class="nav-item"><span class="ic sq"></span> Assigned to me <span class="count">4</span></div>
-                    <div class="nav-item"><span class="ic sq"></span> Recently updated <span class="count">12</span></div>
-                </div>
+		<!-- ============ APP ============ -->
+		<div class="app">
+			<!-- SIDEBAR -->
+			<aside class="sidebar">
+				<div class="nav-section">
+					<div class="label"><span>Views</span></div>
+					<div class="nav-item active"><span class="ic sq fill"></span> All issues <span class="count">23</span></div>
+					<div class="nav-item"><span class="ic sq"></span> Assigned to me <span class="count">4</span></div>
+					<div class="nav-item"><span class="ic sq"></span> Recently updated <span class="count">12</span></div>
+				</div>
 
-                <div class="nav-section">
-                    <div class="label"><span>Status</span></div>
-                    <div class="nav-item"><span class="ic"></span> Open <span class="count">14</span></div>
-                    <div class="nav-item"><span class="ic fill"></span> In progress <span class="count">3</span></div>
-                    <div class="nav-item"><span class="ic"></span> Done <span class="count">6</span></div>
-                </div>
+				<div class="nav-section">
+					<div class="label"><span>Status</span></div>
+					<div class="nav-item"><span class="ic"></span> Open <span class="count">14</span></div>
+					<div class="nav-item"><span class="ic fill"></span> In progress <span class="count">3</span></div>
+					<div class="nav-item"><span class="ic"></span> Done <span class="count">6</span></div>
+				</div>
 
-                <div class="nav-section">
-                    <div class="label"><span>Priority</span></div>
-                    <div class="nav-item pri-urgent"><span class="ic dot"></span> Urgent <span class="count">1</span></div>
-                    <div class="nav-item pri-high"><span class="ic dot"></span> High <span class="count">3</span></div>
-                    <div class="nav-item pri-med"><span class="ic dot"></span> Medium <span class="count">11</span></div>
-                    <div class="nav-item pri-low"><span class="ic dot"></span> Low <span class="count">8</span></div>
-                </div>
+				<div class="nav-section">
+					<div class="label"><span>Priority</span></div>
+					<div class="nav-item pri-urgent"><span class="ic dot"></span> Urgent <span class="count">1</span></div>
+					<div class="nav-item pri-high"><span class="ic dot"></span> High <span class="count">3</span></div>
+					<div class="nav-item pri-med"><span class="ic dot"></span> Medium <span class="count">11</span></div>
+					<div class="nav-item pri-low"><span class="ic dot"></span> Low <span class="count">8</span></div>
+				</div>
 
-                <div class="nav-section">
-                    <div class="label"><span>Tags</span></div>
-                    <div class="nav-item"><span class="ic dot label-bug"></span> bug <span class="count">9</span></div>
-                    <div class="nav-item"><span class="ic dot label-ui"></span> ui <span class="count">7</span></div>
-                    <div class="nav-item"><span class="ic dot label-infra"></span> infra <span class="count">5</span></div>
-                    <div class="nav-item"><span class="ic dot label-auth"></span> auth <span class="count">3</span></div>
-                    <div class="nav-item"><span class="ic dot label-perf"></span> perf <span class="count">2</span></div>
-                </div>
+				<div class="nav-section">
+					<div class="label"><span>Tags</span></div>
+					<div class="nav-item"><span class="ic dot label-bug"></span> bug <span class="count">9</span></div>
+					<div class="nav-item"><span class="ic dot label-ui"></span> ui <span class="count">7</span></div>
+					<div class="nav-item"><span class="ic dot label-infra"></span> infra <span class="count">5</span></div>
+					<div class="nav-item"><span class="ic dot label-auth"></span> auth <span class="count">3</span></div>
+					<div class="nav-item"><span class="ic dot label-perf"></span> perf <span class="count">2</span></div>
+				</div>
 
-                <div class="nav-section">
-                    <div class="label"><span>Team</span></div>
-                    <div class="members">
-                        <div class="avatar">AL</div>
-                        <div class="avatar">JK</div>
-                        <div class="avatar">MN</div>
-                        <div class="avatar">BS</div>
-                    </div>
-                </div>
+				<div class="nav-section">
+					<div class="label"><span>Team</span></div>
+					<div class="members">
+						<div class="avatar">AL</div>
+						<div class="avatar">JK</div>
+						<div class="avatar">MN</div>
+						<div class="avatar">BS</div>
+					</div>
+				</div>
 
-                <div class="skill-card">
-                    <div class="ic-md">.md</div>
-                    <h4>skills.md</h4>
-                    <p>Drop into your agent's context so it can read &amp; update issues here.</p>
-                    <button class="btn" id="downloadSkills">↓ Download</button>
-                </div>
-            </aside>
+				<div class="skill-card">
+					<div class="ic-md">.md</div>
+					<h4>skills.md</h4>
+					<p>Drop into your agent's context so it can read &amp; update issues here.</p>
+					<button class="btn" id="downloadSkills">↓ Download</button>
+				</div>
+			</aside>
 
-            <!-- CONTENT -->
-            <section class="content" id="content">
-                <!-- LIST -->
-                <div class="list-pane">
-                    <div class="list-head">
-                        <h1>All issues <span class="count" id="totalCount">23</span></h1>
-                        <div class="actions">
-                            <button class="btn" id="toggleDetail" title="Toggle detail pane">⇆ Detail</button>
-                            <button class="btn primary" id="newIssue">+ New issue</button>
-                        </div>
-                    </div>
+			<!-- CONTENT -->
+			<section class="content" id="content">
+				<!-- LIST -->
+				<div class="list-pane">
+					<div class="list-head">
+						<h1>All issues <span class="count" id="totalCount">23</span></h1>
+						<div class="actions">
+							<button class="btn" id="toggleDetail" title="Toggle detail pane">⇆ Detail</button>
+							<button class="btn primary" id="newIssue">+ New issue</button>
+						</div>
+					</div>
 
-                    <div class="filter-bar">
-                        <div class="filter-group">
-                            <span class="label">Sort</span>
-                            <button class="sort-btn on" data-sort="priority">priority <span class="arrow">↓</span></button>
-                            <button class="sort-btn" data-sort="updated">updated</button>
-                            <button class="sort-btn" data-sort="difficulty">difficulty</button>
-                        </div>
-                        <div class="filter-divider"></div>
-                        <!-- Tags: Do we need this ? -->
-                        <div class="filter-group">
-                            <span class="label">Tags</span>
-                            <button class="chip-btn on" data-tag="all">all</button>
-                            <button class="chip-btn" data-tag="bug">bug</button>
-                            <button class="chip-btn" data-tag="ui">ui</button>
-                            <button class="chip-btn" data-tag="infra">infra</button>
-                            <button class="chip-btn" data-tag="auth">auth</button>
-                            <button class="chip-btn" data-tag="perf">perf</button>
-                        </div>
-                    </div>
+					<div class="filter-bar">
+						<div class="filter-group">
+							<span class="label">Sort</span>
+							<button class="sort-btn on" data-sort="priority">priority <span class="arrow">↓</span></button>
+							<button class="sort-btn" data-sort="updated">updated</button>
+							<button class="sort-btn" data-sort="difficulty">difficulty</button>
+						</div>
+						<div class="filter-divider"></div>
+						<!-- Tags: Do we need this ? -->
+						<div class="filter-group">
+							<span class="label">Tags</span>
+							<button class="chip-btn on" data-tag="all">all</button>
+							<button class="chip-btn" data-tag="bug">bug</button>
+							<button class="chip-btn" data-tag="ui">ui</button>
+							<button class="chip-btn" data-tag="infra">infra</button>
+							<button class="chip-btn" data-tag="auth">auth</button>
+							<button class="chip-btn" data-tag="perf">perf</button>
+						</div>
+					</div>
 
-                    <div class="list" id="issueList">
-                        <!-- groups + rows are JS-rendered -->
-                    </div>
-                </div>
+					<div class="list" id="issueList">
+						<!-- groups + rows are JS-rendered -->
+					</div>
+				</div>
 
-                <!-- DIVIDER -->
-                <div class="divider" id="divider"></div>
+				<!-- DIVIDER -->
+				<div class="divider" id="divider"></div>
 
-                <!-- DETAIL -->
-                <div class="detail" id="detail">
-                    <!-- JS-rendered -->
-                </div>
-            </section>
-        </div>
+				<!-- DETAIL -->
+				<div class="detail" id="detail">
+					<!-- JS-rendered -->
+				</div>
+			</section>
+		</div>
 
-        <!-- ============ CREATE ISSUE MODAL ============ -->
-        <div class="backdrop" id="newBackdrop">
-            <div class="modal">
-                <div class="modal-head">
-                    <h3>New issue</h3>
-                    <p>Describe what's broken — we'll fill in the rest.</p>
-                </div>
-                <div class="modal-body">
-                    <div class="field">
-                        <label>Title <span class="req">*</span></label>
-                        <input class="input" id="nTitle" placeholder="One short line — what's wrong?" />
-                    </div>
-                    <div class="field">
-                        <label>Description <span class="req">*</span></label>
-                        <textarea class="textarea" id="nDesc" placeholder="Steps to reproduce · what you expected · what actually happened"></textarea>
-                    </div>
-                    <div class="field">
-                        <label>Error logs &amp; traces <span class="optional-label">(optional)</span></label>
-                        <div class="dropzone" id="dropzone">
-                            Drop files here or <span class="browse">browse</span>
-                            <span class="small">.log · .txt · .json · screenshots</span>
-                            <input type="file" id="fileInput" multiple hidden />
-                        </div>
-                        <div class="file-list" id="fileList"></div>
-                    </div>
-                </div>
-                <div class="modal-foot">
-                    <button class="btn" id="cancelNew">Cancel</button>
-                    <button class="btn primary" id="confirmNew">Create issue</button>
-                </div>
-            </div>
-        </div>
+		<!-- ============ CREATE ISSUE MODAL ============ -->
+		<div class="backdrop" id="newBackdrop">
+			<div class="modal">
+				<div class="modal-head">
+					<h3>New issue</h3>
+					<p>Describe what's broken — we'll fill in the rest.</p>
+				</div>
+				<div class="modal-body">
+					<div class="field">
+						<label>Title <span class="req">*</span></label>
+						<input class="input" id="nTitle" placeholder="One short line — what's wrong?" />
+					</div>
+					<div class="field">
+						<label>Description <span class="req">*</span></label>
+						<textarea class="textarea" id="nDesc" placeholder="Steps to reproduce · what you expected · what actually happened"></textarea>
+					</div>
+					<div class="field">
+						<label>Error logs &amp; traces <span class="optional-label">(optional)</span></label>
+						<div class="dropzone" id="dropzone">
+							Drop files here or <span class="browse">browse</span>
+							<span class="small">.log · .txt · .json · screenshots</span>
+							<input type="file" id="fileInput" multiple hidden />
+						</div>
+						<div class="file-list" id="fileList"></div>
+					</div>
+				</div>
+				<div class="modal-foot">
+					<button class="btn" id="cancelNew">Cancel</button>
+					<button class="btn primary" id="confirmNew">Create issue</button>
+				</div>
+			</div>
+		</div>
 
-        <div class="toast" id="toast"></div>
+		<div class="toast" id="toast"></div>
 
-        <script src="../js/theme.js"></script>
-        <!-- Shared topbar user menu (avatar dropdown, sign out) -->
-        <script src="../js/user-menu.js"></script>
-        <script type="module" src="../js/tracker.js"></script>
-    </body>
+		<script src="../js/theme.js"></script>
+		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
+		<script src="../js/user-menu.js"></script>
+		<script type="module" src="../js/tracker.js"></script>
+	</body>
 </html>

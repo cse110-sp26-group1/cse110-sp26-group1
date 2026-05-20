@@ -9,15 +9,15 @@ const SESSION_TTL_HOURS = 24;
  * @returns {Promise<string>} A colon-separated hex string: `"<saltHex>:<hashHex>"`.
  */
 export async function hashPassword(password) {
-    const enc = new TextEncoder();
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-    const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' }, key, 256);
-    const toHex = (buf) =>
-        Array.from(new Uint8Array(buf))
-            .map((b) => b.toString(16).padStart(2, '0'))
-            .join('');
-    return `${toHex(salt)}:${toHex(hash)}`;
+	const enc = new TextEncoder();
+	const salt = crypto.getRandomValues(new Uint8Array(16));
+	const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+	const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' }, key, 256);
+	const toHex = (buf) =>
+		Array.from(new Uint8Array(buf))
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('');
+	return `${toHex(salt)}:${toHex(hash)}`;
 }
 
 /**
@@ -27,15 +27,15 @@ export async function hashPassword(password) {
  * @returns {Promise<boolean>} `true` if the password matches, `false` otherwise.
  */
 export async function verifyPassword(password, stored) {
-    const [saltHex, hashHex] = stored.split(':');
-    const salt = new Uint8Array(saltHex.match(/.{2}/g).map((b) => parseInt(b, 16)));
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-    const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' }, key, 256);
-    const computed = Array.from(new Uint8Array(hash))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
-    return computed === hashHex;
+	const [saltHex, hashHex] = stored.split(':');
+	const salt = new Uint8Array(saltHex.match(/.{2}/g).map((b) => parseInt(b, 16)));
+	const enc = new TextEncoder();
+	const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+	const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' }, key, 256);
+	const computed = Array.from(new Uint8Array(hash))
+		.map((b) => b.toString(16).padStart(2, '0'))
+		.join('');
+	return computed === hashHex;
 }
 
 // ----- Session middleware -----
@@ -48,23 +48,23 @@ export async function verifyPassword(password, stored) {
  * @returns {Promise<{ userId: number } | { error: Response }>}
  */
 export async function requireAuth(request, env) {
-    const header = request.headers.get('Authorization');
-    if (!header?.startsWith('Bearer ')) {
-        return { error: Response.json({ error: 'Unauthorized' }, { status: 401 }) };
-    }
+	const header = request.headers.get('Authorization');
+	if (!header?.startsWith('Bearer ')) {
+		return { error: Response.json({ error: 'Unauthorized' }, { status: 401 }) };
+	}
 
-    const token = header.slice(7);
-    const session = await env.DB.prepare('SELECT user_id, expires_at FROM sessions WHERE token = ?').bind(token).first();
+	const token = header.slice(7);
+	const session = await env.DB.prepare('SELECT user_id, expires_at FROM sessions WHERE token = ?').bind(token).first();
 
-    if (!session) {
-        return { error: Response.json({ error: 'Invalid session' }, { status: 401 }) };
-    }
-    if (new Date(session.expires_at) < new Date()) {
-        await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
-        return { error: Response.json({ error: 'Session expired' }, { status: 401 }) };
-    }
+	if (!session) {
+		return { error: Response.json({ error: 'Invalid session' }, { status: 401 }) };
+	}
+	if (new Date(session.expires_at) < new Date()) {
+		await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
+		return { error: Response.json({ error: 'Session expired' }, { status: 401 }) };
+	}
 
-    return { userId: session.user_id };
+	return { userId: session.user_id };
 }
 
 /**
@@ -72,7 +72,7 @@ export async function requireAuth(request, env) {
  * @returns {string} UTC ISO string for the session expiry time.
  */
 export function sessionExpiresAt() {
-    const d = new Date();
-    d.setHours(d.getHours() + SESSION_TTL_HOURS);
-    return d.toISOString();
+	const d = new Date();
+	d.setHours(d.getHours() + SESSION_TTL_HOURS);
+	return d.toISOString();
 }
