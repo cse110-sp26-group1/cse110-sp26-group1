@@ -146,18 +146,42 @@ export async function handleIssues(request, env) {
 
 		const body = await request.json();
 
-		if (!body.status && !body.priority && !body.assigned_to) {
+		// Check if at least one valid mutable column is supplied in the request payload
+		//Checks if any of the allowed fields are present in the request body for update; if not, returns a 400 error indicating no valid fields were provided. This prevents empty or irrelevant PATCH requests that don't specify any updatable fields.
+		const hasValidField =
+			body.title !== undefined ||
+			body.description !== undefined ||
+			body.summary !== undefined ||
+			body.status !== undefined ||
+			body.priority !== undefined ||
+			body.category !== undefined ||
+			body.difficulty !== undefined ||
+			body.tags !== undefined ||
+			body.assigned_to !== undefined;
+
+		if (!hasValidField) {
 			return Response.json({ error: 'No valid fields provided' }, { status: 400 });
+		}
+
+		// Validation rules for Point 1
+		if (body.title !== undefined) {
+			if (typeof body.title !== 'string' || body.title.trim() === '') {
+				return Response.json({ error: 'Invalid title format. Must be a non-empty string.' }, { status: 400 });
+			}
 		}
 
 		const status = body.status?.trim();
 		const priority = body.priority?.trim();
+		const category = body.category?.trim();
 
 		if (status && !ISSUE_STATUSES.includes(status)) {
 			return Response.json({ error: 'Invalid status value' }, { status: 400 });
 		}
 		if (priority && !ISSUE_PRIORITIES.includes(priority)) {
 			return Response.json({ error: 'Invalid priority value' }, { status: 400 });
+		}
+		if (category && !ALLOWED_CATEGORIES.includes(category)) {
+			return Response.json({ error: `Invalid category. Must be one of: ${ALLOWED_CATEGORIES.join(', ')}` }, { status: 400 });
 		}
 
 		let assignedTo = null;
@@ -168,19 +192,46 @@ export async function handleIssues(request, env) {
 			}
 		}
 
+		// Prepare bindings for text/JSON items following original database fallback conventions
+		const title = body.title?.trim() || null;
+		const description = body.description || null;
+		const summary = body.summary || null;
+		const difficulty = body.difficulty || null;
+		const tags = body.tags !== undefined ? JSON.stringify(body.tags) : null;
+
+		// System timestamp is generated server-side; body overrides are completely ignored
 		const now = new Date().toISOString();
 
+		//manual updates to all columns except updated_at follows system update (not manual)
 		const { success } = await env.DB.prepare(
 			`
 			UPDATE issues SET
+				title = COALESCE(?, title),
+				description = COALESCE(?, description),
+				summary = COALESCE(?, summary),
 				status = COALESCE(?, status),
 				priority = COALESCE(?, priority),
+				category = COALESCE(?, category),
+				difficulty = COALESCE(?, difficulty),
+				tags = COALESCE(?, tags),
 				assigned_to = COALESCE(?, assigned_to),
 				updated_at = ?
 			WHERE id = ?
 			`,
 		)
-			.bind(status || null, priority || null, assignedTo, now, Number(issueId))
+			.bind(
+				title,
+				description,
+				summary,
+				status || null,
+				priority || null,
+				category || null,
+				difficulty,
+				tags,
+				assignedTo,
+				now,
+				Number(issueId),
+			)
 			.run();
 
 		return Response.json({ success });
