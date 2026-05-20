@@ -104,17 +104,32 @@ export async function handleInvites(request, env) {
 	}
 
 	// POST /invites
-	// Creates an invite using team_id and invited_user_id from the body.
-	// The inviter is always auth.userId, so users cannot spoof who sent it.
-	// This is the generic route for when the frontend is not already scoped to
-	// a specific team page.
 	if (url.pathname === '/invites' && method === 'POST') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
 
 		const body = await request.json();
 
-		return createInvite(env, auth.userId, body.team_id, body.invited_user_id);
+		// Resolve invited_user_id from username or email if not provided directly
+		let invitedUserId = body.invited_user_id;
+
+		if (!invitedUserId) {
+			if (!body.username && !body.email) {
+				return Response.json({ error: 'invited_user_id, username, or email is required' }, { status: 400 });
+			}
+
+			const lookup = body.username
+				? await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(body.username.trim()).first()
+				: await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(body.email.trim().toLowerCase()).first();
+
+			if (!lookup) {
+				return Response.json({ error: 'User not found' }, { status: 404 });
+			}
+
+			invitedUserId = lookup.id;
+		}
+
+		return createInvite(env, auth.userId, body.team_id, invitedUserId);
 	}
 
 	// PATCH /invites/:id/accept
@@ -267,9 +282,6 @@ export async function handleInvites(request, env) {
 	}
 
 	// POST /teams/:teamId/invite
-	// Alternate invite route for when the frontend is already inside a team page.
-	// Example use case: the admin is on a team settings page and clicks "Invite member."
-	// teamId comes from the URL, while invited_user_id comes from the body.
 	if (url.pathname.startsWith('/teams/') && url.pathname.endsWith('/invite') && method === 'POST') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
@@ -277,7 +289,25 @@ export async function handleInvites(request, env) {
 		const teamId = pathParts[2];
 		const body = await request.json();
 
-		return createInvite(env, auth.userId, teamId, body.invited_user_id);
+		let invitedUserId = body.invited_user_id;
+
+		if (!invitedUserId) {
+			if (!body.username && !body.email) {
+				return Response.json({ error: 'invited_user_id, username, or email is required' }, { status: 400 });
+			}
+
+			const lookup = body.username
+				? await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(body.username.trim()).first()
+				: await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(body.email.trim().toLowerCase()).first();
+
+			if (!lookup) {
+				return Response.json({ error: 'User not found' }, { status: 404 });
+			}
+
+			invitedUserId = lookup.id;
+		}
+
+		return createInvite(env, auth.userId, teamId, invitedUserId);
 	}
 
 	return Response.json({ error: 'Not Found' }, { status: 404 });

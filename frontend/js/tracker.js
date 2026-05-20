@@ -1,6 +1,7 @@
 import { PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './constants.js';
-import { fetchIssues, fetchTeams, createIssue, updateIssue } from './mock-api.js';
-import { requireAuth } from './api.js';
+
+import { fetchIssues, createIssue, updateIssue } from './mock-api.js';
+import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
 
@@ -13,9 +14,70 @@ const state = {
 	detailOpen: true,
 	teams: [],
 	currentTeamId: null,
+	teamMembers: [],
 };
 
 let ISSUES = [];
+
+const inviteBackdrop = document.getElementById('inviteBackdrop');
+const confirmInviteBtn = document.getElementById('confirmInvite');
+const inviteInput = document.getElementById('inviteInput');
+const openInviteModalBtn = document.getElementById('openInviteModal');
+
+// helpers for invite listeners below
+/**
+ *
+ */
+function openInvite() {
+	if (!state.currentTeamId) {
+		showToast('No active team selected.');
+		return;
+	}
+	inviteBackdrop.classList.add('open');
+	setTimeout(() => inviteInput.focus(), 30);
+}
+
+/**
+ *
+ */
+function closeInvite() {
+	inviteBackdrop.classList.remove('open');
+	inviteInput.value = '';
+}
+
+if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
+
+document.getElementById('cancelInvite').addEventListener('click', closeInvite);
+
+inviteBackdrop.addEventListener('click', (e) => {
+	if (e.target === inviteBackdrop) closeInvite();
+});
+
+confirmInviteBtn.addEventListener('click', async () => {
+	const val = inviteInput.value.trim();
+	if (!val) {
+		inviteInput.focus();
+		return;
+	}
+
+	const isEmail = val.includes('@');
+	const payload = isEmail ? { email: val } : { username: val };
+
+	const originalText = confirmInviteBtn.textContent;
+	confirmInviteBtn.textContent = 'Sending...';
+	confirmInviteBtn.disabled = true;
+
+	try {
+		await inviteToTeam(state.currentTeamId, payload);
+		showToast(`Invitation sent to ${val}`);
+		closeInvite();
+	} catch (err) {
+		showToast(err.message || 'Failed to send invite.');
+	} finally {
+		confirmInviteBtn.textContent = originalText;
+		confirmInviteBtn.disabled = false;
+	}
+});
 
 /**
  *
@@ -113,17 +175,23 @@ function renderList() {
  */
 function renderTeamMenu() {
 	const teamMenu = document.getElementById('teamMenu');
-	const currentSlug = new URLSearchParams(location.search).get('team');
+
+	const currentId = Number(new URLSearchParams(location.search).get('team_id'));
 
 	const itemsHtml = state.teams
-		.map(
-			(t) => `
-        <div class="item ${t.slug === currentSlug ? 'active' : ''}" data-slug="${t.slug}">
-            <span class="mark" style="background: oklch(0.92 0.04 ${t.color}); color: oklch(0.4 0.12 ${t.color})">${t.mark}</span>
-            ${t.name}
-        </div>
-    `,
-		)
+		.map((t) => {
+			const words = t.team_name.trim().split(' ');
+			const mark = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : t.team_name.substring(0, 2).toUpperCase();
+
+			const isActive = t.id === currentId ? 'active' : '';
+
+			return `
+            <div class="item ${isActive}" data-id="${t.id}">
+                <span class="mark c1">${mark}</span>
+                ${t.team_name}
+            </div>
+        `;
+		})
 		.join('');
 
 	teamMenu.innerHTML = `
@@ -135,14 +203,50 @@ function renderTeamMenu() {
         </div>
     `;
 
-	teamMenu.querySelectorAll('.item[data-slug]').forEach((it) => {
+	teamMenu.querySelectorAll('.item[data-id]').forEach((it) => {
 		it.addEventListener('click', () => {
-			const slug = it.dataset.slug;
-			window.location.href = `tracker.html?team=${slug}`;
+			const id = it.dataset.id;
+			window.location.href = `tracker.html?team_id=${id}`;
 		});
 	});
 
 	teamMenu.querySelector('[data-action="all-teams"]').addEventListener('click', () => (location.href = 'teams.html'));
+}
+
+/**
+ * Renders the team members avatars in the sidebar based on real API data
+ */
+/**
+ * Renders the team members avatars in the sidebar based on real API data
+ */
+function renderTeamMembers() {
+	const membersContainer = document.querySelector('.sidebar .members');
+	if (!membersContainer) return;
+
+	if (!state.teamMembers || state.teamMembers.length === 0) {
+		membersContainer.innerHTML = '';
+		return;
+	}
+
+	const membersHtml = state.teamMembers
+		.map((member) => {
+			let initials = '??';
+
+			// safe check since API was not updated during tests
+			if (member.first_name && member.last_name) {
+				initials = (member.first_name.charAt(0) + member.last_name.charAt(0)).toUpperCase();
+			} else {
+				const identifier = member.username || member.email || '??';
+				initials = identifier.substring(0, 2).toUpperCase();
+			}
+
+			const displayName = member.first_name && member.last_name ? `${member.first_name} ${member.last_name}` : member.username;
+
+			return `<div class="avatar" title="${displayName} (${member.role})">${initials}</div>`;
+		})
+		.join('');
+
+	membersContainer.innerHTML = membersHtml;
 }
 
 /**
@@ -338,25 +442,6 @@ teamSwitch.addEventListener('click', (e) => {
 });
 document.addEventListener('click', () => teamMenu.classList.remove('open'));
 teamMenu.addEventListener('click', (e) => e.stopPropagation());
-teamMenu.querySelectorAll('.item[data-slug]').forEach((it) => {
-	it.addEventListener('click', () => {
-		const slug = it.dataset.slug;
-		const t = state.teams.find((team) => team.slug === slug);
-		if (!t) return;
-
-		teamMenu.querySelectorAll('.item').forEach((x) => x.classList.remove('active'));
-		it.classList.add('active');
-		document.getElementById('teamLabel').textContent = t.name;
-		const mark = document.querySelector('.team-switch > .mark');
-		mark.textContent = t.mark;
-		mark.style.background = `oklch(0.92 0.04 ${t.color})`;
-		mark.style.color = `oklch(0.4 0.12 ${t.color})`;
-		teamMenu.classList.remove('open');
-		showToast(`Switched to ${t.name}`);
-	});
-});
-const allTeamsItem = teamMenu.querySelector('[data-action="all-teams"]');
-if (allTeamsItem) allTeamsItem.addEventListener('click', () => (location.href = 'teams.html'));
 
 // ============================================================
 // DETAIL TOGGLE
@@ -543,6 +628,7 @@ document.addEventListener('keydown', (e) => {
 	if (e.target.matches('input, textarea')) return;
 	if (e.key === 'Escape') {
 		if (newBackdrop.classList.contains('open')) closeNew();
+		if (inviteBackdrop.classList.contains('open')) closeInvite();
 		teamMenu.classList.remove('open');
 	}
 	if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
@@ -612,15 +698,14 @@ detailEl.addEventListener('click', async (e) => {
 // ============================================================
 // INIT
 // ============================================================
+
 /**
  *
  */
-// At the top of tracker.js, ensure you are importing fetchTeams:
-// import { fetchIssues, fetchTeams, createIssue, updateIssue } from './mock-api.js';
-
 async function initTracker() {
 	const qs = new URLSearchParams(location.search);
-	const teamSlug = qs.get('team');
+	const teamIdParam = qs.get('team_id');
+	const teamId = teamIdParam ? Number(teamIdParam) : null;
 
 	try {
 		const teams = await fetchTeams();
@@ -628,20 +713,36 @@ async function initTracker() {
 
 		renderTeamMenu();
 
-		const currentTeam = teams.find((t) => t.slug === teamSlug);
+		const currentTeam = teams.find((t) => t.id === teamId);
 
 		if (currentTeam) {
-			applyTeamFromUrl();
+			document.getElementById('teamLabel').textContent = currentTeam.team_name;
+			const markEl = document.querySelector('.team-switch > .mark');
+			const words = currentTeam.team_name.trim().split(' ');
+			markEl.textContent =
+				words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : currentTeam.team_name.substring(0, 2).toUpperCase();
 		}
 
 		state.currentTeamId = currentTeam ? currentTeam.id : null;
 
-		ISSUES = await fetchIssues(state.currentTeamId);
+		if (state.currentTeamId) {
+			const [fetchedIssues, fetchedMembers] = await Promise.all([
+				fetchIssues(state.currentTeamId),
+				fetchTeamMembers(state.currentTeamId).catch(() => []),
+			]);
+
+			ISSUES = fetchedIssues;
+			state.teamMembers = fetchedMembers;
+		} else {
+			ISSUES = [];
+			state.teamMembers = [];
+		}
 
 		if (ISSUES.length > 0 && !ISSUES.find((i) => i.id === state.selected)) {
 			state.selected = ISSUES[0].id;
 		}
 
+		renderTeamMembers();
 		renderList();
 		renderDetail();
 	} catch {
