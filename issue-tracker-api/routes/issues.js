@@ -6,7 +6,7 @@ const ISSUE_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 const ALLOWED_CATEGORIES = ['Bug', 'Feature', 'Task'];
 
 /**
- * Handles all /issues routes: GET (list by team), POST (create), PATCH (update), DELETE (remove).
+ * Handles all /issues routes: GET (list by team or view single), POST (create), PATCH (update), DELETE (remove).
  * @param {Request} request
  * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
  */
@@ -107,6 +107,33 @@ export async function handleIssues(request, env) {
 			stack_trace: JSON.parse(row.stack_trace || '[]'),
 			affected_files: JSON.parse(row.affected_files || '[]'),
 		}));
+
+		return Response.json(formatted);
+	}
+
+	// GET /issues/:id
+	if (method === 'GET' && issueId) {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		// Fetch the requested single issue from the database
+		const issue = await env.DB.prepare('SELECT * FROM issues WHERE id = ?').bind(Number(issueId)).first();
+
+		if (!issue) {
+			return Response.json({ error: 'Issue not found' }, { status: 404 });
+		}
+
+		// Ensure multi-tenant boundaries: requestor must be a member of the team the issue belongs to
+		const membership = await requireTeamMember(env, auth.userId, issue.team_id);
+		if (membership.error) return membership.error;
+
+		// Parse stringified JSON fields back into proper arrays/objects to match the list output schema conventions
+		const formatted = {
+			...issue,
+			tags: JSON.parse(issue.tags || '[]'),
+			stack_trace: JSON.parse(issue.stack_trace || '[]'),
+			affected_files: JSON.parse(issue.affected_files || '[]'),
+		};
 
 		return Response.json(formatted);
 	}
