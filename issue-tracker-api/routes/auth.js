@@ -41,9 +41,7 @@ export async function handleAuth(request, env) {
 			return Response.json({ error: 'Fields cannot be empty' }, { status: 400 });
 		}
 
-		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?')
-			.bind(email, username)
-			.first();
+		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?').bind(email, username).first();
 
 		if (existing) {
 			return Response.json({ error: 'Email or username is already in use' }, { status: 409 });
