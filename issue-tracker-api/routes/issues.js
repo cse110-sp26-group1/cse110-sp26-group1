@@ -81,6 +81,22 @@ export async function handleIssues(request, env) {
 			bindings.push(difficultyParam);
 		}
 
+		// Point 5 Change: Support optional sort_by and order parameters (Urgency Sorting Context)
+		// Instead of a native weighted SQL clause, standard columns can be sorted dynamically following updated context rules.
+		const sortBy = url.searchParams.get('sort_by');
+		const order = url.searchParams.get('order');
+
+		if (sortBy) {
+			const allowedSortColumns = ['id', 'title', 'status', 'priority', 'category', 'difficulty', 'created_at', 'updated_at', 'assigned_to'];
+			if (allowedSortColumns.includes(sortBy)) {
+				let direction = 'ASC';
+				if (order && order.toLowerCase() === 'desc') {
+					direction = 'DESC';
+				}
+				query += ` ORDER BY ${sortBy} ${direction}`;
+			}
+		}
+
 		const { results } = await env.DB.prepare(query)
 			.bind(...bindings)
 			.all();
