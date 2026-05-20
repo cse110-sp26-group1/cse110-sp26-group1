@@ -1,4 +1,6 @@
-import { login } from './api.js';
+import { login, requireNoAuth } from './api.js';
+
+requireNoAuth();
 
 const authForm = document.getElementById('authForm');
 

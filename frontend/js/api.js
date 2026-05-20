@@ -11,7 +11,18 @@ export function requireAuth() {
 	if (!localStorage.getItem('allegro_token')) {
 		location.replace('login.html');
 	}
-	print('AUTH WENT THROUGH');
+}
+
+/**
+ * Checks if the user is authenticated and redirects to the team if so.
+ *
+ * Ensures that an 'allegro_token' exists in local storage. If the token
+ * is missing, the user is immediately redirected to login.html.
+ */
+export function requireNoAuth() {
+	if (localStorage.getItem('allegro_token')) {
+		location.replace('teams.html');
+	}
 }
 
 /**

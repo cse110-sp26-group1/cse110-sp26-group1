@@ -1,6 +1,14 @@
-import { createAccount, login } from './api.js';
+import { createAccount, login, requireNoAuth } from './api.js';
+
+requireNoAuth();
 
 const authForm = document.getElementById('authForm');
+
+const firstEl = document.getElementById('first');
+const lastEl = document.getElementById('last');
+const usernameEl = document.getElementById('username');
+const emailEl = document.getElementById('email');
+const passwordEl = document.getElementById('password');
 
 /**
  * Handles create-account form submit. Registers the user, then immediately
@@ -10,12 +18,6 @@ const authForm = document.getElementById('authForm');
  */
 async function handleSignupSubmit(e) {
 	e.preventDefault();
-
-	const firstEl = document.getElementById('first');
-	const lastEl = document.getElementById('last');
-	const usernameEl = document.getElementById('username');
-	const emailEl = document.getElementById('email');
-	const passwordEl = document.getElementById('password');
 
 	const first_name = firstEl.value.trim();
 	const last_name = lastEl.value.trim();
