@@ -62,6 +62,16 @@ if (!member) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
 ---
 
+## Return shapes
+
+| Method | Returns | Notes |
+|---|---|---|
+| `.first()` | `{ col_name: value, ... } \| null` | e.g. `{ user_id: number, expires_at: string }` — access as `row.user_id`, `row.expires_at`; `null` if no row matched |
+| `.all()` | `{ results: { col_name: value, ... }[] }` | e.g. `results[0].title` — always an array, empty if nothing matched |
+| `.run()` | `{ meta: { changes: number, last_row_id: number } }` | `changes` = rows affected; `last_row_id` = ID of the inserted row |
+
+---
+
 ## Column names match schema.sql exactly
 
 Whatever the column is named in `schema.sql` is how you access it in code:
