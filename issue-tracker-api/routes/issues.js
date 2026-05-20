@@ -43,6 +43,11 @@ export async function handleIssues(request, env) {
 
 		// Point 3 Change: Dynamic filtering logic based on optional query string parameters
 		// Rather than executing a blanket select, we check for presence of individual filters
+		// Point 4 Change: Dynamic & Optional Query Parameters using a baseline array for conditions and query bindings
+		// Extracts optional additions using url.searchParams and safely appends placeholder bindings to preserve injection safety.
+
+		//Provides flexible filtering of issues based on optional query parameters such as status, priority, assigned_to, category, and difficulty. This allows clients to retrieve a customized list of issues that match specific criteria without needing separate endpoints for each filter combination.
+		//The base query starts with filtering by team_id, and additional conditions are appended dynamically based on the presence of optional parameters. Each parameter is validated for correct format before being included in the query, ensuring robust and secure data retrieval.
 		let query = 'SELECT * FROM issues WHERE team_id = ?';
 		const bindings = [teamId];
 
