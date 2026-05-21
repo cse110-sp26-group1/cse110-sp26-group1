@@ -13,11 +13,12 @@ Review current Sprint progress, discuss presentation/demo preparation, debug bac
 - Albert Hoang
 - Ailyn Becerra
 - Noah
-
-### Absent:
 - Ben
 - Jerry
 - Jonathan
+
+### Absent:
+- Amberly
 
 ### Time and Place:
 May 18, 2026 | 4:34 PM – 4:49 PM | Zoom Meeting
@@ -35,7 +36,7 @@ May 18, 2026 | 4:34 PM – 4:49 PM | Zoom Meeting
 - Presentation slides will primarily use content from the shared project document
 - Albert and Ailyn will continue leading presentation preparation
 - Demo video may be recorded after James resolves backend bugs
-- Team members will assist with slide creation if needed
+- Other team members will assist with slide creation
 - Progress regarding command line functionality and LLM layer should be included in presentation
 - Future sprint planning details will be coordinated after the meeting
 
