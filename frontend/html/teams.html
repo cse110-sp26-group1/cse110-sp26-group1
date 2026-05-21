@@ -5,6 +5,7 @@
 		<title>Your teams - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
+			// Keep this before CSS so the saved theme is applied before first paint.
 			try {
 				if (localStorage.getItem('theme') === 'dark') {
 					document.documentElement.classList.add('dark');
@@ -54,6 +55,7 @@
 				<button class="btn">Sort: recent ▾</button>
 			</div>
 
+			<!-- teams.js replaces API-backed team cards but preserves the create card. -->
 			<div class="grid" id="teamGrid">
 				<button class="team new" id="createTeam2">
 					<div>
@@ -64,11 +66,13 @@
 				</button>
 			</div>
 
+			<!-- Invite rows are inserted here after teams.js fetches pending invitations. -->
 			<section class="invites" id="invitesSection">
 				<h3>Pending invitations</h3>
 			</section>
 		</main>
 
+		<!-- Create-team modal state and submit handling live in teams.js. -->
 		<div class="backdrop" id="createBackdrop">
 			<div class="modal">
 				<div class="modal-head">

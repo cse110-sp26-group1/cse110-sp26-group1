@@ -35,7 +35,7 @@ const fileList = document.getElementById('fileList');
 
 // helpers for invite listeners below
 /**
- *
+ * Opens the invite modal only after a team has been resolved from the URL.
  */
 function openInvite() {
 	if (!state.currentTeamId) {
@@ -47,7 +47,7 @@ function openInvite() {
 }
 
 /**
- *
+ * Closes the invite modal and clears the draft recipient.
  */
 function closeInvite() {
 	inviteBackdrop.classList.remove('open');
@@ -89,13 +89,14 @@ confirmInviteBtn.addEventListener('click', async () => {
 });
 
 /**
- *
+ * Applies the team selected by URL slug after teams are fetched.
  */
 function applyTeamFromUrl() {
 	const qs = new URLSearchParams(location.search);
 	const slug = qs.get('team');
 
 	// Look up from our fetched state instead of the static object
+	// The page can only render teams returned by the API for this user.
 	const t = state.teams.find((team) => team.slug === slug);
 	if (!t) return;
 
@@ -108,6 +109,7 @@ function applyTeamFromUrl() {
 
 /**
  * Calculates issue counts and updates the sidebar UI
+ * Reuses the fetched issue list so counts match the active team and filters.
  */
 function syncSidebar() {
 	if (!ISSUES) return;
@@ -154,7 +156,7 @@ document.querySelectorAll('.sidebar .nav-item[data-group]').forEach((item) => {
 });
 
 /**
- *
+ * Filters, sorts, groups, and re-renders the issue list.
  */
 function renderList() {
 	syncSidebar();
@@ -187,6 +189,7 @@ function renderList() {
 
 	let groups;
 	if (state.sort === 'priority') {
+		// Priority groups stay in product order even when some buckets are empty.
 		const buckets = { Critical: [], High: [], Medium: [], Low: [] };
 		items.forEach((i) => buckets[i.priority]?.push(i));
 		groups = [
@@ -221,6 +224,8 @@ function renderList() {
 			state.selected = Number(el.dataset.id);
 			renderList();
 			renderDetail();
+			// Selection should reveal the pane; otherwise a row click can look
+			// ignored after the user has collapsed issue details.
 			if (!state.detailOpen) toggleDetail();
 		});
 	});
@@ -228,6 +233,7 @@ function renderList() {
 
 /**
  * Creates team menu
+ * Renders the team switcher from API-backed team membership.
  */
 function renderTeamMenu() {
 	const teamMenu = document.getElementById('teamMenu');
@@ -274,6 +280,7 @@ function renderTeamMenu() {
  */
 /**
  * Renders the team members avatars in the sidebar based on real API data
+ * Falls back to username/email when profile names are not present.
  */
 function renderTeamMembers() {
 	const membersContainer = document.querySelector('.sidebar .members');
@@ -289,6 +296,7 @@ function renderTeamMembers() {
 			let initials = '??';
 
 			// safe check since API was not updated during tests
+			// Older API fixtures may not have profile names yet.
 			if (member.first_name && member.last_name) {
 				initials = (member.first_name.charAt(0) + member.last_name.charAt(0)).toUpperCase();
 			} else {
@@ -332,7 +340,7 @@ function rowHtml(i) {
 const detailEl = document.getElementById('detail');
 
 /**
- *
+ * Renders the currently selected issue, including derived assignee display.
  */
 function renderDetail() {
 	const i = ISSUES.find((x) => x.id === state.selected);
@@ -348,6 +356,8 @@ function renderDetail() {
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
 
 	// FIX: temp thing for later loading
+	// The backend flags issues being enriched by tagging them instead of
+	// introducing a separate transient status.
 	const processingBanner = i.tags.includes('ai-processing') ? '<span class="processing">AI is enriching this issue…</span>' : '';
 
 	let assigneeHtml = `<span class="avatar sm" style="background: transparent; border: 1px dashed #888; color: #888;">--</span><span style="font-size:13px; color: #888;">Unassigned</span>`;
@@ -479,6 +489,8 @@ window.addEventListener('mousemove', (e) => {
 	if (!dragging) return;
 	const rect = content.getBoundingClientRect();
 	let left = e.clientX - rect.left;
+	// Clamp the divider so both panes remain usable before persisting the grid
+	// template as the user's preferred layout.
 	left = Math.max(340, Math.min(rect.width - 380, left));
 	content.style.gridTemplateColumns = `${left}px 6px 1fr`;
 });
@@ -501,7 +513,7 @@ teamMenu.addEventListener('click', (e) => e.stopPropagation());
 // DETAIL TOGGLE
 // ============================================================
 /**
- *
+ * Collapses or restores the detail pane.
  */
 function toggleDetail() {
 	state.detailOpen = !state.detailOpen;
@@ -517,7 +529,7 @@ const confirmNewBtn = document.getElementById('confirmNew');
 let pendingFiles = [];
 
 /**
- *
+ * Opens the new issue modal and refreshes assignee options from team members.
  */
 function openNew() {
 	newBackdrop.classList.add('open');
@@ -537,14 +549,14 @@ function openNew() {
 }
 
 /**
- *
+ * Closes the new issue modal and discards unsent draft state.
  */
 function closeNew() {
 	newBackdrop.classList.remove('open');
 	resetForm();
 }
 /**
- *
+ * Clears fields that only exist in the client-side issue draft.
  */
 function resetForm() {
 	document.getElementById('nTitle').value = '';
@@ -593,6 +605,8 @@ function addFiles(files) {
 
 	Array.from(files).forEach((f) => {
 		// Check by MIME type or by file extension (for .log files which often lack a MIME type)
+		// Many .log files arrive without a useful MIME type, so extension is a
+		// deliberate fallback rather than a duplicate validation path.
 		const isAllowed = allowedTypes.includes(f.type) || allowedExtensions.some((ext) => f.name.toLowerCase().endsWith(ext));
 
 		if (isAllowed) {
@@ -607,7 +621,7 @@ function addFiles(files) {
 }
 
 /**
- *
+ * Re-renders attachment chips so each remove button matches pendingFiles.
  */
 function renderFiles() {
 	fileList.innerHTML = pendingFiles
@@ -710,6 +724,7 @@ document.getElementById('downloadSkills').addEventListener('click', () => {
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
+	// Object URLs hold browser resources until explicitly released.
 	URL.revokeObjectURL(url);
 	showToast('skills.md downloaded');
 });
@@ -732,6 +747,8 @@ document.addEventListener('keydown', (e) => {
 		e.preventDefault();
 		const rows = Array.from(listEl.querySelectorAll('.issue-row'));
 		const idx = rows.findIndex((r) => Number(r.dataset.id) === state.selected);
+		// Navigate through the rendered rows so active filters and groups define
+		// the keyboard order.
 		const next = e.key === 'j' ? Math.min(rows.length - 1, idx + 1) : Math.max(0, idx - 1);
 		if (rows[next]) rows[next].click();
 	}
@@ -775,6 +792,8 @@ detailEl.addEventListener('click', async (e) => {
 			resolved: 'Resolved',
 			closed: 'Closed',
 		};
+		// Prompt input accepts user-friendly aliases but the API stores the
+		// canonical status labels used elsewhere in this file.
 		const normalisedStatus = statusMap[newStatus.trim().toLowerCase()] ?? newStatus.trim();
 
 		const updates = {
@@ -806,7 +825,7 @@ detailEl.addEventListener('click', async (e) => {
 // ============================================================
 
 /**
- *
+ * Loads team context, then fetches issues and members for the active team.
  */
 async function initTracker() {
 	const qs = new URLSearchParams(location.search);
@@ -832,6 +851,8 @@ async function initTracker() {
 		state.currentTeamId = currentTeam ? currentTeam.id : null;
 
 		if (state.currentTeamId) {
+			// Members are optional for rendering; issues are not. Keep the page
+			// usable if the member endpoint is unavailable.
 			const [fetchedIssues, fetchedMembers] = await Promise.all([
 				fetchIssues(state.currentTeamId),
 				fetchTeamMembers(state.currentTeamId).catch(() => []),

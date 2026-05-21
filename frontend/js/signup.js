@@ -14,7 +14,7 @@ const passwordEl = document.getElementById('password');
  * Handles create-account form submit. Registers the user, then immediately
  * logs in to obtain a session token before redirecting to teams.
  *
- * @param {SubmitEvent} e
+	 * @param {SubmitEvent} e Browser submit event from the signup form.
  */
 async function handleSignupSubmit(e) {
 	e.preventDefault();
@@ -51,6 +51,8 @@ async function handleSignupSubmit(e) {
 
 		// temp code since the signup endpoint does not return a token
 		// fix once the endpoint is fixed
+		// Until then, a second login call keeps the signup flow consistent
+		// with normal session storage on the login page.
 		const { token, expires_at } = await login(email, password);
 
 		localStorage.setItem('allegro_token', token);
@@ -80,5 +82,6 @@ async function handleSignupSubmit(e) {
 authForm.addEventListener('submit', handleSignupSubmit);
 
 // reset validity so user can try again
+// Browser custom validity persists until explicitly cleared.
 usernameEl.addEventListener('input', () => usernameEl.setCustomValidity(''));
 passwordEl.addEventListener('input', () => passwordEl.setCustomValidity(''));

@@ -5,6 +5,7 @@
 		<title>Issues - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
+			// Keep this before CSS so the saved theme is applied before first paint.
 			try {
 				if (localStorage.getItem('theme') === 'dark') {
 					document.documentElement.classList.add('dark');
@@ -30,6 +31,7 @@
 					<span id="teamLabel">Loading...</span>
 					<span class="chev">▾</span>
 
+					<!-- tracker.js replaces this menu with the teams returned by the API. -->
 					<div class="team-menu" id="teamMenu">
 						<div class="item active" data-slug="studio-ai">
 							<span class="mark c1">SA</span>
@@ -93,6 +95,7 @@
 		<div class="app">
 			<!-- SIDEBAR -->
 			<aside class="sidebar">
+				<!-- data-group/data-val are read by tracker.js to drive filtering. -->
 				<div class="nav-section">
 					<div class="label"><span>Views</span></div>
 					<div class="nav-item active" data-group="view" data-val="all">
@@ -202,6 +205,7 @@
 				</div>
 
 				<!-- DIVIDER -->
+				<!-- tracker.js stores this split-pane width in localStorage. -->
 				<div class="divider" id="divider"></div>
 
 				<!-- DETAIL -->
@@ -266,6 +270,7 @@
 					</div>
 					<div class="field">
 						<label>Error logs &amp; traces <span class="optional-label">(optional)</span></label>
+						<!-- File input stays hidden; dropzone clicks and drops are proxied in tracker.js. -->
 						<div class="dropzone" id="dropzone">
 							Drop files here or <span class="browse">browse</span>
 							<span class="small">.log · .txt · .json</span>
@@ -281,6 +286,7 @@
 			</div>
 		</div>
 
+		<!-- Invite modal is gated by the active team id in tracker.js. -->
 		<div class="backdrop" id="inviteBackdrop">
 			<div class="modal" style="max-width: 400px">
 				<div class="modal-head">
