@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<title>Sign in · Allegro</title>
+		<title>Sign in - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
 			try {
@@ -13,46 +13,21 @@
 				/* localStorage unavailable */
 			}
 		</script>
-		<link rel="stylesheet" href="css/global.css" />
-		<link rel="stylesheet" href="css/login.css" />
+		<link rel="stylesheet" href="../css/global.css" />
+		<link rel="stylesheet" href="../css/login.css" />
 	</head>
-	<body class="mode-login">
+	<body>
 		<div class="stage">
 			<div class="inner">
 				<div class="brand">
 					<div class="logo" aria-hidden="true"></div>
 					<span class="name">Allegro</span>
-					<span class="ver">v0.1</span>
-					<button
-						class="btn ghost icon theme-toggle login-theme-toggle"
-						id="themeToggle"
-						aria-label="Toggle theme"
-						title="Toggle theme"
-					></button>
 				</div>
 
-				<h1 class="title login-only">Welcome back</h1>
-				<h1 class="title signup-only">Create your account</h1>
-				<p class="sub login-only">Sign in to continue to your teams.</p>
-				<p class="sub signup-only">A few details and you're in.</p>
-
-				<div class="tabs-seg" role="tablist">
-					<button id="tabLogin" class="on" role="tab" aria-selected="true">Sign in</button>
-					<button id="tabSignup" role="tab" aria-selected="false">Sign up</button>
-				</div>
+				<h1 class="title">Welcome back</h1>
+				<p class="sub">Sign in to continue to your teams.</p>
 
 				<form id="authForm" novalidate>
-					<div class="signup-only row2">
-						<div class="field">
-							<label for="first">First name</label>
-							<input id="first" class="input" type="text" placeholder="Ada" autocomplete="given-name" />
-						</div>
-						<div class="field">
-							<label for="last">Last name</label>
-							<input id="last" class="input" type="text" placeholder="Lovelace" autocomplete="family-name" />
-						</div>
-					</div>
-
 					<div class="field">
 						<label for="email">Email</label>
 						<input id="email" class="input" type="email" placeholder="you@studio.dev" autocomplete="email" required />
@@ -63,68 +38,14 @@
 						<input id="password" class="input" type="password" placeholder="••••••••" autocomplete="current-password" required />
 					</div>
 
-					<div class="help-row login-only">
-						<label class="remember-label"> <input type="checkbox" /> Remember me </label>
-						<a href="#">Forgot password?</a>
-					</div>
+					<button class="btn primary block" id="submitBtn" type="submit">Sign in</button>
 
-					<button class="btn primary block" id="submitBtn" type="submit">
-						<span class="login-only">Sign in</span>
-						<span class="signup-only">Create account</span>
-					</button>
-
-					<div class="or"><span>or continue with</span></div>
-
-					<div class="social">
-						<button type="button" class="btn goog">Google</button>
-						<button type="button" class="btn gh">GitHub</button>
-					</div>
-
-					<div class="legal">By continuing you agree to the Terms of Service and Privacy Policy.</div>
+					<p class="auth-switch">Don't have an account? <a href="signup.html">Create one</a></p>
 				</form>
 			</div>
 		</div>
-
-		<aside class="poster" aria-hidden="true">
-			<div>
-				<span class="label">Allegro</span>
-				<h2>Track the work. <em>Hand context to your agents.</em></h2>
-			</div>
-
-			<div class="preview-stack">
-				<div class="pc pc-1">
-					<div class="row">
-						<span class="id">#142</span>
-						<span class="pri high">P1 · HIGH</span>
-					</div>
-					<h4>Login redirect loops after session expiry</h4>
-					<div class="sum">Auth bounce — missing return-URL guard on protected routes.</div>
-				</div>
-				<div class="pc pc-2">
-					<div class="row">
-						<span class="id">#141</span>
-						<span class="pri med">P2 · MED</span>
-						<span class="tag">ui</span>
-					</div>
-					<h4>Filter chips cause list reflow</h4>
-				</div>
-				<div class="pc pc-3">
-					<div class="row">
-						<span class="id">#139</span>
-						<span class="pri med">P2 · MED</span>
-						<span class="tag">infra</span>
-					</div>
-					<h4>D1 schema: add team_id to issues</h4>
-				</div>
-			</div>
-
-			<footer>
-				<span>Designed for humans &amp; their agents.</span>
-				<div class="dots"><span class="on"></span><span></span><span></span></div>
-			</footer>
-		</aside>
-
-		<script src="js/theme.js"></script>
-		<script type="module" src="js/login.js"></script>
+		<aside class="poster" aria-hidden="true"></aside>
+		<script src="../js/theme.js"></script>
+		<script type="module" src="../js/login.js"></script>
 	</body>
 </html>
