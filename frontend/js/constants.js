@@ -1,13 +1,12 @@
-export const PRI_ORDER = { urgent: 0, high: 1, med: 2, low: 3 };
-export const STATUS_ORDER = { 'in-progress': 0, open: 1, pending: 2, done: 3, closed: 4 };
-export const PRI_LABEL = { urgent: 'URG', high: 'P1', med: 'P2', low: 'P3' };
-export const PRI_NAME = { urgent: 'Urgent', high: 'High', med: 'Medium', low: 'Low' };
+export const PRI_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+export const STATUS_ORDER = { 'In Progress': 0, Open: 1, Resolved: 2, Closed: 3 };
+export const PRI_LABEL = { Critical: 'URG', High: 'P1', Medium: 'P2', Low: 'P3' };
+export const PRI_NAME = { Critical: 'Critical', High: 'High', Medium: 'Medium', Low: 'Low' };
 export const STATUS_NAME = {
-	open: 'Open',
-	'in-progress': 'In progress',
-	done: 'Done',
-	closed: 'Closed',
-	pending: 'Processing',
+	Open: 'Open',
+	'In Progress': 'In progress',
+	Resolved: 'Resolved',
+	Closed: 'Closed',
 };
 
 export const SKILLS_MD = `# skills.md - Issue Tracker agent guide...`;
