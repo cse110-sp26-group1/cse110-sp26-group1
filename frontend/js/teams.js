@@ -1,5 +1,4 @@
-import { fetchIssues, createTeam, acceptInvite } from './mock-api.js';
-import { fetchTeams, requireAuth, rejectInvite, fetchInvites } from './api.js';
+import { fetchTeams, createTeam, requireAuth, acceptInvite, rejectInvite, fetchInvites } from './api.js';
 
 import './components/team-card.js';
 
@@ -16,6 +15,7 @@ function openModal() {
 	backdrop.classList.add('open');
 	teamNameEl.focus();
 }
+
 /**
  * Closes the create-team modal.
  */
