@@ -19,6 +19,7 @@ import { handleAgents } from '../routes/agent.js';
 import { handleInvites } from '../routes/invites.js';
 import { handleTeams } from '../routes/teams.js';
 import { handleAuth } from '../routes/auth.js';
+import { handleLlm } from './llm.js';
 
 const ALLOWED_ORIGINS = [
 	'http://localhost:3000',
@@ -93,6 +94,10 @@ export default {
 
 		if (path.startsWith('/agents')) {
 			return withCors(await handleAgents(request, env), request);
+		}
+
+		if (path.startsWith('/llm')) {
+			return withCors(await handleLlm(request, env), request);
 		}
 
 		return withCors(new Response('Not Found', { status: 404 }), request);

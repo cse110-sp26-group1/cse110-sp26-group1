@@ -1,9 +1,6 @@
 import OpenAI from 'openai';
 
-const client = new OpenAI({
-	apiKey: '',
-	baseURL: 'https://api.deepseek.com',
-});
+const BASE_URL = 'https://api.deepseek.com';
 
 const PROMPT = `You are an issue triage agent for a software team. Given a user's raw issue description, produce a structured JSON object ready for the issue tracker API.
 
@@ -48,17 +45,25 @@ USER INPUT:{raw_user_input}
 `;
 
 /**
- * Takes in raw user input and sends it to DeepSeek, which
- * processes the input and returns a JSON object.
+ * Sends raw user input to DeepSeek and returns the structured issue JSON string.
  *
  * @async
  * @function processIssue
  * @param {string} rawUserInput - The raw issue or message provided by the user.
- * @returns {Promise<object>} A JSON object containing the LLM response.
- * @throws {Error} Throws if the API request fails.
+ * @param {string} apiKey - DeepSeek API key (Worker: env.DEEPSEEK_API; local: process.env.DEEPSEEK_API).
+ * @returns {Promise<string>} The LLM response content (JSON string).
+ * @throws {Error} If the API key is missing or the API request fails.
  */
+export async function processIssue(rawUserInput, apiKey) {
+	if (!apiKey) {
+		throw new Error('DEEPSEEK_API is required');
+	}
 
-export async function processIssue(rawUserInput) {
+	const client = new OpenAI({
+		apiKey,
+		baseURL: BASE_URL,
+	});
+
 	const response = await client.chat.completions.create({
 		model: 'deepseek-v4-flash',
 		messages: [
@@ -70,4 +75,52 @@ export async function processIssue(rawUserInput) {
 	});
 
 	return response.choices[0].message.content;
+}
+
+/**
+ * Handles POST /llm — accepts a raw user issue description and returns the
+ * structured JSON produced by DeepSeek.
+ *
+ * Request body: { "raw_user_input": "Implement the button" }
+ *
+ * @param {Request} request
+ * @param {{ DEEPSEEK_API?: string }} env - Worker environment (DEEPSEEK_API set via wrangler secret).
+ * @returns {Promise<Response>}
+ */
+export async function handleLlm(request, env) {
+	if (request.method !== 'POST') {
+		return new Response('Method Not Allowed', { status: 405 });
+	}
+
+	if (!env.DEEPSEEK_API) {
+		return Response.json({ error: 'DEEPSEEK_API is not configured on the server' }, { status: 500 });
+	}
+
+	let body;
+
+	try {
+		body = await request.json();
+	} catch {
+		return Response.json({ error: 'Invalid JSON request body' }, { status: 400 });
+	}
+
+	const rawUserInput = body?.raw_user_input;
+
+	if (typeof rawUserInput !== 'string' || rawUserInput.trim().length === 0) {
+		return Response.json({ error: "Field 'raw_user_input' is required and must be a non-empty string" }, { status: 400 });
+	}
+
+	let raw;
+
+	try {
+		raw = await processIssue(rawUserInput, env.DEEPSEEK_API);
+	} catch (error) {
+		return Response.json({ error: error.message ?? 'LLM request failed' }, { status: 502 });
+	}
+
+	try {
+		return Response.json(JSON.parse(raw));
+	} catch {
+		return Response.json({ error: 'LLM did not return valid JSON', raw }, { status: 502 });
+	}
 }
