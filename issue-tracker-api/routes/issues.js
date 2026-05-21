@@ -264,6 +264,7 @@ export async function handleIssues(request, env) {
 
 		// Check if at least one valid mutable column is supplied in the request payload
 		//Checks if any of the allowed fields are present in the request body for update; if not, returns a 400 error indicating no valid fields were provided. This prevents empty or irrelevant PATCH requests that don't specify any updatable fields.
+		// Included newly exposed agent analysis parameters into verification flow
 		const hasValidField =
 			body.title !== undefined ||
 			body.description !== undefined ||
@@ -273,7 +274,15 @@ export async function handleIssues(request, env) {
 			body.category !== undefined ||
 			body.difficulty !== undefined ||
 			body.tags !== undefined ||
-			body.assigned_to !== undefined;
+			body.assigned_to !== undefined ||
+			body.hypothesis !== undefined ||
+			body.steps_to_reproduce !== undefined ||
+			body.expected_behavior !== undefined ||
+			body.actual_behavior !== undefined ||
+			body.missing_information !== undefined ||
+			body.attempt_notes !== undefined ||
+			body.resolution_notes !== undefined ||
+			body.affected_files !== undefined;
 
 		if (!hasValidField) {
 			return Response.json({ error: 'No valid fields provided' }, { status: 400 });
@@ -299,6 +308,13 @@ export async function handleIssues(request, env) {
 		if (body.tags !== undefined && body.tags !== null) {
 			if (!Array.isArray(body.tags) || !body.tags.every((t) => typeof t === 'string')) {
 				return Response.json({ error: 'Invalid tags format' }, { status: 400 });
+			}
+		}
+
+		// Strictly validate type matching for affected_files array syntax representation
+		if (body.affected_files !== undefined && body.affected_files !== null) {
+			if (!Array.isArray(body.affected_files) || !body.affected_files.every((f) => typeof f === 'string')) {
+				return Response.json({ error: 'Invalid affected_files format. Must be an array of strings.' }, { status: 400 });
 			}
 		}
 
@@ -339,6 +355,16 @@ export async function handleIssues(request, env) {
 		const difficulty = body.difficulty || null;
 		const tags = body.tags !== undefined ? JSON.stringify(body.tags) : null;
 
+		// Bind agent-mutable details safely to variables
+		const hypothesis = body.hypothesis || null;
+		const stepsToReproduce = body.steps_to_reproduce || null;
+		const expectedBehavior = body.expected_behavior || null;
+		const actualBehavior = body.actual_behavior || null;
+		const missingInformation = body.missing_information || null;
+		const attemptNotes = body.attempt_notes || null;
+		const resolutionNotes = body.resolution_notes || null;
+		const affectedFiles = body.affected_files !== undefined ? JSON.stringify(body.affected_files) : null;
+
 		// System timestamp is generated server-side; body overrides are completely ignored
 		const now = new Date().toISOString();
 
@@ -355,6 +381,14 @@ export async function handleIssues(request, env) {
 				difficulty = COALESCE(?, difficulty),
 				tags = COALESCE(?, tags),
 				assigned_to = COALESCE(?, assigned_to),
+				hypothesis = COALESCE(?, hypothesis),
+				steps_to_reproduce = COALESCE(?, steps_to_reproduce),
+				expected_behavior = COALESCE(?, expected_behavior),
+				actual_behavior = COALESCE(?, actual_behavior),
+				missing_information = COALESCE(?, missing_information),
+				attempt_notes = COALESCE(?, attempt_notes),
+				resolution_notes = COALESCE(?, resolution_notes),
+				affected_files = COALESCE(?, affected_files),
 				updated_at = ?
 			WHERE id = ?
 			`,
@@ -369,6 +403,14 @@ export async function handleIssues(request, env) {
 				difficulty,
 				tags,
 				assignedTo,
+				hypothesis,
+				stepsToReproduce,
+				expectedBehavior,
+				actualBehavior,
+				missingInformation,
+				attemptNotes,
+				resolutionNotes,
+				affectedFiles,
 				now,
 				Number(issueId),
 			)
