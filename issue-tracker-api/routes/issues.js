@@ -139,11 +139,72 @@ export async function handleIssues(request, env) {
 	}
 
 	// POST /issues
+	//POST accepts .txt and .log as well
 	if (method === 'POST') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
 
-		const body = await request.json();
+		let body = {};
+		const contentType = request.headers.get('content-type') || '';
+
+		// Dynamically handle form data vs traditional raw JSON payloads
+		if (contentType.includes('multipart/form-data')) {
+			const formData = await request.formData();
+			body.title = formData.get('title');
+			body.description = formData.get('description');
+			body.team_id = formData.get('team_id');
+			body.status = formData.get('status');
+			body.priority = formData.get('priority');
+			body.category = formData.get('category');
+			body.summary = formData.get('summary');
+			body.difficulty = formData.get('difficulty');
+			body.assigned_to = formData.get('assigned_to');
+
+			const tagsRaw = formData.get('tags');
+			if (tagsRaw) {
+				try {
+					body.tags = JSON.parse(tagsRaw);
+				} catch (_) {
+					body.tags = tagsRaw.split(',').map((t) => t.trim());
+				}
+			}
+
+			body.details = {
+				entry_point: formData.get('entry_point'),
+				error_type: formData.get('error_type'),
+				error_message: formData.get('error_message'),
+			};
+
+			const stackTraceRaw = formData.get('stack_trace');
+			if (stackTraceRaw) {
+				try {
+					body.details.stack_trace = JSON.parse(stackTraceRaw);
+				} catch (_) {}
+			}
+			const affectedFilesRaw = formData.get('affected_files');
+			if (affectedFilesRaw) {
+				try {
+					body.details.affected_files = JSON.parse(affectedFilesRaw);
+				} catch (_) {}
+			}
+
+			// Feature implementation: Extract file content from attachments for the LLM enrichment layer
+			const attachments = formData.getAll('attachments');
+			let fileContents = '';
+			for (const file of attachments) {
+				if (file && typeof file.text === 'function') {
+					const text = await file.text();
+					if (text) {
+						fileContents += `\n\n--- Attachment: ${file.name} ---\n${text}`;
+					}
+				}
+			}
+			if (fileContents && typeof body.description === 'string') {
+				body.description += fileContents;
+			}
+		} else {
+			body = await request.json();
+		}
 
 		// Enforce required constraint validation for description alongside title and team_id
 		if (!body.title || !body.team_id || !body.description) {
