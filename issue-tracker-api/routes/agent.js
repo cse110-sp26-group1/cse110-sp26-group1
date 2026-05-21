@@ -16,7 +16,6 @@ const ALLOWED_CATEGORIES = ['bug', 'feature', 'task'];
  * @type {Set<string>}
  */
 const AGENT_BLOCKED_FIELDS = new Set(['id', 'team_id', 'created_by', 'created_at', 'updated_at', 'description', 'assigned_to']);
-
 /**
  * Array fields that must be stored as JSON strings in the database.
  * On read these are parsed back into arrays for the agent.
