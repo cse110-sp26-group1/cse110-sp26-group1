@@ -7,16 +7,16 @@ requireAuth(); // forces the user to sign up if this page is accessed without cr
 
 // STATE
 const state = {
-    sort: 'priority',
-    tag: 'all',
-    status: 'all',
-    priority: 'all',
-    query: '',
-    selected: null,
-    detailOpen: true,
-    teams: [],
-    currentTeamId: null,
-    teamMembers: [],
+	sort: 'priority',
+	tag: 'all',
+	status: 'all',
+	priority: 'all',
+	query: '',
+	selected: null,
+	detailOpen: true,
+	teams: [],
+	currentTeamId: null,
+	teamMembers: [],
 };
 
 let ISSUES = [];
@@ -110,70 +110,70 @@ function applyTeamFromUrl() {
  * Calculates issue counts and updates the sidebar UI
  */
 function syncSidebar() {
-    if (!ISSUES) return;
+	if (!ISSUES) return;
 
-    const safeSet = (id, count) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = count;
-    };
+	const safeSet = (id, count) => {
+		const el = document.getElementById(id);
+		if (el) el.textContent = count;
+	};
 
-    safeSet('cnt-all', ISSUES.length);
+	safeSet('cnt-all', ISSUES.length);
 
-    safeSet('cnt-open', ISSUES.filter(i => i.status === 'Open').length);
-    safeSet('cnt-prog', ISSUES.filter(i => i.status === 'In Progress').length);
-    safeSet('cnt-done', ISSUES.filter(i => ['Resolved', 'Closed'].includes(i.status)).length);
+	safeSet('cnt-open', ISSUES.filter((i) => i.status === 'Open').length);
+	safeSet('cnt-prog', ISSUES.filter((i) => i.status === 'In Progress').length);
+	safeSet('cnt-done', ISSUES.filter((i) => ['Resolved', 'Closed'].includes(i.status)).length);
 
-    safeSet('cnt-crit', ISSUES.filter(i => i.priority === 'Critical').length);
-    safeSet('cnt-high', ISSUES.filter(i => i.priority === 'High').length);
-    safeSet('cnt-med', ISSUES.filter(i => i.priority === 'Medium').length);
-    safeSet('cnt-low', ISSUES.filter(i => i.priority === 'Low').length);
+	safeSet('cnt-crit', ISSUES.filter((i) => i.priority === 'Critical').length);
+	safeSet('cnt-high', ISSUES.filter((i) => i.priority === 'High').length);
+	safeSet('cnt-med', ISSUES.filter((i) => i.priority === 'Medium').length);
+	safeSet('cnt-low', ISSUES.filter((i) => i.priority === 'Low').length);
 
-    ['bug', 'ui', 'infra', 'auth', 'perf'].forEach(t => {
-        safeSet(`cnt-${t}`, ISSUES.filter(i => (i.tags || []).includes(t)).length);
-    });
+	['bug', 'ui', 'infra', 'auth', 'perf'].forEach((t) => {
+		safeSet(`cnt-${t}`, ISSUES.filter((i) => (i.tags || []).includes(t)).length);
+	});
 }
 
-document.querySelectorAll('.sidebar .nav-item[data-group]').forEach(item => {
-    item.addEventListener('click', () => {
-        document.querySelectorAll('.sidebar .nav-item').forEach(el => el.classList.remove('active'));
-        item.classList.add('active');
+document.querySelectorAll('.sidebar .nav-item[data-group]').forEach((item) => {
+	item.addEventListener('click', () => {
+		document.querySelectorAll('.sidebar .nav-item').forEach((el) => el.classList.remove('active'));
+		item.classList.add('active');
 
-        const group = item.dataset.group;
-        const val = item.dataset.val;
+		const group = item.dataset.group;
+		const val = item.dataset.val;
 
-        state.tag = 'all';
-        state.status = 'all';
-        state.priority = 'all';
+		state.tag = 'all';
+		state.status = 'all';
+		state.priority = 'all';
 
-        if (group === 'tag') state.tag = val;
-        if (group === 'status') state.status = val;
-        if (group === 'priority') state.priority = val;
+		if (group === 'tag') state.tag = val;
+		if (group === 'status') state.status = val;
+		if (group === 'priority') state.priority = val;
 
-        renderList();
-    });
+		renderList();
+	});
 });
 
 /**
  *
  */
 function renderList() {
-	syncSidebar(); 
+	syncSidebar();
 
-    let items = ISSUES.slice();
+	let items = ISSUES.slice();
 
-    if (state.tag !== 'all') {
-        items = items.filter((i) => (i.tags || []).includes(state.tag));
-    }
-    if (state.status !== 'all') {
-        if (state.status === 'Resolved') {
-             items = items.filter(i => ['Resolved', 'Closed'].includes(i.status));
-        } else {
-             items = items.filter(i => i.status === state.status);
-        }
-    }
-    if (state.priority !== 'all') {
-        items = items.filter((i) => i.priority === state.priority);
-    }
+	if (state.tag !== 'all') {
+		items = items.filter((i) => (i.tags || []).includes(state.tag));
+	}
+	if (state.status !== 'all') {
+		if (state.status === 'Resolved') {
+			items = items.filter((i) => ['Resolved', 'Closed'].includes(i.status));
+		} else {
+			items = items.filter((i) => i.status === state.status);
+		}
+	}
+	if (state.priority !== 'all') {
+		items = items.filter((i) => i.priority === state.priority);
+	}
 
 	if (state.sort === 'priority') {
 		items.sort((a, b) => PRI_ORDER[a.priority] - PRI_ORDER[b.priority] || STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
@@ -524,10 +524,12 @@ function openNew() {
 
 	const assigneeSelect = document.getElementById('nAssignee');
 	if (assigneeSelect && state.teamMembers) {
-		const options = state.teamMembers.map(m => {
-			const name = (m.first_name && m.last_name) ? `${m.first_name} ${m.last_name}` : m.username;
-			return `<option value="${m.id}">${name}</option>`;
-		}).join('');
+		const options = state.teamMembers
+			.map((m) => {
+				const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username;
+				return `<option value="${m.id}">${name}</option>`;
+			})
+			.join('');
 		assigneeSelect.innerHTML = `<option value="">Unassigned</option>${options}`;
 	}
 
@@ -591,8 +593,7 @@ function addFiles(files) {
 
 	Array.from(files).forEach((f) => {
 		// Check by MIME type or by file extension (for .log files which often lack a MIME type)
-		const isAllowed = allowedTypes.includes(f.type) || 
-						  allowedExtensions.some(ext => f.name.toLowerCase().endsWith(ext));
+		const isAllowed = allowedTypes.includes(f.type) || allowedExtensions.some((ext) => f.name.toLowerCase().endsWith(ext));
 
 		if (isAllowed) {
 			pendingFiles.push(f);
@@ -601,7 +602,7 @@ function addFiles(files) {
 			showToast(`Rejected ${f.name}: Only text/log files are allowed.`);
 		}
 	});
-	
+
 	renderFiles();
 }
 
