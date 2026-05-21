@@ -145,12 +145,18 @@ export async function handleIssues(request, env) {
 
 		const body = await request.json();
 
-		if (!body.title || !body.team_id) {
-			return Response.json({ error: 'title and team_id are required' }, { status: 400 });
+		// Enforce required constraint validation for description alongside title and team_id
+		if (!body.title || !body.team_id || !body.description) {
+			return Response.json({ error: 'title, team_id, and description are required' }, { status: 400 });
 		}
 
 		if (typeof body.title !== 'string' || body.title.trim() === '') {
 			return Response.json({ error: 'Invalid title format. Must be a non-empty string.' }, { status: 400 });
+		}
+
+		// Strictly validate that description is a valid non-empty text string type
+		if (typeof body.description !== 'string' || body.description.trim() === '') {
+			return Response.json({ error: 'Invalid description format. Must be a non-empty string.' }, { status: 400 });
 		}
 
 		const parsedTeamId = Number(body.team_id);
@@ -219,7 +225,7 @@ export async function handleIssues(request, env) {
 				parsedTeamId,
 				auth.userId,
 				body.title.trim(),
-				body.description || null,
+				body.description.trim(),
 				body.summary || null,
 				status || 'Open',
 				priority || 'Medium',
@@ -280,6 +286,13 @@ export async function handleIssues(request, env) {
 			}
 		}
 
+		// Enforce non-empty constraint if description is optionally supplied for a slide update
+		if (body.description !== undefined) {
+			if (typeof body.description !== 'string' || body.description.trim() === '') {
+				return Response.json({ error: 'Invalid description format. Must be a non-empty string.' }, { status: 400 });
+			}
+		}
+
 		// Point 6 Change: Strict Array Schema Validation for Tags in PATCH payload
 		// Rejects variations to guard downstream workflows when updating tags.
 		//Checks that tag is array not invalid object type to protect GET fetches that parse tags with JSON.parse; if invalid, returns a 400 error indicating invalid tags format. This ensures that the tags field maintains consistent data structure for proper handling in retrieval and display logic.
@@ -321,7 +334,7 @@ export async function handleIssues(request, env) {
 
 		// Prepare bindings for text/JSON items following original database fallback conventions
 		const title = body.title?.trim() || null;
-		const description = body.description || null;
+		const description = body.description?.trim() || null;
 		const summary = body.summary || null;
 		const difficulty = body.difficulty || null;
 		const tags = body.tags !== undefined ? JSON.stringify(body.tags) : null;
