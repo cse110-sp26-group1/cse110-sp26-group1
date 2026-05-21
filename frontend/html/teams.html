@@ -23,9 +23,16 @@
 				<span class="name">Allegro</span>
 			</div>
 			<div class="user-menu">
-				<button class="btn ghost sm">Help</button>
 				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
-				<div class="avatar" title="Ada Lovelace">AL</div>
+				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
+				<div class="user-switch" id="userSwitch">
+					<button type="button" class="avatar user-avatar" id="userAvatar" aria-haspopup="true" aria-expanded="false" title="Ada Lovelace">
+						AL
+					</button>
+					<div class="user-dropdown" id="userDropdown" role="menu">
+						<button type="button" class="item" id="signOutBtn" role="menuitem">Sign out</button>
+					</div>
+				</div>
 			</div>
 		</header>
 
@@ -36,7 +43,8 @@
 					<p>Each team is its own workspace. Pick one to open its issue tracker.</p>
 				</div>
 				<div class="hero-actions">
-					<button class="btn">Join with code</button>
+					<!--Commenting out until implemented-->
+					<!--<button class="btn">Join with code</button>-->
 					<button class="btn primary" id="createTeam">+ New team</button>
 				</div>
 			</div>
@@ -46,97 +54,7 @@
 				<button class="btn">Sort: recent ▾</button>
 			</div>
 
-			<div class="grid">
-				<a class="team" href="tracker.html?team=studio-ai">
-					<div class="team-head">
-						<div class="team-mark c1">SA</div>
-						<div>
-							<h2>Studio · AI Tools</h2>
-							<div class="slug">studio-ai</div>
-						</div>
-					</div>
-					<div class="stats">
-						<div class="stat"><span class="n">14</span><span class="l">open</span></div>
-						<div class="stat"><span class="n">3</span><span class="l">in&nbsp;prog</span></div>
-						<div class="stat"><span class="n">47</span><span class="l">done</span></div>
-					</div>
-					<div class="team-foot">
-						<div class="members">
-							<span class="avatar">AL</span>
-							<span class="avatar">JK</span>
-							<span class="avatar">MN</span>
-							<span class="more">+4</span>
-						</div>
-						<span class="last-active">active 2h ago</span>
-					</div>
-				</a>
-
-				<a class="team" href="tracker.html?team=group-eight">
-					<div class="team-head">
-						<div class="team-mark c2">G8</div>
-						<div>
-							<h2>Group 8 · Capstone</h2>
-							<div class="slug">group-eight</div>
-						</div>
-					</div>
-					<div class="stats">
-						<div class="stat"><span class="n">22</span><span class="l">open</span></div>
-						<div class="stat"><span class="n">5</span><span class="l">in&nbsp;prog</span></div>
-						<div class="stat"><span class="n">12</span><span class="l">done</span></div>
-					</div>
-					<div class="team-foot">
-						<div class="members">
-							<span class="avatar">AM</span>
-							<span class="avatar">AC</span>
-							<span class="avatar">BN</span>
-							<span class="more">+3</span>
-						</div>
-						<span class="last-active">active 15m ago</span>
-					</div>
-				</a>
-
-				<a class="team" href="tracker.html?team=side-quest">
-					<div class="team-head">
-						<div class="team-mark c3">SQ</div>
-						<div>
-							<h2>Side Quest</h2>
-							<div class="slug">side-quest</div>
-						</div>
-					</div>
-					<div class="stats">
-						<div class="stat"><span class="n">6</span><span class="l">open</span></div>
-						<div class="stat"><span class="n">1</span><span class="l">in&nbsp;prog</span></div>
-						<div class="stat"><span class="n">8</span><span class="l">done</span></div>
-					</div>
-					<div class="team-foot">
-						<div class="members"><span class="avatar">AL</span></div>
-						<span class="last-active">active yesterday</span>
-					</div>
-				</a>
-
-				<a class="team" href="tracker.html?team=hearth-os">
-					<div class="team-head">
-						<div class="team-mark c4">HO</div>
-						<div>
-							<h2>Hearth OS</h2>
-							<div class="slug">hearth-os</div>
-						</div>
-					</div>
-					<div class="stats">
-						<div class="stat"><span class="n">31</span><span class="l">open</span></div>
-						<div class="stat"><span class="n">9</span><span class="l">in&nbsp;prog</span></div>
-						<div class="stat"><span class="n">128</span><span class="l">done</span></div>
-					</div>
-					<div class="team-foot">
-						<div class="members">
-							<span class="avatar">RT</span>
-							<span class="avatar">YK</span>
-							<span class="more">+6</span>
-						</div>
-						<span class="last-active">active 4d ago</span>
-					</div>
-				</a>
-
+			<div class="grid" id="teamGrid">
 				<button class="team new" id="createTeam2">
 					<div>
 						<div class="plus">+</div>
@@ -146,40 +64,11 @@
 				</button>
 			</div>
 
-			<section class="invites">
+			<section class="invites" id="invitesSection">
 				<h3>Pending invitations</h3>
-
-				<div class="invite">
-					<div class="info">
-						<div class="team-mark c2">DK</div>
-						<div>
-							<p><strong>Dawn Kernel</strong> · invited by ben@dawn.io</p>
-							<p>3 members · invited 2 days ago</p>
-						</div>
-					</div>
-					<div class="actions">
-						<button class="btn sm">Decline</button>
-						<button class="btn primary sm">Accept</button>
-					</div>
-				</div>
-
-				<div class="invite">
-					<div class="info">
-						<div class="team-mark c1">RR</div>
-						<div>
-							<p><strong>Roost Robotics</strong> · invited by anchita@roost.dev</p>
-							<p>11 members · invited 5 days ago</p>
-						</div>
-					</div>
-					<div class="actions">
-						<button class="btn sm">Decline</button>
-						<button class="btn primary sm">Accept</button>
-					</div>
-				</div>
 			</section>
 		</main>
 
-		<!-- Create team modal -->
 		<div class="backdrop" id="createBackdrop">
 			<div class="modal">
 				<div class="modal-head">
@@ -192,13 +81,8 @@
 						<input class="input" id="teamName" placeholder="e.g. Roost Robotics" />
 					</div>
 					<div class="field">
-						<label>URL slug</label>
-						<input class="input" id="teamSlug" placeholder="roost-robotics" />
-						<div class="hint">Lowercase letters, numbers, dashes.</div>
-					</div>
-					<div class="field">
-						<label>Description <span class="optional-label">(optional)</span></label>
-						<textarea class="textarea" placeholder="What does this team work on?"></textarea>
+						<label>Short bio <span class="optional-label">(optional)</span></label>
+						<textarea class="textarea" id="teamBio" placeholder="What does this team work on?"></textarea>
 					</div>
 				</div>
 				<div class="modal-foot">
@@ -211,6 +95,8 @@
 		<div class="toast" id="toast"></div>
 
 		<script src="../js/theme.js"></script>
+		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
+		<script src="../js/user-menu.js"></script>
 		<script type="module" src="../js/teams.js"></script>
 	</body>
 </html>

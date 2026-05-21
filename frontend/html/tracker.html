@@ -13,8 +13,8 @@
 				/* localStorage unavailable */
 			}
 		</script>
-		<link rel="stylesheet" href="css/global.css" />
-		<link rel="stylesheet" href="css/tracker.css" />
+		<link rel="stylesheet" href="../css/global.css" />
+		<link rel="stylesheet" href="../css/tracker.css" />
 	</head>
 	<body>
 		<!-- ============ TOP BAR ============ -->
@@ -26,8 +26,8 @@
 					<span class="sep">/</span>
 				</div>
 				<div class="team-switch" id="teamSwitch">
-					<span class="mark">SA</span>
-					<span id="teamLabel">Studio · AI Tools</span>
+					<span class="mark"></span>
+					<span id="teamLabel">Loading...</span>
 					<span class="chev">▾</span>
 
 					<div class="team-menu" id="teamMenu">
@@ -57,11 +57,35 @@
 			</div>
 			<div class="right">
 				<div class="search-wrap">
-					<input class="search-top" placeholder="Search issues, files…" />
+					<input
+						class="search-top"
+						id="issueSearch"
+						type="search"
+						placeholder="Search issues, files…"
+						autocomplete="off"
+						aria-label="Search issues"
+					/>
+					<button type="button" class="search-clear" id="issueSearchClear" aria-label="Clear search" hidden>
+						<span aria-hidden="true">×</span>
+					</button>
 				</div>
-				<button class="btn ghost icon" title="Notifications">◔</button>
 				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
-				<div class="avatar sm" title="Ada Lovelace">AL</div>
+				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
+				<div class="user-switch" id="userSwitch">
+					<button
+						type="button"
+						class="avatar sm user-avatar"
+						id="userAvatar"
+						aria-haspopup="true"
+						aria-expanded="false"
+						title="Ada Lovelace"
+					>
+						AL
+					</button>
+					<div class="user-dropdown" id="userDropdown" role="menu">
+						<button type="button" class="item" id="signOutBtn" role="menuitem">Sign out</button>
+					</div>
+				</div>
 			</div>
 		</header>
 
@@ -92,7 +116,7 @@
 				</div>
 
 				<div class="nav-section">
-					<div class="label"><span>Labels</span></div>
+					<div class="label"><span>Tags</span></div>
 					<div class="nav-item"><span class="ic dot label-bug"></span> bug <span class="count">9</span></div>
 					<div class="nav-item"><span class="ic dot label-ui"></span> ui <span class="count">7</span></div>
 					<div class="nav-item"><span class="ic dot label-infra"></span> infra <span class="count">5</span></div>
@@ -101,13 +125,11 @@
 				</div>
 
 				<div class="nav-section">
-					<div class="label"><span>Team</span></div>
-					<div class="members">
-						<div class="avatar">AL</div>
-						<div class="avatar">JK</div>
-						<div class="avatar">MN</div>
-						<div class="avatar">BS</div>
+					<div class="label" style="display: flex; justify-content: space-between; align-items: center">
+						<span>Team</span>
+						<button class="btn ghost sm" id="openInviteModal" style="padding: 0 6px" title="Invite user">+</button>
 					</div>
+					<div class="members"></div>
 				</div>
 
 				<div class="skill-card">
@@ -138,8 +160,9 @@
 							<button class="sort-btn" data-sort="difficulty">difficulty</button>
 						</div>
 						<div class="filter-divider"></div>
+						<!-- Tags: Do we need this ? -->
 						<div class="filter-group">
-							<span class="label">Tag</span>
+							<span class="label">Tags</span>
 							<button class="chip-btn on" data-tag="all">all</button>
 							<button class="chip-btn" data-tag="bug">bug</button>
 							<button class="chip-btn" data-tag="ui">ui</button>
@@ -197,9 +220,30 @@
 			</div>
 		</div>
 
+		<div class="backdrop" id="inviteBackdrop">
+			<div class="modal" style="max-width: 400px">
+				<div class="modal-head">
+					<h3>Invite to team</h3>
+					<p>Send an invitation to a colleague.</p>
+				</div>
+				<div class="modal-body">
+					<div class="field">
+						<label>Username or Email <span class="req">*</span></label>
+						<input class="input" id="inviteInput" placeholder="e.g. ada@example.com or adalovelace" />
+					</div>
+				</div>
+				<div class="modal-foot">
+					<button class="btn" id="cancelInvite">Cancel</button>
+					<button class="btn primary" id="confirmInvite">Send invite</button>
+				</div>
+			</div>
+		</div>
+
 		<div class="toast" id="toast"></div>
 
-		<script src="js/theme.js"></script>
-		<script type="module" src="js/tracker.js"></script>
+		<script src="../js/theme.js"></script>
+		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
+		<script src="../js/user-menu.js"></script>
+		<script type="module" src="../js/tracker.js"></script>
 	</body>
 </html>

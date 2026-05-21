@@ -8,10 +8,10 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 // export default {
-// 	// underscore prefixes as these variables are not currently being used
-// 	async fetch(_request, _env, _ctx) {
-// 		return new Response('Hello World!');
-// 	},
+//     // underscore prefixes as these variables are not currently being used
+//     async fetch(_request, _env, _ctx) {
+//         return new Response('Hello World!');
+//     },
 // };
 
 import { handleIssues } from '../routes/issues.js';
@@ -22,8 +22,8 @@ import { handleAuth } from '../routes/auth.js';
 
 const ALLOWED_ORIGINS = [
 	'http://localhost:3000',
-	// 'https://your-org.github.io',  // add GitHub Pages URL when known
-	// 'https://issue-tracker-api.your-subdomain.workers.dev',  // add deployed worker URL when known
+	'https://cse110-sp26-group1.github.io',
+	// 'https://issue-tracker-api.your-subdomain.workers.dev',
 ];
 
 const CORS_HEADERS = {
@@ -33,27 +33,30 @@ const CORS_HEADERS = {
 
 /**
  * Wraps a Response with the appropriate CORS headers based on the request origin.
- * Only sets `Access-Control-Allow-Origin` for origins in ALLOWED_ORIGINS.
  * @param {Response} response - The response to decorate.
- * @param {Request} request - The incoming request, used to read the Origin header.
+ * @param {Request} request - The incoming request.
  * @returns {Response} A new Response with CORS headers applied.
  */
 function withCors(response, request) {
 	const origin = request.headers.get('Origin');
 	const res = new Response(response.body, response);
+
 	if (ALLOWED_ORIGINS.includes(origin)) {
 		res.headers.set('Access-Control-Allow-Origin', origin);
 	}
-	Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
+
+	Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+		res.headers.set(key, value);
+	});
+
 	return res;
 }
 
 /**
- * Main Cloudflare Worker entry point. Routes requests to the appropriate handler
- * and wraps every response with CORS headers.
+ * Main Cloudflare Worker entry point.
  * @param {Request} request - The incoming HTTP request.
- * @param {{ DB: D1Database }} env - Worker environment with D1 database binding.
- * @param {ExecutionContext} _ctx - Execution context (unused).
+ * @param {Env} env - Worker environment.
+ * @param {ExecutionContext} _ctx - Execution context.
  * @returns {Promise<Response>}
  */
 export default {
@@ -61,17 +64,17 @@ export default {
 		if (request.method === 'OPTIONS') {
 			const origin = request.headers.get('Origin');
 			const headers = { ...CORS_HEADERS };
+
 			if (ALLOWED_ORIGINS.includes(origin)) {
 				headers['Access-Control-Allow-Origin'] = origin;
 			}
+
 			return new Response(null, { status: 204, headers });
 		}
 
 		const url = new URL(request.url);
 		const path = url.pathname;
 
-		// frontend runs on dif url from api, so use withCors func to allow cors for
-		// each route
 		if (path.startsWith('/auth')) {
 			return withCors(await handleAuth(request, env), request);
 		}
