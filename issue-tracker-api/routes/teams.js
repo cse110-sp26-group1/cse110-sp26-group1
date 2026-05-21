@@ -231,7 +231,7 @@ export async function handleTeams(request, env) {
 
 		const { results } = await env.DB.prepare(
 			`
-                SELECT users.id, users.username, users.email, team_members.role
+                SELECT users.id, users.username, users.email, users.first_name, users.last_name, team_members.role
                 FROM users
                 JOIN team_members
                 ON users.id = team_members.user_id
