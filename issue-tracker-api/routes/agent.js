@@ -15,15 +15,7 @@ const ALLOWED_CATEGORIES = ['bug', 'feature', 'task'];
  * - `assigned_to` is reserved for human assignment only.
  * @type {Set<string>}
  */
-const AGENT_BLOCKED_FIELDS = new Set([
-	'id',
-	'team_id',
-	'created_by',
-	'created_at',
-	'updated_at',
-	'description',
-	'assigned_to',
-]);
+const AGENT_BLOCKED_FIELDS = new Set(['id', 'team_id', 'created_by', 'created_at', 'updated_at', 'description', 'assigned_to']);
 
 /**
  * Array fields that must be stored as JSON strings in the database.
@@ -31,21 +23,6 @@ const AGENT_BLOCKED_FIELDS = new Set([
  * @type {string[]}
  */
 const JSON_ARRAY_FIELDS = ['tags', 'stack_trace', 'affected_files'];
-
-/**
- * Checks whether a value is a non-empty string (after trimming whitespace).
- * @param {*} value - The value to check.
- * @returns {boolean}
- */
-const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
-
-/**
- * Checks whether a value is a valid positive integer.
- * Accepts both numbers and numeric strings.
- * @param {*} value - The value to check.
- * @returns {boolean}
- */
-const isPositiveInteger = (value) => Number.isInteger(Number(value)) && Number(value) > 0;
 
 /**
  * Handles all /agents routes for AI agent access to the issues table.
@@ -105,11 +82,9 @@ export async function handleAgents(request, env) {
 	// fields itself with full structured context.
 	// -----------------------------------------------------------------------
 	if (method === 'POST' && !issueId) {
-		let body;
+		const body = await request.json().catch(() => null);
 
-		try {
-			body = await request.json();
-		} catch (_error) {
+		if (body === null) {
 			return Response.json({ error: 'Invalid JSON request body' }, { status: 400 });
 		}
 
@@ -210,11 +185,9 @@ export async function handleAgents(request, env) {
 	// human input (description, assigned_to). updated_at is always refreshed.
 	// -----------------------------------------------------------------------
 	if (method === 'PATCH' && issueId) {
-		let body;
+		const body = await request.json().catch(() => null);
 
-		try {
-			body = await request.json();
-		} catch (_error) {
+		if (body === null) {
 			return Response.json({ error: 'Invalid JSON request body' }, { status: 400 });
 		}
 
@@ -226,10 +199,7 @@ export async function handleAgents(request, env) {
 		// Reject any explicitly blocked fields
 		const blockedFields = Object.keys(body).filter((key) => AGENT_BLOCKED_FIELDS.has(key));
 		if (blockedFields.length > 0) {
-			return Response.json(
-				{ error: `Field(s) not allowed for agent update: ${blockedFields.join(', ')}` },
-				{ status: 400 },
-			);
+			return Response.json({ error: `Field(s) not allowed for agent update: ${blockedFields.join(', ')}` }, { status: 400 });
 		}
 
 		// Must have at least one field to update
