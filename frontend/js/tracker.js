@@ -347,6 +347,7 @@ function renderDetail() {
 	const diffPips = Array.from({ length: 3 }, (_, k) => `<span class="d ${k < i.difficulty ? 'on' : ''}"></span>`).join('');
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
 
+	// FIX: temp thing for later loading
 	const processingBanner = i.tags.includes('ai-processing') ? '<span class="processing">AI is enriching this issue…</span>' : '';
 
 	let assigneeHtml = `<span class="avatar sm" style="background: transparent; border: 1px dashed #888; color: #888;">--</span><span style="font-size:13px; color: #888;">Unassigned</span>`;
