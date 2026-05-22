@@ -215,8 +215,7 @@ Stores authenticated login sessions for users.
 Sessions are used to verify identity across protected backend routes without requiring users to repeatedly log in.
 
 #### Notes
-
-- tokens are unique per session stored on the user's browser via localStorage
+- each session has a unique `token` stored in D1; login returns it to the client, which sends `Authorization: Bearer <token>` on protected routes (frontend may persist it in `localStorage`) (note to self: ask for accuracy on this point)
 - sessions are tied directly to a user account
 - expired sessions are rejected during authentication checks
 - authentication middleware validates sessions before protected endpoints execute
