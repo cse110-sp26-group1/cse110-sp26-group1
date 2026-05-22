@@ -1,6 +1,6 @@
 import { PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './constants.js';
 
-import { fetchIssues, createIssue, updateIssue } from './mock-api.js';
+import { fetchIssues, fetchIssue, createIssue, updateIssue, deleteIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
@@ -9,6 +9,8 @@ requireAuth(); // forces the user to sign up if this page is accessed without cr
 const state = {
 	sort: 'priority',
 	tag: 'all',
+	status: 'all',
+	priority: 'all',
 	query: '',
 	selected: null,
 	detailOpen: true,
@@ -23,6 +25,13 @@ const inviteBackdrop = document.getElementById('inviteBackdrop');
 const confirmInviteBtn = document.getElementById('confirmInvite');
 const inviteInput = document.getElementById('inviteInput');
 const openInviteModalBtn = document.getElementById('openInviteModal');
+
+const listEl = document.getElementById('issueList');
+const totalCountEl = document.getElementById('totalCount');
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fileList = document.getElementById('fileList');
 
 // helpers for invite listeners below
 /**
@@ -97,26 +106,73 @@ function applyTeamFromUrl() {
 	mark.style.color = `oklch(0.4 0.12 ${t.color})`;
 }
 
-const listEl = document.getElementById('issueList');
-const totalCountEl = document.getElementById('totalCount');
+/**
+ * Calculates issue counts and updates the sidebar UI
+ */
+function syncSidebar() {
+	if (!ISSUES) return;
+
+	const safeSet = (id, count) => {
+		const el = document.getElementById(id);
+		if (el) el.textContent = count;
+	};
+
+	safeSet('cnt-all', ISSUES.length);
+
+	safeSet('cnt-open', ISSUES.filter((i) => i.status === 'Open').length);
+	safeSet('cnt-prog', ISSUES.filter((i) => i.status === 'In Progress').length);
+	safeSet('cnt-done', ISSUES.filter((i) => ['Resolved', 'Closed'].includes(i.status)).length);
+
+	safeSet('cnt-crit', ISSUES.filter((i) => i.priority === 'Critical').length);
+	safeSet('cnt-high', ISSUES.filter((i) => i.priority === 'High').length);
+	safeSet('cnt-med', ISSUES.filter((i) => i.priority === 'Medium').length);
+	safeSet('cnt-low', ISSUES.filter((i) => i.priority === 'Low').length);
+
+	['bug', 'ui', 'infra', 'auth', 'perf'].forEach((t) => {
+		safeSet(`cnt-${t}`, ISSUES.filter((i) => (i.tags || []).includes(t)).length);
+	});
+}
+
+document.querySelectorAll('.sidebar .nav-item[data-group]').forEach((item) => {
+	item.addEventListener('click', () => {
+		document.querySelectorAll('.sidebar .nav-item').forEach((el) => el.classList.remove('active'));
+		item.classList.add('active');
+
+		const group = item.dataset.group;
+		const val = item.dataset.val;
+
+		state.tag = 'all';
+		state.status = 'all';
+		state.priority = 'all';
+
+		if (group === 'tag') state.tag = val;
+		if (group === 'status') state.status = val;
+		if (group === 'priority') state.priority = val;
+
+		renderList();
+	});
+});
 
 /**
  *
  */
 function renderList() {
-	let items = ISSUES.slice();
-	if (state.tag !== 'all') {
-		items = items.filter((i) => i.labels.includes(state.tag));
-	}
+	syncSidebar();
 
-	if (state.query) {
-		const q = state.query.toLowerCase();
-		items = items.filter(
-			(i) =>
-				i.title.toLowerCase().includes(q) ||
-				(i.summary && i.summary.toLowerCase().includes(q)) ||
-				i.labels.some((l) => l.toLowerCase().includes(q)),
-		);
+	let items = ISSUES.slice();
+
+	if (state.tag !== 'all') {
+		items = items.filter((i) => (i.tags || []).includes(state.tag));
+	}
+	if (state.status !== 'all') {
+		if (state.status === 'Resolved') {
+			items = items.filter((i) => ['Resolved', 'Closed'].includes(i.status));
+		} else {
+			items = items.filter((i) => i.status === state.status);
+		}
+	}
+	if (state.priority !== 'all') {
+		items = items.filter((i) => i.priority === state.priority);
 	}
 
 	if (state.sort === 'priority') {
@@ -131,13 +187,13 @@ function renderList() {
 
 	let groups;
 	if (state.sort === 'priority') {
-		const buckets = { urgent: [], high: [], med: [], low: [] };
-		items.forEach((i) => buckets[i.priority].push(i));
+		const buckets = { Critical: [], High: [], Medium: [], Low: [] };
+		items.forEach((i) => buckets[i.priority]?.push(i));
 		groups = [
-			{ label: 'Urgent', rows: buckets.urgent },
-			{ label: 'High', rows: buckets.high },
-			{ label: 'Medium', rows: buckets.med },
-			{ label: 'Low', rows: buckets.low },
+			{ label: 'Critical', rows: buckets.Critical },
+			{ label: 'High', rows: buckets.High },
+			{ label: 'Medium', rows: buckets.Medium },
+			{ label: 'Low', rows: buckets.Low },
 		].filter((g) => g.rows.length);
 	} else if (state.sort === 'difficulty') {
 		const map = {};
@@ -256,18 +312,18 @@ function renderTeamMembers() {
  */
 function rowHtml(i) {
 	const isSel = state.selected === i.id;
-	const statusKey = i.status === 'in-progress' ? 'prog' : i.status;
+	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
 	return `
-    <div class="issue-row ${isSel ? 'selected' : ''}" data-id="${i.id}">
-        <span class="pri-mark ${i.priority}" title="${PRI_NAME[i.priority]}">${PRI_LABEL[i.priority]}</span>
-        <div class="title">
-            <span>${i.title}</span>
-            <span class="sub">${i.summary || ''}</span>
-        </div>
-        <div class="labels">${i.labels.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}</div>
-        <span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
-        <span class="updated">${i.updated}</span>
-    </div>`;
+	<div class="issue-row ${isSel ? 'selected' : ''}" data-id="${i.id}">
+		<span class="pri-mark ${i.priority.toLowerCase()}" title="${PRI_NAME[i.priority]}">${PRI_LABEL[i.priority]}</span>
+		<div class="title">
+			<span>${i.title}</span>
+			<span class="sub">${i.summary || ''}</span>
+		</div>
+		<div class="labels">${i.tags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}</div>
+		<span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
+		<span class="updated">${i.updated_at}</span>
+	</div>`;
 }
 
 // ============================================================
@@ -289,8 +345,23 @@ function renderDetail() {
 		return;
 	}
 	const diffPips = Array.from({ length: 3 }, (_, k) => `<span class="d ${k < i.difficulty ? 'on' : ''}"></span>`).join('');
-	const statusKey = i.status === 'in-progress' ? 'prog' : i.status;
-	const processingBanner = i.status === 'pending' ? '<span class="processing">AI is enriching this issue…</span>' : '';
+	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
+
+	// FIX: temp thing for later loading
+	const processingBanner = i.tags.includes('ai-processing') ? '<span class="processing">AI is enriching this issue…</span>' : '';
+
+	let assigneeHtml = `<span class="avatar sm" style="background: transparent; border: 1px dashed #888; color: #888;">--</span><span style="font-size:13px; color: #888;">Unassigned</span>`;
+
+	if (i.assigned_to && state.teamMembers) {
+		const member = state.teamMembers.find((m) => m.id === i.assigned_to);
+		if (member) {
+			const initials =
+				(member.first_name?.charAt(0) || member.username?.charAt(0) || '?').toUpperCase() +
+				(member.last_name?.charAt(0) || '').toUpperCase();
+			const name = member.first_name && member.last_name ? `${member.first_name} ${member.last_name}` : member.username;
+			assigneeHtml = `<span class="avatar sm">${initials}</span><span style="font-size:13px;">${name}</span>`;
+		}
+	}
 
 	detailEl.innerHTML = `
         <div class="detail-head">
@@ -306,11 +377,11 @@ function renderDetail() {
             <div class="meta-strip">
                 <div class="cell">
                     <span class="label">Status</span>
-                    <span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
+                    <span class="chip st-${statusKey}">${STATUS_NAME[i.status] || i.status}</span>
                 </div>
                 <div class="cell">
                     <span class="label">Priority</span>
-                    <span class="chip pri-${i.priority}"><span class="dot"></span>${PRI_NAME[i.priority]}</span>
+                    <span class="chip pri-${i.priority}"><span class="dot"></span>${PRI_NAME[i.priority] || i.priority}</span>
                 </div>
                 <div class="cell">
                     <span class="label">Difficulty</span>
@@ -319,38 +390,21 @@ function renderDetail() {
                 <div class="cell" style="flex:1; min-width:160px;">
                     <span class="label">Labels</span>
                     <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                        ${i.labels.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}
+                    	${i.tags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}
                     </div>
                 </div>
+                
                 <div class="cell">
                     <span class="label">Assignee</span>
                     <div style="display:flex; align-items:center; gap:6px;">
-                        <span class="avatar sm">JK</span>
-                        <span style="font-size:13px;">Jon K.</span>
+                        ${assigneeHtml}
                     </div>
                 </div>
+
             </div>
             ${i.summary ? `<div class="summary-block"><span class="label">Summary</span><p>${i.summary}</p></div>` : ''}
             <div class="description">${i.description || '<p class="muted">No description.</p>'}</div>
-            ${
-							i.activity && i.activity.length
-								? `
-            <div class="activity">
-                <h4>Activity</h4>
-                ${i.activity
-									.map(
-										(a) => `
-                    <div class="item">
-                        <span class="avatar sm">${a.who}</span>
-                        <span>${a.what}</span>
-                        <span class="when">${a.when}</span>
-                    </div>`,
-									)
-									.join('')}
-            </div>`
-								: ''
-						}
-        </div>`;
+            </div>`;
 }
 
 // ============================================================
@@ -467,8 +521,21 @@ let pendingFiles = [];
  */
 function openNew() {
 	newBackdrop.classList.add('open');
+
+	const assigneeSelect = document.getElementById('nAssignee');
+	if (assigneeSelect && state.teamMembers) {
+		const options = state.teamMembers
+			.map((m) => {
+				const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username;
+				return `<option value="${m.id}">${name}</option>`;
+			})
+			.join('');
+		assigneeSelect.innerHTML = `<option value="">Unassigned</option>${options}`;
+	}
+
 	setTimeout(() => document.getElementById('nTitle').focus(), 30);
 }
+
 /**
  *
  */
@@ -491,38 +558,54 @@ newBackdrop.addEventListener('click', (e) => {
 	if (e.target === newBackdrop) closeNew();
 });
 
-// file upload
-const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-const fileList = document.getElementById('fileList');
-
 dropzone.addEventListener('click', () => fileInput.click());
+
 fileInput.addEventListener('change', (e) => addFiles(e.target.files));
+
 ['dragenter', 'dragover'].forEach((ev) =>
 	dropzone.addEventListener(ev, (e) => {
 		e.preventDefault();
 		dropzone.classList.add('drag');
 	}),
 );
+
 ['dragleave', 'drop'].forEach((ev) =>
 	dropzone.addEventListener(ev, (e) => {
 		e.preventDefault();
 		dropzone.classList.remove('drag');
 	}),
 );
+
 dropzone.addEventListener('drop', (e) => {
 	e.preventDefault();
 	addFiles(e.dataTransfer.files);
 });
+
 /**
  * Queue files from drag-and-drop or file input for a new issue.
+ * Rejects any files that are not text/log/json.
  * @param {FileList|File[]} files - Files to attach.
  * @returns {void}
  */
 function addFiles(files) {
-	Array.from(files).forEach((f) => pendingFiles.push(f));
+	const allowedTypes = ['text/plain', 'application/json'];
+	const allowedExtensions = ['.log', '.txt', '.json'];
+
+	Array.from(files).forEach((f) => {
+		// Check by MIME type or by file extension (for .log files which often lack a MIME type)
+		const isAllowed = allowedTypes.includes(f.type) || allowedExtensions.some((ext) => f.name.toLowerCase().endsWith(ext));
+
+		if (isAllowed) {
+			pendingFiles.push(f);
+		} else {
+			// Alert the user that their file was rejected
+			showToast(`Rejected ${f.name}: Only text/log files are allowed.`);
+		}
+	});
+
 	renderFiles();
 }
+
 /**
  *
  */
@@ -562,10 +645,19 @@ confirmNewBtn.addEventListener('click', async () => {
 	const formData = new FormData();
 	formData.append('title', title);
 	formData.append('description', desc);
+	if (state.currentTeamId) formData.append('team_id', state.currentTeamId);
 
-	if (state.currentTeamId) {
-		formData.append('team_id', state.currentTeamId);
-	}
+	const priority = document.getElementById('nPriority')?.value;
+	const category = document.getElementById('nCategory')?.value;
+	const assignee = document.getElementById('nAssignee')?.value;
+	const difficulty = document.getElementById('nDifficulty')?.value;
+	const tags = document.getElementById('nTags')?.value;
+
+	if (priority) formData.append('priority', priority);
+	if (category) formData.append('category', category);
+	if (assignee) formData.append('assigned_to', assignee);
+	if (difficulty) formData.append('difficulty', difficulty);
+	if (tags) formData.append('tags', tags);
 
 	pendingFiles.forEach((f) => formData.append('attachments', f));
 
@@ -574,18 +666,19 @@ confirmNewBtn.addEventListener('click', async () => {
 	confirmNewBtn.disabled = true;
 
 	try {
-		showToast(`Creating issue...`);
-		const newIssue = await createIssue(formData);
+		showToast('Creating issue...');
+		await createIssue(formData);
 
-		ISSUES.unshift(newIssue);
-		state.selected = newIssue.id;
+		ISSUES = await fetchIssues(state.currentTeamId);
+
+		state.selected = ISSUES[0]?.id ?? null;
 
 		closeNew();
 		renderList();
 		renderDetail();
-		showToast(`Created TKR-${newIssue.id}`);
-	} catch {
-		showToast('Failed to create issue.');
+		showToast('Issue created');
+	} catch (err) {
+		showToast(err.message || 'Failed to create issue.');
 	} finally {
 		confirmNewBtn.textContent = originalText;
 		confirmNewBtn.disabled = false;
@@ -650,19 +743,20 @@ detailEl.addEventListener('click', async (e) => {
 		btn.textContent = 'Saving...';
 		btn.disabled = true;
 		try {
-			const updatedData = await updateIssue(state.selected, { status: 'done' });
+			await updateIssue(state.selected, { status: 'Resolved' });
+
 			const index = ISSUES.findIndex((i) => i.id === state.selected);
-			if (index !== -1) ISSUES[index] = updatedData;
+			if (index !== -1) ISSUES[index] = { ...ISSUES[index], status: 'Resolved' };
+
 			renderList();
 			renderDetail();
-			showToast('Issue marked as done');
+			showToast('Issue marked as resolved');
 		} catch {
 			btn.textContent = 'Mark done';
 			btn.disabled = false;
 			showToast('Failed to update status');
 		}
 	}
-
 	if (e.target.matches('.edit-issue-btn')) {
 		const btn = e.target;
 		const currentIssue = ISSUES.find((i) => i.id === state.selected);
@@ -670,23 +764,35 @@ detailEl.addEventListener('click', async (e) => {
 
 		const newTitle = prompt('Edit Title:', currentIssue.title);
 		if (newTitle === null) return;
-		const newStatus = prompt('Edit Status (open, in-progress, done):', currentIssue.status);
+		const newStatus = prompt('Edit Status (Open, In Progress, Resolved, Closed):', currentIssue.status);
 		if (newStatus === null) return;
+
+		const statusMap = {
+			open: 'Open',
+			'in-progress': 'In Progress',
+			'in progress': 'In Progress',
+			done: 'Resolved',
+			resolved: 'Resolved',
+			closed: 'Closed',
+		};
+		const normalisedStatus = statusMap[newStatus.trim().toLowerCase()] ?? newStatus.trim();
 
 		const updates = {
 			title: newTitle.trim() || currentIssue.title,
-			status: newStatus.trim() || currentIssue.status,
+			status: normalisedStatus || currentIssue.status,
 		};
 
 		btn.textContent = 'Saving...';
 		btn.disabled = true;
 		try {
-			const updatedIssueData = await updateIssue(state.selected, updates);
+			await updateIssue(state.selected, updates);
+
 			const index = ISSUES.findIndex((i) => i.id === state.selected);
-			if (index !== -1) ISSUES[index] = updatedIssueData;
+			if (index !== -1) ISSUES[index] = { ...ISSUES[index], ...updates };
+
 			renderList();
 			renderDetail();
-			showToast('Issue updated successfully');
+			showToast('Issue updated');
 		} catch {
 			showToast('Failed to save edits');
 			btn.textContent = 'Edit';
