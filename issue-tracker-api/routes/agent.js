@@ -16,6 +16,7 @@ const ALLOWED_CATEGORIES = ['bug', 'feature', 'task'];
  * @type {Set<string>}
  */
 const AGENT_BLOCKED_FIELDS = new Set(['id', 'team_id', 'created_by', 'created_at', 'updated_at', 'description', 'assigned_to']);
+
 /**
  * Array fields that must be stored as JSON strings in the database.
  * On read these are parsed back into arrays for the agent.
@@ -32,6 +33,7 @@ const JSON_ARRAY_FIELDS = ['tags', 'stack_trace', 'affected_files'];
  *   200 — issue returned (GET), issue updated (PATCH)
  *   201 — issue created (POST)
  *   400 — invalid id, invalid JSON, missing/invalid required fields, or blocked fields
+ *   401 — missing or invalid session token (POST only)
  *   404 — issue not found, or route not matched
  */
 export async function handleAgents(request, env) {
@@ -81,6 +83,24 @@ export async function handleAgents(request, env) {
 	// fields itself with full structured context.
 	// -----------------------------------------------------------------------
 	if (method === 'POST' && !issueId) {
+		// gets created_by from session token 
+		const header = request.headers.get('Authorization');
+		if (!header?.startsWith('Bearer ')) {
+			return Response.json({ error: 'No session provided' }, { status: 401 });
+		}
+
+		const token = header.slice(7);
+		const session = await env.issue_tracker_db
+			.prepare('SELECT user_id FROM sessions WHERE token = ? AND expires_at > datetime("now")')
+			.bind(token)
+			.first();
+
+		if (!session) {
+			return Response.json({ error: 'Invalid or expired session' }, { status: 401 });
+		}
+
+		const parsedCreatedBy = session.user_id;
+
 		const body = await request.json().catch(() => null);
 
 		if (body === null) {
@@ -94,8 +114,8 @@ export async function handleAgents(request, env) {
 
 		// --- Required field validation ---
 
-		if (!body.title || !body.team_id || !body.created_by) {
-			return Response.json({ error: 'Missing required fields: team_id, created_by, title' }, { status: 400 });
+		if (!body.title || !body.team_id) {
+			return Response.json({ error: 'Missing required fields: team_id, title' }, { status: 400 });
 		}
 
 		if (typeof body.title !== 'string' || body.title.trim() === '') {
@@ -103,14 +123,9 @@ export async function handleAgents(request, env) {
 		}
 
 		const parsedTeamId = Number(body.team_id);
-		const parsedCreatedBy = Number(body.created_by);
 
 		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
 			return Response.json({ error: 'Invalid team_id. Must be a positive integer.' }, { status: 400 });
-		}
-
-		if (!Number.isInteger(parsedCreatedBy) || parsedCreatedBy <= 0) {
-			return Response.json({ error: 'Invalid created_by. Must be a positive integer.' }, { status: 400 });
 		}
 
 		// --- Enum validation for optional fields ---
