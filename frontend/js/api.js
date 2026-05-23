@@ -309,11 +309,11 @@ export async function fetchIssue(id) {
  * @returns {Promise<{ success: boolean, id: number, enriched: object }>}
  */
 export async function createIssue(data) {
-    const isFormData = data instanceof FormData;
-    return request('/issues', {
-        method: 'POST',
-        body: isFormData ? data : JSON.stringify(data),
-    });
+	const isFormData = data instanceof FormData;
+	return request('/issues', {
+		method: 'POST',
+		body: isFormData ? data : JSON.stringify(data),
+	});
 }
 
 /**

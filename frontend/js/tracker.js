@@ -666,34 +666,33 @@ confirmNewBtn.addEventListener('click', async () => {
 	confirmNewBtn.disabled = true;
 
 	try {
-        showToast('Creating and analyzing issue...'); 
+		showToast('Creating and analyzing issue...');
 
-        const response = await createIssue(formData);
+		const response = await createIssue(formData);
 
-        ISSUES = await fetchIssues(state.currentTeamId);
+		ISSUES = await fetchIssues(state.currentTeamId);
 
-        if (response.id) {
-            state.selected = response.id;
-        } else {
-            state.selected = ISSUES[0]?.id ?? null;
-        }
+		if (response.id) {
+			state.selected = response.id;
+		} else {
+			state.selected = ISSUES[0]?.id ?? null;
+		}
 
-        closeNew();
-        renderList();
-        renderDetail();
+		closeNew();
+		renderList();
+		renderDetail();
 
-        if (response.enriched && response.enriched.category) {
-            showToast(`Created: Tagged as a ${response.enriched.priority} priority ${response.enriched.category}`);
-        } else {
-            showToast('Issue created');
-        }
-        
-    } catch (err) {
-        showToast(err.message || 'Failed to create issue.');
-    } finally {
-        confirmNewBtn.textContent = originalText;
-        confirmNewBtn.disabled = false;
-    }
+		if (response.enriched && response.enriched.category) {
+			showToast(`Created: Tagged as a ${response.enriched.priority} priority ${response.enriched.category}`);
+		} else {
+			showToast('Issue created');
+		}
+	} catch (err) {
+		showToast(err.message || 'Failed to create issue.');
+	} finally {
+		confirmNewBtn.textContent = originalText;
+		confirmNewBtn.disabled = false;
+	}
 });
 
 // ============================================================
