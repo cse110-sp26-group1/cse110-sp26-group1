@@ -306,15 +306,14 @@ export async function fetchIssue(id) {
  * and appends it to the description automatically.
  * Required fields: title, team_id, description.
  * @param {FormData|object} data
- * @returns {Promise<{ success: boolean }>}
+ * @returns {Promise<{ success: boolean, id: number, enriched: object }>}
  */
 export async function createIssue(data) {
-	// Send as FormData if files are attached, JSON otherwise
-	const isFormData = data instanceof FormData;
-	return request('/issues', {
-		method: 'POST',
-		body: isFormData ? data : JSON.stringify(data),
-	});
+    const isFormData = data instanceof FormData;
+    return request('/issues', {
+        method: 'POST',
+        body: isFormData ? data : JSON.stringify(data),
+    });
 }
 
 /**
