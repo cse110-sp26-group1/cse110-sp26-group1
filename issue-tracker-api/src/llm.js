@@ -88,18 +88,12 @@ USER INPUT:
  *
  * @function parseKeyValueResponse
  * @param {string} text - Raw LLM response text.
- * @returns {Object} Parsed structured issue object.
+ * @returns {object} Parsed structured issue object.
  */
 function parseKeyValueResponse(text) {
 	const result = {};
 
-	const arrayFields = new Set([
-		'tags',
-		'details.stack_trace',
-		'details.affected_files',
-		'steps_to_reproduce',
-		'missing_information',
-	]);
+	const arrayFields = new Set(['tags', 'details.stack_trace', 'details.affected_files', 'steps_to_reproduce', 'missing_information']);
 
 	const lines = text
 		.split('\n')
@@ -147,7 +141,7 @@ function parseKeyValueResponse(text) {
  * @function processIssue
  * @param {string} rawUserInput - Raw issue description from the user.
  * @param {string} apiKey - DeepSeek API key.
- * @returns {Promise<Object>} Parsed issue object.
+ * @returns {Promise<object>} Parsed issue object.
  * @throws {Error} If the API key is missing or the API request fails.
  */
 export async function processIssue(rawUserInput, apiKey) {
@@ -162,14 +156,11 @@ export async function processIssue(rawUserInput, apiKey) {
 			Authorization: `Bearer ${apiKey}`,
 		},
 		body: JSON.stringify({
-			model: 'deepseek-chat',
+			model: 'deepseek-v4-flash',
 			messages: [
 				{
 					role: 'user',
-					content: PROMPT.replace(
-						'{raw_user_input}',
-						rawUserInput
-					),
+					content: PROMPT.replace('{raw_user_input}', rawUserInput),
 				},
 			],
 		}),
@@ -189,80 +180,3 @@ export async function processIssue(rawUserInput, apiKey) {
 
 	return parseKeyValueResponse(raw);
 }
-
-/**
- * Handles POST /llm.
- *
- * Accepts:
- * { "raw_user_input": "Implement the login button" }
- *
- * @async
- * @function handleLlm
- * @param {Request} request
- * @param {{ DEEPSEEK_API?: string }} env
- * @returns {Promise<Response>}
- */
-export async function handleLlm(request, env) {
-	if (request.method !== 'POST') {
-		return new Response('Method Not Allowed', { status: 405 });
-	}
-
-	if (!env.DEEPSEEK_API) {
-		return Response.json(
-			{ error: 'DEEPSEEK_API is not configured on the server' },
-			{ status: 500 }
-		);
-	}
-
-	let body;
-
-	try {
-		body = await request.json();
-	} catch {
-		return Response.json(
-			{ error: 'Invalid JSON request body' },
-			{ status: 400 }
-		);
-	}
-
-	const rawUserInput = body?.raw_user_input;
-
-	if (
-		typeof rawUserInput !== 'string' ||
-		rawUserInput.trim().length === 0
-	) {
-		return Response.json(
-			{
-				error:
-					"Field 'raw_user_input' is required and must be a non-empty string",
-			},
-			{ status: 400 }
-		);
-	}
-
-	try {
-		const parsed = await processIssue(
-			rawUserInput,
-			env.DEEPSEEK_API
-		);
-
-		return Response.json(parsed);
-	} catch (error) {
-		return Response.json(
-			{ error: error.message ?? 'LLM request failed' },
-			{ status: 502 }
-		);
-	}
-}
-
-export default {
-	async fetch(request, env) {
-
-		const result = await processIssue(
-			'Login page crashes after clicking submit',
-			env.DEEPSEEK_API
-		);
-
-		return Response.json(result);
-	},
-};
