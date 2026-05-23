@@ -1,57 +1,153 @@
-import OpenAI from 'openai';
+/**
+ * Sends raw user input to DeepSeek and returns the structured issue JSON.
+ *
+ * The LLM returns plain-text key-value pairs which are then parsed
+ * into a structured JSON object before being returned.
+ */
 
 const BASE_URL = 'https://api.deepseek.com';
 
-const PROMPT = `You are an issue triage agent for a software team. Given a user's raw issue description, produce a structured JSON object ready for the issue tracker API.
+const PROMPT = `You are an issue triage agent for a software team.
+
+Given a user's raw issue description, produce structured key-value pairs for an issue tracker.
 
 INSTRUCTIONS:
-- Return ONLY a valid JSON object. No markdown fences, no explanation.
-- Omit any field you cannot reasonably infer — fill fields with null.
-- The fewer details the user provides, the MORE you should populate "missing_information" with specific questions that would help clarify the issue.
-- Infer category from context: vague requests like "make X work" are "Task" unless there's evidence of a bug (error messages, crashes, broken behavior).
-- Be opinionated about priority: if a user reports a crash, that's High/Critical. If it's a vague request, it's Medium or Low.
+- Return ONLY plain text key-value pairs.
+- DO NOT return JSON.
+- DO NOT use markdown.
+- One field per line in this exact format:
+key: value
+- Never omit fields. Use null if unknown.
+- Rewrite vague input into actionable engineering language.
+- Infer category, priority, tags, and difficulty whenever possible.
+- If the issue is vague, aggressively populate missing_information with useful engineering questions.
 
-OUTPUT SCHEMA:
-{
-  "title": "string — concise, specific title (rewrite vague input into something actionable)",
-  "description": "string — expanded description with any context you can infer",
-  "summary": "string (optional) — one-sentence summary if description is long",
-  "status": "Open",
-  "priority": "Low | Medium | High | Critical",
-  "category": "Bug | Feature | Task",
-  "tags": ["from: ui, backend, database, authentication, performance, security, testing, documentation, integration, enhancement, research"],
-  "difficulty": "easy | medium | hard (your best estimate)",
-  "details": {
-    "entry_point": "string — file, function, or component if identifiable",
-    "error_type": "string — e.g. TypeError, 500, CORS",
-    "error_message": "string — exact error text if provided",
-    "stack_trace": ["string array — stack frames if provided"],
-    "affected_files": ["string array — files involved if identifiable"]
-  },
-  "expected_behavior": "string — what should happen",
-  "actual_behavior": "string — what actually happens",
-  "steps_to_reproduce": ["string array — ordered steps"],
-  "missing_information": ["string array — specific questions to ask the user to clarify the issue"],
-  "hypothesis": "string — your best guess at root cause or what needs to happen"
-}
+ARRAY FIELD RULES:
+- The following fields are arrays:
+tags
+stack_trace
+affected_files
+missing_information
+steps_to_reproduce
+
+- Array fields MUST use comma-separated values ONLY.
+- NEVER use numbered lists.
+- NEVER use bullet points.
+- NEVER combine multiple items into one sentence.
+- Each array item should be short and distinct.
+
+GOOD:
+steps_to_reproduce: Open login page, Enter credentials, Click submit
+missing_information: Browser version, Console logs, Stack trace
+
+BAD:
+steps_to_reproduce: 1. Open login page 2. Enter credentials
+missing_information: What browser are you using and do you have logs?
+
+FIELDS:
+title
+description
+summary
+status
+priority
+difficulty
+category
+tags
+entry_point
+error_type
+error_message
+stack_trace
+affected_files
+expected_behavior
+actual_behavior
+missing_information
+steps_to_reproduce
+hypothesis
 
 RULES:
-1. "title" should always be rewritten to be specific and actionable, even if the user input is vague.
-2. Omit the entire "details" object if there is no error/technical info to populate it with.
-3. Do NOT include: id, created_by, team_id, created_at, updated_at, token_usage, resolution_notes.
-4. For Features/Tasks with no error context, omit "details", "actual_behavior", and "steps_to_reproduce".
+- status must always be: Open
+- priority must be one of:
+Low, Medium, High, Critical
+- difficulty must be one of:
+easy, medium, hard
+- category must be one of:
+Bug, Feature, Task
+- tags should be chosen from:
+ui, backend, database, authentication, performance, security, testing, documentation, integration, enhancement, research
+- Broken behavior, crashes, errors, incorrect output = Bug
+- New functionality request = Feature
+- Setup, migration, refactor, cleanup, investigation = Task
+- Crashes, auth failures, outages, or data loss = High or Critical priority
 
-USER INPUT:{raw_user_input}
+USER INPUT:
+{raw_user_input}
 `;
 
 /**
- * Sends raw user input to DeepSeek and returns the structured issue JSON string.
+ * Parses DeepSeek key-value output into a JSON object.
+ *
+ * @function parseKeyValueResponse
+ * @param {string} text - Raw LLM response text.
+ * @returns {Object} Parsed structured issue object.
+ */
+function parseKeyValueResponse(text) {
+	const result = {};
+
+	const arrayFields = new Set([
+		'tags',
+		'details.stack_trace',
+		'details.affected_files',
+		'steps_to_reproduce',
+		'missing_information',
+	]);
+
+	const lines = text
+		.split('\n')
+		.map((line) => line.trim())
+		.filter(Boolean);
+
+	for (const line of lines) {
+		const separator = line.indexOf(':');
+
+		if (separator === -1) continue;
+
+		const key = line.slice(0, separator).trim();
+		let value = line.slice(separator + 1).trim();
+
+		if (value.toLowerCase() === 'null') {
+			value = null;
+		} else if (arrayFields.has(key)) {
+			value = value
+				.split(',')
+				.map((item) => item.trim())
+				.filter(Boolean);
+		}
+
+		const path = key.split('.');
+		let current = result;
+
+		for (let i = 0; i < path.length - 1; i++) {
+			if (!current[path[i]]) {
+				current[path[i]] = {};
+			}
+
+			current = current[path[i]];
+		}
+
+		current[path[path.length - 1]] = value;
+	}
+
+	return result;
+}
+
+/**
+ * Sends raw user input to DeepSeek and returns the structured issue object.
  *
  * @async
  * @function processIssue
- * @param {string} rawUserInput - The raw issue or message provided by the user.
- * @param {string} apiKey - DeepSeek API key (Worker: env.DEEPSEEK_API; local: process.env.DEEPSEEK_API).
- * @returns {Promise<string>} The LLM response content (JSON string).
+ * @param {string} rawUserInput - Raw issue description from the user.
+ * @param {string} apiKey - DeepSeek API key.
+ * @returns {Promise<Object>} Parsed issue object.
  * @throws {Error} If the API key is missing or the API request fails.
  */
 export async function processIssue(rawUserInput, apiKey) {
@@ -59,32 +155,51 @@ export async function processIssue(rawUserInput, apiKey) {
 		throw new Error('DEEPSEEK_API is required');
 	}
 
-	const client = new OpenAI({
-		apiKey,
-		baseURL: BASE_URL,
+	const response = await fetch(`${BASE_URL}/chat/completions`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${apiKey}`,
+		},
+		body: JSON.stringify({
+			model: 'deepseek-chat',
+			messages: [
+				{
+					role: 'user',
+					content: PROMPT.replace(
+						'{raw_user_input}',
+						rawUserInput
+					),
+				},
+			],
+		}),
 	});
 
-	const response = await client.chat.completions.create({
-		model: 'deepseek-v4-flash',
-		messages: [
-			{
-				role: 'user',
-				content: PROMPT.replace('{raw_user_input}', rawUserInput),
-			},
-		],
-	});
+	if (!response.ok) {
+		throw new Error('LLM request failed');
+	}
 
-	return response.choices[0].message.content;
+	const data = await response.json();
+
+	const raw = data?.choices?.[0]?.message?.content;
+
+	if (!raw) {
+		throw new Error('DeepSeek returned empty response');
+	}
+
+	return parseKeyValueResponse(raw);
 }
 
 /**
- * Handles POST /llm — accepts a raw user issue description and returns the
- * structured JSON produced by DeepSeek.
+ * Handles POST /llm.
  *
- * Request body: { "raw_user_input": "Implement the button" }
+ * Accepts:
+ * { "raw_user_input": "Implement the login button" }
  *
+ * @async
+ * @function handleLlm
  * @param {Request} request
- * @param {{ DEEPSEEK_API?: string }} env - Worker environment (DEEPSEEK_API set via wrangler secret).
+ * @param {{ DEEPSEEK_API?: string }} env
  * @returns {Promise<Response>}
  */
 export async function handleLlm(request, env) {
@@ -93,7 +208,10 @@ export async function handleLlm(request, env) {
 	}
 
 	if (!env.DEEPSEEK_API) {
-		return Response.json({ error: 'DEEPSEEK_API is not configured on the server' }, { status: 500 });
+		return Response.json(
+			{ error: 'DEEPSEEK_API is not configured on the server' },
+			{ status: 500 }
+		);
 	}
 
 	let body;
@@ -101,26 +219,50 @@ export async function handleLlm(request, env) {
 	try {
 		body = await request.json();
 	} catch {
-		return Response.json({ error: 'Invalid JSON request body' }, { status: 400 });
+		return Response.json(
+			{ error: 'Invalid JSON request body' },
+			{ status: 400 }
+		);
 	}
 
 	const rawUserInput = body?.raw_user_input;
 
-	if (typeof rawUserInput !== 'string' || rawUserInput.trim().length === 0) {
-		return Response.json({ error: "Field 'raw_user_input' is required and must be a non-empty string" }, { status: 400 });
+	if (
+		typeof rawUserInput !== 'string' ||
+		rawUserInput.trim().length === 0
+	) {
+		return Response.json(
+			{
+				error:
+					"Field 'raw_user_input' is required and must be a non-empty string",
+			},
+			{ status: 400 }
+		);
 	}
 
-	let raw;
-
 	try {
-		raw = await processIssue(rawUserInput, env.DEEPSEEK_API);
+		const parsed = await processIssue(
+			rawUserInput,
+			env.DEEPSEEK_API
+		);
+
+		return Response.json(parsed);
 	} catch (error) {
-		return Response.json({ error: error.message ?? 'LLM request failed' }, { status: 502 });
-	}
-
-	try {
-		return Response.json(JSON.parse(raw));
-	} catch {
-		return Response.json({ error: 'LLM did not return valid JSON', raw }, { status: 502 });
+		return Response.json(
+			{ error: error.message ?? 'LLM request failed' },
+			{ status: 502 }
+		);
 	}
 }
+
+export default {
+	async fetch(request, env) {
+
+		const result = await processIssue(
+			'Login page crashes after clicking submit',
+			env.DEEPSEEK_API
+		);
+
+		return Response.json(result);
+	},
+};
