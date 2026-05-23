@@ -276,3 +276,70 @@ export async function rejectInvite(inviteId) {
 export async function deleteInvite(inviteId) {
 	return request(`/invites/${inviteId}`, { method: 'DELETE' });
 }
+
+/**
+ * GET /issues?team_id=X
+ * Supports optional query params: status, priority, assigned_to, category,
+ * difficulty, sort_by, order.
+ * @param {number} teamId
+ * @param {Record<string, string>} [filters] - Optional filter/sort params
+ * @returns {Promise<Array>}
+ */
+export async function fetchIssues(teamId, filters = {}) {
+	const params = new URLSearchParams({ team_id: teamId, ...filters });
+	return request(`/issues?${params}`);
+}
+
+/**
+ * GET /issues/:id
+ * @param {number} id
+ * @returns {Promise<object>}
+ */
+export async function fetchIssue(id) {
+	return request(`/issues/${id}`);
+}
+
+/**
+ * POST /issues
+ * Accepts both JSON and FormData (multipart). FormData is used when
+ * attaching .log or .txt files — the backend reads their text content
+ * and appends it to the description automatically.
+ * Required fields: title, team_id, description.
+ * @param {FormData|object} data
+ * @returns {Promise<{ success: boolean }>}
+ */
+export async function createIssue(data) {
+	// Send as FormData if files are attached, JSON otherwise
+	const isFormData = data instanceof FormData;
+	return request('/issues', {
+		method: 'POST',
+		body: isFormData ? data : JSON.stringify(data),
+	});
+}
+
+/**
+ * PATCH /issues/:id
+ * Accepts any subset of patchable fields:
+ * title, description, summary, status, priority, category, difficulty,
+ * tags, assigned_to, hypothesis, steps_to_reproduce, expected_behavior,
+ * actual_behavior, missing_information, attempt_notes, resolution_notes,
+ * affected_files.
+ * @param {number} id
+ * @param {object} updates
+ * @returns {Promise<{ success: boolean }>}
+ */
+export async function updateIssue(id, updates) {
+	return request(`/issues/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(updates),
+	});
+}
+
+/**
+ * DELETE /issues/:id
+ * @param {number} id
+ * @returns {Promise<{ success: boolean }>}
+ */
+export async function deleteIssue(id) {
+	return request(`/issues/${id}`, { method: 'DELETE' });
+}
