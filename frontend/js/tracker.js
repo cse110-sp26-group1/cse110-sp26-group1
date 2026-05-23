@@ -666,17 +666,27 @@ confirmNewBtn.addEventListener('click', async () => {
 	confirmNewBtn.disabled = true;
 
 	try {
-		showToast('Creating issue...');
-		await createIssue(formData);
+		showToast('Creating and analyzing issue...');
+
+		const response = await createIssue(formData);
 
 		ISSUES = await fetchIssues(state.currentTeamId);
 
-		state.selected = ISSUES[0]?.id ?? null;
+		if (response.id) {
+			state.selected = response.id;
+		} else {
+			state.selected = ISSUES[0]?.id ?? null;
+		}
 
 		closeNew();
 		renderList();
 		renderDetail();
-		showToast('Issue created');
+
+		if (response.enriched && response.enriched.category) {
+			showToast(`Created: Tagged as a ${response.enriched.priority} priority ${response.enriched.category}`);
+		} else {
+			showToast('Issue created');
+		}
 	} catch (err) {
 		showToast(err.message || 'Failed to create issue.');
 	} finally {
