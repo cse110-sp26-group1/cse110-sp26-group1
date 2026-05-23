@@ -5,7 +5,7 @@
 ### Purpose:
 Meet to discuss where everyone's at in sprint 2
 
-### Present: Amormio, Anchita, Albert, James, Jerry, Ben, Noah, Amberly, Jonathan, Ailyn, Amberly, Noah
+### Present: Amormio, Anchita, Albert, James, Noah, Amberly, Jonathan, Ailyn, Amberly, Noah
 
 ### Absent: Ben, Jerry
 

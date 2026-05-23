@@ -19,19 +19,39 @@ export async function handleAuth(request, env) {
 	if (url.pathname === '/auth/register' && method === 'POST') {
 		const body = await request.json();
 
-		if (!body.username || !body.email || !body.password) {
-			return Response.json({ error: 'username, email, and password are required' }, { status: 400 });
+		if (!body.username || !body.email || !body.password || !body.first_name || !body.last_name) {
+			return Response.json({ error: 'username, email, password, first_name, and last_name are required' }, { status: 400 });
 		}
 
-		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?').bind(body.email, body.username).first();
+		if (
+			typeof body.username !== 'string' ||
+			typeof body.email !== 'string' ||
+			typeof body.first_name !== 'string' ||
+			typeof body.last_name !== 'string'
+		) {
+			return Response.json({ error: 'Invalid field types' }, { status: 400 });
+		}
+
+		const username = body.username.trim();
+		const email = body.email.trim();
+		const firstName = body.first_name.trim();
+		const lastName = body.last_name.trim();
+
+		if (!username || !email || !firstName || !lastName) {
+			return Response.json({ error: 'Fields cannot be empty' }, { status: 400 });
+		}
+
+		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?').bind(email, username).first();
 
 		if (existing) {
-			return Response.json({ error: 'Email or username already in use' }, { status: 409 });
+			return Response.json({ error: 'Email or username is already in use' }, { status: 409 });
 		}
 
 		const password_hash = await hashPassword(body.password);
-		const { success } = await env.DB.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)')
-			.bind(body.username, body.email, password_hash)
+		const { success } = await env.DB.prepare(
+			'INSERT INTO users (username, first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?, ?)',
+		)
+			.bind(username, firstName, lastName, email, password_hash)
 			.run();
 
 		return Response.json({ success }, { status: 201 });

@@ -12,8 +12,7 @@ import sqlSchemaRaw from '../schema.sql?raw';
  * @param email
  */
 async function createTestUser(username, email) {
-	const row = await env.issue_tracker_db
-		.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
+	const row = await env.DB.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
 		.bind(username, email, 'mock_hash')
 		.first();
 	return row.id;
@@ -24,7 +23,7 @@ async function createTestUser(username, email) {
  * @param teamName
  */
 async function createTestTeam(teamName) {
-	const row = await env.issue_tracker_db.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id').bind(teamName).first();
+	const row = await env.DB.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id').bind(teamName).first();
 	return row.id;
 }
 
@@ -35,8 +34,7 @@ async function createTestTeam(teamName) {
  * @param title
  */
 async function createTestIssue(teamId, createdById, title = 'Sample Bug') {
-	const row = await env.issue_tracker_db
-		.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
+	const row = await env.DB.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
 		.bind(teamId, createdById, title)
 		.first();
 	return row.id;
@@ -53,19 +51,19 @@ describe('Issues Endpoint Testing Suite', () => {
 			.join(' '); // Join into a single execution string
 
 		// Initialize the temporary D1 test database with your schema
-		await env.issue_tracker_db.exec(cleanSql);
+		await env.DB.exec(cleanSql);
 	});
 
 	beforeEach(async () => {
 		// Clear all tables to ensure test isolation and a clean state for every run
-		await env.issue_tracker_db.exec(`
-			DELETE FROM agent_attempts;
-			DELETE FROM invites;
-			DELETE FROM issues;
-			DELETE FROM team_members;
-			DELETE FROM teams;
-			DELETE FROM users;
-		`);
+		await env.DB.exec(`
+            DELETE FROM agent_attempts;
+            DELETE FROM invites;
+            DELETE FROM issues;
+            DELETE FROM team_members;
+            DELETE FROM teams;
+            DELETE FROM users;
+        `);
 	});
 
 	// ==========================================
