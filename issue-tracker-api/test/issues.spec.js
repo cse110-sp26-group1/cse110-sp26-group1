@@ -435,4 +435,102 @@ describe('Issues Endpoint Testing Suite', () => {
 			});
 		});
 	});
+
+	// ==========================================
+	// --- POINT 4: GET /issues/:id SINGLE ENTRY ---
+	// ==========================================
+	describe('GET /issues/:id Single Entry', () => {
+		describe('Success Cases', () => {
+			it('200: Fetches a single tracking record by ID, verifying complete matching object property allocations and array conversions (Integration Style)', async () => {
+				const userId = await createTestUser('single_fetcher', 'fetch@ucsd.edu');
+				const teamId = await createTestTeam('Target Team');
+				const token = 'single-fetch-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				// Populate complete tracking record properties directly via SQL to verify decoding conversions
+				const insertResult = await env.DB.prepare(
+					`INSERT INTO issues (team_id, created_by, title, description, status, priority, category, tags, affected_files)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+				)
+					.bind(
+						teamId,
+						userId,
+						'Unique Individual Issue',
+						'Verifying direct resource matching layouts',
+						'Open',
+						'Critical',
+						'Bug',
+						JSON.stringify(['core', 'backend']),
+						JSON.stringify(['src/routes/issues.js']),
+					)
+					.first();
+
+				const issueId = insertResult.id;
+
+				// Integration style utilizing explicit URL ID parameter paths
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(200);
+				const data = await res.json();
+
+				// Assert exact object mapping values match seed records cleanly
+				expect(data.id).toBe(issueId);
+				expect(data.team_id).toBe(teamId);
+				expect(data.title).toBe('Unique Individual Issue');
+				expect(data.description).toBe('Verifying direct resource matching layouts');
+				expect(data.priority).toBe('Critical');
+
+				// Verify array properties are seamlessly expanded back to structural layouts
+				expect(data.tags).toEqual(['core', 'backend']);
+				expect(data.affected_files).toEqual(['src/routes/issues.js']);
+			});
+		});
+
+		describe('Failure Cases', () => {
+			it('404: Throws a Not Found error when requesting an explicit integer tracking ID that does not exist inside D1 (Integration Style)', async () => {
+				const userId = await createTestUser('search_user', 'search@ucsd.edu');
+				const token = 'search-token';
+				await createTestSession(userId, token, 24);
+
+				// Requesting a non-existent large issue ID parameter
+				const res = await SELF.fetch('http://localhost/issues/99999', {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(404);
+				const data = await res.json();
+				expect(data.error).toBe('Issue not found');
+			});
+
+			it('403: Enforces tenancy isolation, throwing a forbidden error if an issue exists but is tied to a team workspace where the viewer holds no membership (Integration Style)', async () => {
+				const maliciousUserId = await createTestUser('attacker', 'spy@ucsd.edu');
+				const victimUserId = await createTestUser('victim', 'victim@ucsd.edu');
+
+				const corporateTeamId = await createTestTeam('Secure Corporate Core');
+				const publicTeamId = await createTestTeam('Public Playground Sandbox');
+
+				const attackerToken = 'attacker-session-token';
+
+				// Setup attacker session and link them strictly to the playground team context only
+				await createTestSession(maliciousUserId, attackerToken, 24);
+				await createTeamMembership(maliciousUserId, publicTeamId, 'member');
+
+				// Generate the secret issue belonging to the internal Corporate Core workspace
+				const secretIssueId = await createTestIssue(corporateTeamId, victimUserId, 'Secret Financial Vulnerability');
+
+				// Attacker attempts to target the secret issue row directly by integer lookup matching
+				const res = await SELF.fetch(`http://localhost/issues/${secretIssueId}`, {
+					headers: { Authorization: `Bearer ${attackerToken}` },
+				});
+
+				expect(res.status).toBe(403);
+				const data = await res.json();
+				expect(data.error).toBe('Forbidden');
+			});
+		});
+	});
 });
