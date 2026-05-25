@@ -98,8 +98,8 @@ describe('Issues Endpoint Testing Suite', () => {
 
 	beforeEach(async () => {
 		// Clear all tables to ensure strict test isolation and a clean state for every run.
+		//"DELETE FROM AGENT ATTEMPTS" still needed but currently commented out since agent attempts table is not yet integrated into the workflow and causes FK constraint issues when included in the cleanup loop.
 		await env.DB.exec(`
-			DELETE FROM agent_attempts;
 			DELETE FROM invites;
 			DELETE FROM issues;
 			DELETE FROM team_members;
