@@ -49,6 +49,27 @@ function buildQueryString(queryFlags) {
 	return queryString ? `?${queryString}` : '';
 }
 
+function formatIssueList(issues, statusFilterApplied) {
+	if (!Array.isArray(issues)) {
+		return issues;
+	}
+
+	const formattedIssues = issues.map((issue) => ({
+		id: issue.id,
+		title: issue.title,
+		summary: issue.summary,
+		category: issue.category,
+		tags: issue.tags,
+		status: issue.status,
+	}));
+
+	if (statusFilterApplied) {
+		return formattedIssues;
+	}
+
+	return formattedIssues.filter((issue) => issue.status !== 'Resolved' && issue.status !== 'Closed');
+}
+
 // Helper: load saved token
 function getToken() {
 	if (!fs.existsSync(CONFIG_FILE)) {
@@ -219,7 +240,7 @@ if (command === 'login') {
 		console.error('Error:', data);
 		process.exit(1);
 	}
-	console.log(JSON.stringify(data, null, 2));
+	console.log(JSON.stringify(formatIssueList(data, Boolean(flags.status)), null, 2));
 } else if (command === 'get_issue') {
 	if (!id) {
 		console.error('Usage: allegro get_issue <id>');
