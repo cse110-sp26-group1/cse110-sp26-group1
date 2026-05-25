@@ -245,8 +245,11 @@ select.input {
 		box-shadow 0.12s;
 }
 .input:focus,
+.input:focus-visible,
 .textarea:focus,
-select.input:focus {
+.textarea:focus-visible,
+select.input:focus,
+select.input:focus-visible {
 	outline: none;
 	border-color: var(--ink);
 	box-shadow: 0 0 0 3px #00000010;

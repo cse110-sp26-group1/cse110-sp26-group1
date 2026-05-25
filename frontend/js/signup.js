@@ -1,6 +1,8 @@
 import { createAccount, login, requireNoAuth } from './api.js';
+import { initPasswordToggles } from './view-password.js';
 
 requireNoAuth();
+initPasswordToggles(); // wires up the eye button next to the password field
 
 const authForm = document.getElementById('authForm');
 
@@ -14,7 +16,7 @@ const passwordEl = document.getElementById('password');
  * Handles create-account form submit. Registers the user, then immediately
  * logs in to obtain a session token before redirecting to teams.
  *
-	 * @param {SubmitEvent} e Browser submit event from the signup form.
+ * @param {SubmitEvent} e Browser submit event from the signup form.
  */
 async function handleSignupSubmit(e) {
 	e.preventDefault();
