@@ -27,7 +27,7 @@ const id = args[1];
 
 function printUsage() {
 	console.error('Usage:');
-	console.error('  allegro login --email=xxx --password=xxx');
+	console.error('  allegro login --email=xxx');
 	console.error('  allegro logout');
 	console.error('  allegro list_teams');
 	console.error('  allegro list_issues --team_id=<team_id> [--status=xxx] [--priority=xxx] [--assigned_to=xxx]');
@@ -52,11 +52,65 @@ function buildQueryString(queryFlags) {
 // Helper: load saved token
 function getToken() {
 	if (!fs.existsSync(CONFIG_FILE)) {
-		console.error('Not logged in. Run: allegro login --email=xxx --password=xxx');
+		console.error('Not logged in. Run: allegro login --email=xxx');
 		process.exit(1);
 	}
 	const config = JSON.parse(fs.readFileSync(CONFIG_FILE));
 	return config.token;
+}
+
+function promptForPassword() {
+	return new Promise((resolve, reject) => {
+		if (!process.stdin.isTTY || !process.stdout.isTTY) {
+			reject(new Error('Interactive password prompt requires a terminal.'));
+			return;
+		}
+
+		const previousRawMode = process.stdin.isRaw;
+		let password = '';
+
+		const cleanup = () => {
+			process.stdin.setRawMode(Boolean(previousRawMode));
+			process.stdin.pause();
+			process.stdin.removeListener('data', onData);
+		};
+
+		const onData = (chunk) => {
+			const key = chunk.toString('utf8');
+
+			if (key === '\r' || key === '\n') {
+				process.stdout.write('\n');
+				cleanup();
+				resolve(password);
+				return;
+			}
+
+			if (key === '\u0003') {
+				process.stdout.write('\n');
+				cleanup();
+				reject(new Error('Password entry cancelled.'));
+				return;
+			}
+
+			if (key === '\u007f') {
+				if (password.length > 0) {
+					password = password.slice(0, -1);
+					process.stdout.write('\b \b');
+				}
+				return;
+			}
+
+			if (key >= ' ' && key !== '\u001b') {
+				password += key;
+				process.stdout.write('*');
+			}
+		};
+
+		process.stdout.write('Password: ');
+		process.stdin.resume();
+		process.stdin.setRawMode(true);
+		process.stdin.on('data', onData);
+	});
 }
 
 // Helper: make API requests
@@ -80,10 +134,23 @@ async function request(method, endpoint, body = null) {
 }
 
 if (command === 'login') {
-	const { email, password } = flags;
+	const { email } = flags;
 
-	if (!email || !password) {
-		console.error('Usage: allegro login --email=xxx --password=xxx');
+	if (!email) {
+		console.error('Usage: allegro login --email=xxx');
+		process.exit(1);
+	}
+
+	let password;
+	try {
+		password = await promptForPassword();
+	} catch (error) {
+		console.error(error.message);
+		process.exit(1);
+	}
+
+	if (!password) {
+		console.error('Password is required.');
 		process.exit(1);
 	}
 
