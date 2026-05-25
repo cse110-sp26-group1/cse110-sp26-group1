@@ -29,6 +29,7 @@ function printUsage() {
 	console.error('Usage:');
 	console.error('  allegro login --email=xxx --password=xxx');
 	console.error('  allegro logout');
+	console.error('  allegro list_teams');
 	console.error('  allegro list_issues --team_id=<team_id> [--status=xxx] [--priority=xxx] [--assigned_to=xxx]');
 	console.error('  allegro get_issue <id>');
 	console.error('  allegro update_issue <id> --status=xxx --priority=xxx [--assigned_to=xxx]');
@@ -102,7 +103,6 @@ if (command === 'login') {
 	fs.mkdirSync(CONFIG_DIR, { recursive: true });
 	fs.writeFileSync(CONFIG_FILE, JSON.stringify({ token: data.token, expires_at: data.expires_at }));
 	console.log('Logged in successfully!');
-
 } else if (command === 'logout') {
 	const token = getToken();
 
@@ -113,7 +113,13 @@ if (command === 'login') {
 
 	fs.unlinkSync(CONFIG_FILE);
 	console.log('Logged out successfully!');
-
+} else if (command === 'list_teams') {
+	const { ok, data } = await request('GET', '/teams');
+	if (!ok) {
+		console.error('Error:', data);
+		process.exit(1);
+	}
+	console.log(JSON.stringify(data, null, 2));
 } else if (command === 'list_issues') {
 	if (!flags.team_id) {
 		console.error('Usage: allegro list_issues --team_id=<team_id> [--status=xxx] [--priority=xxx] [--assigned_to=xxx]');
@@ -147,7 +153,6 @@ if (command === 'login') {
 		process.exit(1);
 	}
 	console.log(JSON.stringify(data, null, 2));
-
 } else if (command === 'get_issue') {
 	if (!id) {
 		console.error('Usage: allegro get_issue <id>');
@@ -160,7 +165,6 @@ if (command === 'login') {
 		process.exit(1);
 	}
 	console.log(JSON.stringify(data, null, 2));
-
 } else if (command === 'update_issue') {
 	if (!id) {
 		console.error('Usage: allegro update_issue <id> --status=<status> --priority=<priority>');
@@ -192,7 +196,6 @@ if (command === 'login') {
 		process.exit(1);
 	}
 	console.log('Issue updated successfully!');
-
 } else if (command === 'resolve_issue') {
 	if (!id) {
 		console.error('Usage: allegro resolve_issue <id>');
@@ -207,11 +210,9 @@ if (command === 'login') {
 		process.exit(1);
 	}
 	console.log('Issue resolved successfully!');
-
 } else if (!command || command === 'help' || command === '--help') {
 	printUsage();
 	process.exit(1);
-
 } else {
 	console.error(`Unknown command: ${command}`);
 	printUsage();
