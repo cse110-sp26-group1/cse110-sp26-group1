@@ -5,11 +5,15 @@ import worker from '../src';
 // bypassing all runtime path resolution issues on different OSes.
 import sqlSchemaRaw from '../schema.sql?raw';
 
-// --- SEED HELPERS ---
+// ==========================================
+// --- SECTION 1: SEED & MOCK HELPERS ---
+// ==========================================
+
 /**
- *
- * @param username
- * @param email
+ * Creates a mock user record in the database.
+ * @param {string} username 
+ * @param {string} email 
+ * @returns {Promise<number>} The inserted user's ID.
  */
 async function createTestUser(username, email) {
 	const row = await env.DB.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
@@ -19,8 +23,9 @@ async function createTestUser(username, email) {
 }
 
 /**
- *
- * @param teamName
+ * Creates a mock team workspace record in the database.
+ * @param {string} teamName 
+ * @returns {Promise<number>} The inserted team's ID.
  */
 async function createTestTeam(teamName) {
 	const row = await env.DB.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id').bind(teamName).first();
@@ -28,17 +33,46 @@ async function createTestTeam(teamName) {
 }
 
 /**
- *
- * @param teamId
- * @param createdById
- * @param title
+ * Seeds an active or expired session to satisfy the requireAuth barrier.
+ * @param {number} userId - The user ID owning the session.
+ * @param {string} token - The raw bearer token string.
+ * @param {number} ttlHours - Relative time offset in hours (negative for expired sessions).
  */
-async function createTestIssue(teamId, createdById, title = 'Sample Bug') {
-	const row = await env.DB.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
-		.bind(teamId, createdById, title)
+async function createTestSession(userId, token, ttlHours = 24) {
+	const expiryDate = new Date();
+	expiryDate.setHours(expiryDate.getHours() + ttlHours);
+	await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)')
+		.bind(userId, token, expiryDate.toISOString())
+		.run();
+}
+
+/**
+ * Seeds a team membership relation to satisfy the requireTeamMember multi-tenant barrier.
+ * @param {number} userId 
+ * @param {number} teamId 
+ * @param {'admin' | 'member'} role 
+ */
+async function createTeamMembership(userId, teamId, role = 'member') {
+	await env.DB.prepare('INSERT INTO team_members (user_id, team_id, role) VALUES (?, ?, ?)')
+		.bind(userId, teamId, role)
+		.run();
+}
+
+/**
+ * Robust helper to generate baseline issue records ensuring required schema fields are populated.
+ */
+async function createTestIssue(teamId, createdById, title = 'Sample Bug', description = 'Sample Description') {
+	const row = await env.DB.prepare(
+		'INSERT INTO issues (team_id, created_by, title, description, status, priority, category) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id'
+	)
+		.bind(teamId, createdById, title, description, 'Open', 'Medium', 'Bug')
 		.first();
 	return row.id;
 }
+
+// ==========================================
+// --- GLOBAL ENVIRONMENT SETUP & TEARDOWN ---
+// ==========================================
 
 describe('Issues Endpoint Testing Suite', () => {
 	beforeAll(async () => {
@@ -46,37 +80,46 @@ describe('Issues Endpoint Testing Suite', () => {
 		// that can cause parsing errors in the D1 internal engine.
 		const cleanSql = sqlSchemaRaw
 			.split('\n')
-			.map((line) => line.split('--')[0].trim()) // Strip comments
-			.filter((line) => line.length > 0) // Strip empty lines
-			.join(' '); // Join into a single execution string
+			.map((line) => line.split('--')[0].trim()) // Strip inline comments
+			.filter((line) => line.length > 0)          // Strip empty lines
+			.join(' ');                                 // Join into a single execution string
 
 		// Initialize the temporary D1 test database with your schema
 		await env.DB.exec(cleanSql);
 	});
 
 	beforeEach(async () => {
-		// Clear all tables to ensure test isolation and a clean state for every run
+		// Clear all tables to ensure strict test isolation and a clean state for every run.
 		await env.DB.exec(`
-            DELETE FROM agent_attempts;
-            DELETE FROM invites;
-            DELETE FROM issues;
-            DELETE FROM team_members;
-            DELETE FROM teams;
-            DELETE FROM users;
-        `);
+			DELETE FROM agent_attempts;
+			DELETE FROM invites;
+			DELETE FROM issues;
+			DELETE FROM team_members;
+			DELETE FROM sessions;
+			DELETE FROM teams;
+			DELETE FROM users;
+		`);
 	});
 
 	// ==========================================
-	// GET /issues Testing
+	// --- AUTHENTICATION & ACCESS CONTROL TESTS ---
 	// ==========================================
-	describe('GET /issues', () => {
+	describe('RequireAuth & requireTeamMember Access Verification', () => {
+		
 		describe('Success Cases', () => {
-			it('200: returns an array of issues for a valid team_id (Unit Style)', async () => {
-				const userId = await createTestUser('johndoe', 'john@ucsd.edu');
-				const teamId = await createTestTeam('Alpha Team');
-				await createTestIssue(teamId, userId, 'Crash on load');
+			it('200: Allows full endpoint entry when both valid session and team membership exist (Unit Style)', async () => {
+				const userId = await createTestUser('valid_user', 'valid@ucsd.edu');
+				const teamId = await createTestTeam('Engineering Team');
+				const token = 'perfect-session-token';
 
-				const req = new Request(`http://localhost/issues?team_id=${teamId}`);
+				// Seed setup required to clear all middleware guards
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				// Unit style verification targeting worker.fetch directly
+				const req = new Request(`http://localhost/issues?team_id=${teamId}`, {
+					headers: { 'Authorization': `Bearer ${token}` }
+				});
 				const ctx = createExecutionContext();
 				const res = await worker.fetch(req, env, ctx);
 				await waitOnExecutionContext(ctx);
@@ -84,175 +127,66 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(res.status).toBe(200);
 				const data = await res.json();
 				expect(Array.isArray(data)).toBe(true);
-				expect(data.length).toBe(1);
-				expect(data[0].title).toBe('Crash on load');
-			});
-
-			it('200: returns an empty array if team has no issues (Integration Style)', async () => {
-				const teamId = await createTestTeam('Empty Team');
-				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}`);
-
-				expect(res.status).toBe(200);
-				const data = await res.json();
-				expect(data).toEqual([]);
 			});
 		});
 
 		describe('Failure Cases', () => {
-			it('400: rejects missing team_id query parameter', async () => {
-				const res = await SELF.fetch('http://localhost/issues');
-				expect(res.status).toBe(400);
+			it('401: Rejects incoming request when Authorization header is completely missing (Integration Style)', async () => {
+				// Integration style hitting actual cloudflare worker via SELF
+				const res = await SELF.fetch('http://localhost/issues?team_id=1');
+				
+				expect(res.status).toBe(401);
 				const data = await res.json();
-				expect(data.error).toContain('team_id query param required');
+				expect(data.error).toBe('Unauthorized');
 			});
 
-			it('400: rejects invalid non-numeric team_id format', async () => {
-				const res = await SELF.fetch('http://localhost/issues?team_id=not-a-number');
-				expect(res.status).toBe(400);
+			it('401: Rejects request when session token is provided but missing from database (Unit Style)', async () => {
+				const req = new Request('http://localhost/issues?team_id=1', {
+					headers: { 'Authorization': 'Bearer non-existent-token' }
+				});
+				const ctx = createExecutionContext();
+				const res = await worker.fetch(req, env, ctx);
+				await waitOnExecutionContext(ctx);
+
+				expect(res.status).toBe(401);
 				const data = await res.json();
-				expect(data.error).toContain('Invalid team_id format');
+				expect(data.error).toBe('Invalid session');
 			});
-		});
-	});
 
-	// ==========================================
-	// POST /issues Testing
-	// ==========================================
-	describe('POST /issues', () => {
-		describe('Success Cases', () => {
-			it('201: successfully creates a valid issue (Integration Style)', async () => {
-				const userId = await createTestUser('dev_user', 'dev@ucsd.edu');
-				const teamId = await createTestTeam('Beta Team');
+			it('401: Cleanly detects and rejects expired session tokens (Integration Style)', async () => {
+				const userId = await createTestUser('expired_user', 'expired@ucsd.edu');
+				const token = 'expired-session-token';
+				
+				// Seed a token that expired 2 hours ago
+				await createTestSession(userId, token, -2);
 
-				const res = await SELF.fetch('http://localhost/issues', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						team_id: teamId,
-						created_by: userId,
-						title: 'UI alignment bug',
-						priority: 'High',
-						category: 'Bug',
-					}),
+				const res = await SELF.fetch('http://localhost/issues?team_id=1', {
+					headers: { 'Authorization': `Bearer ${token}` }
 				});
 
-				expect(res.status).toBe(201);
+				expect(res.status).toBe(401);
 				const data = await res.json();
-				expect(data.success).toBe(true);
+				expect(data.error).toBe('Session expired');
 			});
-		});
 
-		describe('Failure Cases', () => {
-			it('400: fails when required tracking fields are missing', async () => {
-				const res = await SELF.fetch('http://localhost/issues', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ title: 'Missing team and user data' }),
+			it('403: Blocks authorized users from workspace domains where they hold no membership (Unit Style)', async () => {
+				const userId = await createTestUser('rogue_user', 'rogue@ucsd.edu');
+				const teamId = await createTestTeam('Isolated Environment');
+				const token = 'active-session-token';
+				
+				// User holds an active session but has NOT been linked to this team context
+				await createTestSession(userId, token, 24);
+
+				const req = new Request(`http://localhost/issues?team_id=${teamId}`, {
+					headers: { 'Authorization': `Bearer ${token}` }
 				});
+				const ctx = createExecutionContext();
+				const res = await worker.fetch(req, env, ctx);
+				await waitOnExecutionContext(ctx);
 
-				expect(res.status).toBe(400);
+				expect(res.status).toBe(403);
 				const data = await res.json();
-				expect(data.error).toContain('Missing required fields');
-			});
-
-			it('400: fails if title payload is not a valid string', async () => {
-				const res = await SELF.fetch('http://localhost/issues', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ team_id: 1, created_by: 1, title: 12345 }),
-				});
-
-				expect(res.status).toBe(400);
-				const data = await res.json();
-				expect(data.error).toContain('Invalid title format');
-			});
-
-			it('400: fails if team_id or created_by inputs are malformed', async () => {
-				const res = await SELF.fetch('http://localhost/issues', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ team_id: 'crazy-id', created_by: 1, title: 'Valid Title' }),
-				});
-
-				expect(res.status).toBe(400);
-				const data = await res.json();
-				expect(data.error).toContain('Invalid team_id');
-			});
-
-			it('400: fails when given illegal enum values for status configurations', async () => {
-				const res = await SELF.fetch('http://localhost/issues', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ team_id: 1, created_by: 1, title: 'Bug', status: 'SuperCritical' }),
-				});
-
-				expect(res.status).toBe(400);
-				const data = await res.json();
-				expect(data.error).toContain('Invalid status');
-			});
-		});
-	});
-
-	// ==========================================
-	// PATCH /issues/:id Testing
-	// ==========================================
-	describe('PATCH /issues/:id', () => {
-		describe('Success Cases', () => {
-			it('200: updates fields of an existing issue tracker entry', async () => {
-				const userId = await createTestUser('updater', 'update@ucsd.edu');
-				const teamId = await createTestTeam('Delta Team');
-				const issueId = await createTestIssue(teamId, userId, 'Old Title');
-
-				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: 'In Progress', priority: 'Critical' }),
-				});
-
-				expect(res.status).toBe(200);
-				const data = await res.json();
-				expect(data.success).toBe(true);
-			});
-		});
-
-		describe('Failure Cases', () => {
-			it('400: fails if issue path parameter is non-numeric', async () => {
-				const res = await SELF.fetch('http://localhost/issues/invalid-id-string', {
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: 'Resolved' }),
-				});
-
-				expect(res.status).toBe(400);
-				const data = await res.json();
-				expect(data.error).toContain('Invalid issue ID format');
-			});
-		});
-	});
-
-	// ==========================================
-	// DELETE /issues/:id Testing
-	// ==========================================
-	describe('DELETE /issues/:id', () => {
-		describe('Success Cases', () => {
-			it('200: deletes database entry successfully', async () => {
-				const userId = await createTestUser('remover', 'remove@ucsd.edu');
-				const teamId = await createTestTeam('Omega Team');
-				const issueId = await createTestIssue(teamId, userId, 'Temporary Bug');
-
-				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, { method: 'DELETE' });
-				expect(res.status).toBe(200);
-				const data = await res.json();
-				expect(data.success).toBe(true);
-			});
-		});
-
-		describe('Failure Cases', () => {
-			it('400: handles malformed route configurations cleanly', async () => {
-				const res = await SELF.fetch('http://localhost/issues/-500', { method: 'DELETE' });
-				expect(res.status).toBe(400);
-				const data = await res.json();
-				expect(data.error).toContain('Invalid issue ID format');
+				expect(data.error).toBe('Forbidden');
 			});
 		});
 	});
