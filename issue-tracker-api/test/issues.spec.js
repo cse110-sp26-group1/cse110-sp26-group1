@@ -638,7 +638,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(dbRow.description).toContain('FATAL: Out of memory in heap accumulation');
 			});
 
-			it('201: AI Enrichment/Fallbacks: Mocks an operational DEEPSEEK_API environment binding, verifies parameter injection, and tests fallback resiliency (Unit Style)', async () => {
+			it('201: AI Enrichment/Fallbacks: Mocks an operational DEEPSEEK_API environment binding, verifies parameter injection, and tests fallback resilience (Unit Style)', async () => {
 				const userId = await createTestUser('ai_user', 'ai@ucsd.edu');
 				const teamId = await createTestTeam('AI Team');
 				const token = 'ai-token';
@@ -843,6 +843,205 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(res.status).toBe(400);
 				const data = await res.json();
 				expect(data.error).toContain('Invalid category. Must be one of:');
+			});
+		});
+	});
+
+	// ==========================================
+	// --- POINT 6: PATCH /issues/:id PARTIAL UPDATES ---
+	// ==========================================
+	describe('PATCH /issues/:id Partial Updates', () => {
+		describe('Success Cases', () => {
+			it('200: COALESCE Application: Modifies explicitly supplied fields while preserving all unmentioned resource parameters (Integration Style)', async () => {
+				const userId = await createTestUser('patch_user_1', 'pu1@ucsd.edu');
+				const teamId = await createTestTeam('Patch Core Team');
+				const token = 'patch-token-1';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const issueId = await createTestIssue(teamId, userId, 'Original Title Text', 'Original Description Text');
+
+				// Execute partial update payload modifying only 'priority' and 'status'
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						priority: 'Critical',
+						status: 'In Progress',
+					}),
+				});
+
+				expect(res.status).toBe(200);
+				const patchData = await res.json();
+				expect(patchData.success).toBe(true);
+
+				// Query database row directly to confirm COALESCE isolation mechanics
+				const row = await env.DB.prepare('SELECT * FROM issues WHERE id = ?').bind(issueId).first();
+				expect(row.priority).toBe('Critical');
+				expect(row.status).toBe('In Progress');
+
+				// Assert unmentioned resource properties are preserved cleanly without modification
+				expect(row.title).toBe('Original Title Text');
+				expect(row.description).toBe('Original Description Text');
+			});
+
+			it('200: Timestamp Overrides: Automatically increments updated_at timestamp while ignoring manual request body adjustments (Integration Style)', async () => {
+				const userId = await createTestUser('patch_user_2', 'pu2@ucsd.edu');
+				const teamId = await createTestTeam('Patch Time Team');
+				const token = 'patch-token-2';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const issueId = await createTestIssue(teamId, userId, 'Timestamp Bug', 'Description');
+
+				// Attempt to manually compromise the updated_at tracking metrics inside the query payload
+				const maliciousPastTimestamp = '2000-01-01T00:00:00.000Z';
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						title: 'Legitimate Title Update',
+						updated_at: maliciousPastTimestamp,
+					}),
+				});
+
+				expect(res.status).toBe(200);
+
+				// Confirm that server-side generation overrides manual inputs
+				const row = await env.DB.prepare('SELECT updated_at FROM issues WHERE id = ?').bind(issueId).first();
+				expect(row.updated_at).not.toBe(maliciousPastTimestamp);
+				expect(new Date(row.updated_at).getFullYear()).toBeGreaterThanOrEqual(2026);
+			});
+		});
+
+		describe('Failure Cases', () => {
+			it('404: Returns 404 Not Found if patching an entry ID missing from the tracker entirely (Integration Style)', async () => {
+				const userId = await createTestUser('patch_fail_user_1', 'pfu1@ucsd.edu');
+				const token = 'patch-fail-token-1';
+				await createTestSession(userId, token, 24);
+
+				const res = await SELF.fetch('http://localhost/issues/88888', {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ title: 'New Title' }),
+				});
+
+				expect(res.status).toBe(404);
+				const data = await res.json();
+				expect(data.error).toBe('Issue not found');
+			});
+
+			it('400: Empty Mutation Validation: Rejects request with 400 if payload contains an empty object or lacks mutable fields (Integration Style)', async () => {
+				const userId = await createTestUser('patch_fail_user_2', 'pfu2@ucsd.edu');
+				const teamId = await createTestTeam('Empty Payload Team');
+				const token = 'patch-fail-token-2';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				const issueId = await createTestIssue(teamId, userId);
+
+				// Scenario A: Passing an entirely empty object
+				const resEmpty = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({}),
+				});
+				expect(resEmpty.status).toBe(400);
+				const dataEmpty = await resEmpty.json();
+				expect(dataEmpty.error).toBe('No valid fields provided');
+
+				// Scenario B: Passing an unmapped/immutable schema field object parameter
+				const resInvalidFields = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ illegal_malicious_override_field: 'malicious' }),
+				});
+				expect(resInvalidFields.status).toBe(400);
+				const dataInvalidFields = await resInvalidFields.json();
+				expect(dataInvalidFields.error).toBe('No valid fields provided');
+			});
+
+			it('400: Type Validation: Enforces string lengths on text mutations and array compliance constraints on collections (Integration Style)', async () => {
+				const userId = await createTestUser('patch_fail_user_3', 'pfu3@ucsd.edu');
+				const teamId = await createTestTeam('Type Validation Patch Team');
+				const token = 'patch-fail-token-3';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				const issueId = await createTestIssue(teamId, userId);
+
+				// Enforce non-empty text checking for title updates
+				const resTitle = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ title: '   ' }),
+				});
+				expect(resTitle.status).toBe(400);
+				expect((await resTitle.json()).error).toBe('Invalid title format. Must be a non-empty string.');
+
+				// Enforce non-empty text checking for description updates
+				const resDesc = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ description: '' }),
+				});
+				expect(resDesc.status).toBe(400);
+				expect((await resDesc.json()).error).toBe('Invalid description format. Must be a non-empty string.');
+
+				// Guard tag schema formatting arrays from multi-type injections
+				const resTags = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ tags: 'not-an-array-datatype' }),
+				});
+				expect(resTags.status).toBe(400);
+				expect((await resTags.json()).error).toBe('Invalid tags format');
+
+				// Guard affected_files strings inside schema row properties
+				const resFiles = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ affected_files: [123, 456] }), // Non-string variations are thrown out
+				});
+				expect(resFiles.status).toBe(400);
+				expect((await resFiles.json()).error).toBe('Invalid affected_files format. Must be an array of strings.');
+			});
+
+			it('400: Mid-Flight Assignment Guard: Blocks reassignments if assigned_to user does not belong to team context (Integration Style)', async () => {
+				const userId = await createTestUser('patch_fail_user_4', 'pfu4@ucsd.edu');
+				const outsiderId = await createTestUser('unlinked_outsider', 'out@ucsd.edu');
+				const teamId = await createTestTeam('Assignment Boundary Patch Team');
+				const token = 'patch-fail-token-4';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				// Notice: outsiderId is initialized, but missing explicit workspace group associations
+
+				const issueId = await createTestIssue(teamId, userId);
+
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ assigned_to: outsiderId }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid assignment. Assignee must be an established member of the team.');
 			});
 		});
 	});
