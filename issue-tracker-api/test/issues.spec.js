@@ -1,9 +1,15 @@
 import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import worker from '../src';
 // Raw import loads the schema file as a string at build time,
 // bypassing all runtime path resolution issues on different OSes.
 import sqlSchemaRaw from '../schema.sql?raw';
+
+// Mock the AI processing module layer to allow deep validation of enrichment workflows
+vi.mock('../src/llm.js', () => ({
+	processIssue: vi.fn().mockImplementation(async () => ({})),
+}));
+import { processIssue } from '../src/llm.js';
 
 // ==========================================
 // --- SECTION 1: SEED & MOCK HELPERS ---
@@ -101,6 +107,8 @@ describe('Issues Endpoint Testing Suite', () => {
 			DELETE FROM teams;
 			DELETE FROM users;
 		`);
+		// Reset Vitest mock history configurations between sequential runs
+		vi.resetAllMocks();
 	});
 
 	// ==========================================
@@ -530,6 +538,311 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(res.status).toBe(403);
 				const data = await res.json();
 				expect(data.error).toBe('Forbidden');
+			});
+		});
+	});
+
+	// ==========================================
+	// --- POINT 5: POST /issues INGESTION ENGINE ---
+	// ==========================================
+	describe('POST /issues Ingestion Engine', () => {
+		describe('Success Cases', () => {
+			it('201: Successfully ingests standard JSON input payloads (Integration Style)', async () => {
+				const userId = await createTestUser('json_creator', 'jc@ucsd.edu');
+				const teamId = await createTestTeam('JSON Creator Team');
+				const token = 'json-creator-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						title: 'Database Connection Timeout',
+						description: 'The connection pool is exhausted under heavy load.',
+						team_id: teamId,
+						status: 'Open',
+						priority: 'High',
+						category: 'Bug',
+					}),
+				});
+
+				expect(res.status).toBe(201);
+				const data = await res.json();
+				expect(data.success).toBe(true);
+				expect(data.id).toBeTypeOf('number');
+				expect(data.enriched.priority).toBe('High');
+			});
+
+			it('201: Multipart Processing: Parses a multipart/form-data payload containing an array of tag objects or structured strings (Integration Style)', async () => {
+				const userId = await createTestUser('multipart_user', 'multi@ucsd.edu');
+				const teamId = await createTestTeam('Multipart Team');
+				const token = 'multi-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const formData = new FormData();
+				formData.append('title', 'UI Rendering Glitch');
+				formData.append('description', 'Navbar overlaps on mobile viewports.');
+				formData.append('team_id', String(teamId));
+				formData.append('tags', JSON.stringify(['css', 'mobile', 'frontend']));
+
+				const res = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}` },
+					body: formData,
+				});
+
+				expect(res.status).toBe(201);
+				const data = await res.json();
+				expect(data.success).toBe(true);
+				expect(data.enriched.tags).toEqual(['css', 'mobile', 'frontend']);
+			});
+
+			it('201: Attachment Ingestion: Uploads log files as explicit form file attachments and verifies text is appended to description (Integration Style)', async () => {
+				const userId = await createTestUser('attach_user', 'attach@ucsd.edu');
+				const teamId = await createTestTeam('Attachment Team');
+				const token = 'attach-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const formData = new FormData();
+				formData.append('title', 'Server Crash Event');
+				formData.append('description', 'The application terminated unexpectedly.');
+				formData.append('team_id', String(teamId));
+
+				// Create an in-memory blob string attachment targeting form extraction falls
+				const logBlob = new Blob(['FATAL: Out of memory in heap accumulation'], { type: 'text/plain' });
+				formData.append('attachments', logBlob, 'crash_dump.log');
+
+				const res = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}` },
+					body: formData,
+				});
+
+				expect(res.status).toBe(201);
+				const data = await res.json();
+				expect(data.success).toBe(true);
+
+				// Assert interior database storage to confirm attachment injection formatting rules
+				const dbRow = await env.DB.prepare('SELECT description FROM issues WHERE id = ?').bind(data.id).first();
+				expect(dbRow.description).toContain('The application terminated unexpectedly.');
+				expect(dbRow.description).toContain('--- Attachment: crash_dump.log ---');
+				expect(dbRow.description).toContain('FATAL: Out of memory in heap accumulation');
+			});
+
+			it('201: AI Enrichment/Fallbacks: Mocks an operational DEEPSEEK_API environment binding, verifies parameter injection, and tests fallback resiliency (Unit Style)', async () => {
+				const userId = await createTestUser('ai_user', 'ai@ucsd.edu');
+				const teamId = await createTestTeam('AI Team');
+				const token = 'ai-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				// Scenario A: Successful AI parsing enrichment mapping
+				vi.mocked(processIssue).mockResolvedValueOnce({
+					status: 'In Progress',
+					priority: 'Critical',
+					category: 'Bug',
+					summary: 'AI Generated Summary Context',
+					tags: ['ai-inferred', 'automated'],
+				});
+
+				const reqSuccess = new Request('http://localhost/issues', {
+					method: 'POST',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						title: 'Core Panic',
+						description: 'Kernel stack overflow encountered during execution loop.',
+						team_id: teamId,
+					}),
+				});
+
+				// Inject a mocked deepseek API string to trigger router integration branch
+				const customEnvSuccess = { ...env, DEEPSEEK_API: 'sk-deepseek-mock-valid-key' };
+
+				const ctxSuccess = createExecutionContext();
+				const resSuccess = await worker.fetch(reqSuccess, customEnvSuccess, ctxSuccess);
+				await waitOnExecutionContext(ctxSuccess);
+
+				expect(resSuccess.status).toBe(201);
+				const dataSuccess = await resSuccess.json();
+				expect(dataSuccess.enriched.status).toBe('In Progress');
+				expect(dataSuccess.enriched.priority).toBe('Critical');
+				expect(dataSuccess.enriched.summary).toBe('AI Generated Summary Context');
+				expect(dataSuccess.enriched.tags).toEqual(['ai-inferred', 'automated']);
+
+				// Scenario B: Non-fatal failure resilience fallback loop execution
+				vi.mocked(processIssue).mockRejectedValueOnce(new Error('API Timeout Exception'));
+
+				const reqFallback = new Request('http://localhost/issues', {
+					method: 'POST',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						title: 'Resilient Title',
+						description: 'Resilient Description',
+						team_id: teamId,
+					}),
+				});
+
+				const ctxFallback = createExecutionContext();
+				const resFallback = await worker.fetch(reqFallback, customEnvSuccess, ctxFallback);
+				await waitOnExecutionContext(ctxFallback);
+
+				expect(resFallback.status).toBe(201);
+				const dataFallback = await resFallback.json();
+				expect(dataFallback.success).toBe(true);
+				// Verify application uses standard enums seamlessly when network failures arise
+				expect(dataFallback.enriched.status).toBe('Open');
+				expect(dataFallback.enriched.priority).toBe('Medium');
+			});
+		});
+
+		describe('Failure Cases', () => {
+			it('400: Missing Requirements: Throws 400 when missing mandatory string parameters or the numeric context (Integration Style)', async () => {
+				const userId = await createTestUser('post_fail_1', 'pf1@ucsd.edu');
+				const token = 'pf1-token';
+				await createTestSession(userId, token, 24);
+
+				// Supplying payload missing 'title' and 'description' properties entirely
+				const res = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ team_id: 1 }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('title, team_id, and description are required');
+			});
+
+			it('400: Type Validation - Title/Description: Rejects requests if title or description are passed as numbers or empty/whitespace-only string elements (Integration Style)', async () => {
+				const userId = await createTestUser('post_fail_2', 'pf2@ucsd.edu');
+				const token = 'pf2-token';
+				await createTestSession(userId, token, 24);
+
+				// Rejects clean empty space variations on text requirements
+				const resWhitespace = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ title: '   ', description: 'Valid Description', team_id: 1 }),
+				});
+				expect(resWhitespace.status).toBe(400);
+				const dataWhitespace = await resWhitespace.json();
+				expect(dataWhitespace.error).toBe('Invalid title format. Must be a non-empty string.');
+
+				// Rejects invalid datatypes submitted inside description schema mapping
+				const resType = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ title: 'Valid Title', description: 99999, team_id: 1 }),
+				});
+				expect(resType.status).toBe(400);
+				const dataType = await resType.json();
+				expect(dataType.error).toBe('Invalid description format. Must be a non-empty string.');
+			});
+
+			it('400: Type Validation - Team ID: Throws 400 if team_id is a non-numeric string or negative integer format (Integration Style)', async () => {
+				const userId = await createTestUser('post_fail_3', 'pf3@ucsd.edu');
+				const token = 'pf3-token';
+				await createTestSession(userId, token, 24);
+
+				const res = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({ title: 'Valid Title', description: 'Valid Description', team_id: -55 }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid team_id. Must be a positive integer.');
+			});
+
+			it('400: Mid-Flight Assignment Guard: Throws 400 if an optional assigned_to developer ID is specified but that developer lacks established membership on the team (Integration Style)', async () => {
+				const userId = await createTestUser('post_fail_4', 'pf4@ucsd.edu');
+				const rogueDevId = await createTestUser('rogue_dev', 'rogue_dev@ucsd.edu');
+				const teamId = await createTestTeam('POST Assignment Guard Team');
+				const token = 'pf4-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				// Notice: rogueDevId is a valid user, but holds no active membership record inside this team workspace
+
+				const res = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						title: 'Valid Title',
+						description: 'Valid Description',
+						team_id: teamId,
+						assigned_to: rogueDevId,
+					}),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid assignment. Assignee must be an established member of the team.');
+			});
+
+			it('400: Type Validation - Tags: Rejects configurations if tags is passed as a non-array value or contains non-string elements (Integration Style)', async () => {
+				const userId = await createTestUser('post_fail_5', 'pf5@ucsd.edu');
+				const teamId = await createTestTeam('Tags Validation Team');
+				const token = 'pf5-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						title: 'Valid Title',
+						description: 'Valid Description',
+						team_id: teamId,
+						tags: [100, 200, 'string-tag'], // Rejects multi-type array properties
+					}),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid tags format');
+			});
+
+			it('400: Enum Guardrails: Enforce unyielding matching boundary values for configuration fields (Integration Style)', async () => {
+				const userId = await createTestUser('post_fail_6', 'pf6@ucsd.edu');
+				const teamId = await createTestTeam('Enum Guardrails Team');
+				const token = 'pf6-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						title: 'Valid Title',
+						description: 'Valid Description',
+						team_id: teamId,
+						category: 'Malicious Injected Category Name Value',
+					}),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toContain('Invalid category. Must be one of:');
 			});
 		});
 	});
