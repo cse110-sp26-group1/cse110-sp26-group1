@@ -23,7 +23,7 @@ import { processIssue } from '../src/llm.js';
  */
 async function createTestUser(username, email) {
 	const row = await env.DB.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
-		.bind(username, email, 'mock_hash')
+		.bind(username, 'Test', 'User', email, 'mock_hash')
 		.first();
 	return row.id;
 }
