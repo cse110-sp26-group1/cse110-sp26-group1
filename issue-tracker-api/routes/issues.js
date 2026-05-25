@@ -83,12 +83,13 @@ export async function handleIssues(request, env) {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
 
-		const teamId = Number(url.searchParams.get('team_id'));
-		if (!teamId) {
+		const teamIdParam = url.searchParams.get('team_id');
+		if (teamIdParam === null || teamIdParam.trim() === '') {
 			return Response.json({ error: 'team_id query param required' }, { status: 400 });
 		}
 
-		if (!Number.isInteger(teamId) || teamId <= 0) {
+		const teamId = Number(teamIdParam);
+		if (Number.isNaN(teamId) || !Number.isInteger(teamId) || teamId <= 0) {
 			return Response.json({ error: 'Invalid team_id format. Must be a positive integer.' }, { status: 400 });
 		}
 
