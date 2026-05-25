@@ -22,7 +22,9 @@ import { processIssue } from '../src/llm.js';
  * @returns {Promise<number>} The inserted user's ID.
  */
 async function createTestUser(username, email) {
-	const row = await env.DB.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
+	const row = await env.DB.prepare(
+		'INSERT INTO users (username, first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?, ?) RETURNING id',
+	)
 		.bind(username, 'Test', 'User', email, 'mock_hash')
 		.first();
 	return row.id;
