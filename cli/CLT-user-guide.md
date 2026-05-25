@@ -55,4 +55,20 @@ allegro help
 ## Notes
 
 - If a status contains spaces, wrap it in quotes, for example: `--status="In Progress"`.
-- `list_issues` returns a compact issue summary by default.
+- `list_issues` returns a compact issue summary by default and hides issues with status `Resolved` or `Closed`. Pass `--status=Resolved` or `--status=Closed` to see them.
+
+## Fixing an Issue with an AI Agent
+
+After you have run `allegro login --email=<your-email>` once in your terminal, you can ask an AI agent (Cursor, Claude Code, etc.) to fix an issue for you by prompting it in this format:
+
+```
+fix issue: <issue title> in <team name>
+```
+
+Example:
+
+```
+fix issue: Button not working in Test Group
+```
+
+The team name and issue title are matched case-insensitively, so `Test Group` will match a team named `Test group`. If the title or team name is ambiguous, the agent will show you the candidates and ask which one you mean.
