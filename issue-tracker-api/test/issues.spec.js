@@ -1045,4 +1045,86 @@ describe('Issues Endpoint Testing Suite', () => {
 			});
 		});
 	});
+
+	// ==========================================
+	// --- POINT 7: DELETE /issues/:id DELETION FLOW ---
+	// ==========================================
+	describe('DELETE /issues/:id Deletion Flow', () => {
+		describe('Success Cases', () => {
+			it('200: Executes removal on an active entry ID and ensures subsequent fetch results in a 404 (Integration Style)', async () => {
+				const userId = await createTestUser('deleter_user', 'delete@ucsd.edu');
+				const teamId = await createTestTeam('Deletion Workspace Team');
+				const token = 'delete-token-valid';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const issueId = await createTestIssue(teamId, userId, 'Temporary Issue', 'To be deleted');
+
+				// Execute the removal attempt via DELETE method route
+				const deleteRes = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'DELETE',
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(deleteRes.status).toBe(200);
+				const deleteData = await deleteRes.json();
+				expect(deleteData).toEqual({ success: true });
+
+				// Immediately query the individual entry GET path to verify it now returns a 404 Not Found state
+				const getRes = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'GET',
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(getRes.status).toBe(404);
+				const getData = await getRes.json();
+				expect(getData.error).toBe('Issue not found');
+			});
+		});
+
+		describe('Failure Cases', () => {
+			it('404: Throws 404 Not Found if trying to delete an invalid tracking resource integer (Integration Style)', async () => {
+				const userId = await createTestUser('delete_fail_user', 'dfu@ucsd.edu');
+				const token = 'delete-fail-token';
+				await createTestSession(userId, token, 24);
+
+				const res = await SELF.fetch('http://localhost/issues/99999', {
+					method: 'DELETE',
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(404);
+				const data = await res.json();
+				expect(data.error).toBe('Issue not found');
+			});
+
+			it('403: Tenancy Isolation: Block removal attempts with a 403 Forbidden if an outside user attempts to remove cross-team records (Integration Style)', async () => {
+				const authorizedUserId = await createTestUser('owner_user', 'owner@ucsd.edu');
+				const externalUserId = await createTestUser('external_user', 'external@ucsd.edu');
+
+				const corporateTeamId = await createTestTeam('Internal Workspace Core');
+				const outsideTeamId = await createTestTeam('Outside Sandbox Workspace');
+
+				const externalToken = 'external-session-token';
+
+				// Establish external user session and map them strictly to the outside sandbox team context
+				await createTestSession(externalUserId, externalToken, 24);
+				await createTeamMembership(externalUserId, outsideTeamId, 'member');
+
+				// Seed an issue tracking entry belonging securely to the Internal Workspace Core team
+				const internalIssueId = await createTestIssue(corporateTeamId, authorizedUserId, 'Corporate Production Critical Bug');
+
+				// External unlinked user attempts to remove cross-team record matrix rows
+				const res = await SELF.fetch(`http://localhost/issues/${internalIssueId}`, {
+					method: 'DELETE',
+					headers: { Authorization: `Bearer ${externalToken}` },
+				});
+
+				expect(res.status).toBe(403);
+				const data = await res.json();
+				expect(data.error).toBe('Forbidden');
+			});
+		});
+	});
 });
