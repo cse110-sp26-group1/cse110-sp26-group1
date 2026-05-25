@@ -232,4 +232,207 @@ describe('Issues Endpoint Testing Suite', () => {
 			});
 		});
 	});
+
+	// ==========================================
+	// --- POINT 3: GET /issues COLLECTION ---
+	// ==========================================
+	describe('GET /issues Collection', () => {
+		describe('Success Cases', () => {
+			it('200: Returns an empty array ([]) when an authorized team has no issues tracked (Integration Style)', async () => {
+				const userId = await createTestUser('clean_user', 'clean@ucsd.edu');
+				const teamId = await createTestTeam('Empty Team');
+				const token = 'empty-team-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(200);
+				const data = await res.json();
+				expect(data).toEqual([]);
+			});
+
+			it('200: Verifies that escape-stringified SQLite text columns are returned as deserialized JavaScript array structures (Integration Style)', async () => {
+				const userId = await createTestUser('json_user', 'json@ucsd.edu');
+				const teamId = await createTestTeam('JSON Team');
+				const token = 'json-team-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				// Direct DB seed to bypass API abstractions and explicitly verify schema text decoding
+				await env.DB.prepare(
+					`INSERT INTO issues (team_id, created_by, title, description, tags, stack_trace, affected_files)
+					 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+				)
+					.bind(
+						teamId,
+						userId,
+						'JSON Serialization Bug',
+						'Verifying JSON text structures',
+						JSON.stringify(['frontend', 'high-priority']),
+						JSON.stringify(['TypeError: Cannot read property of undefined']),
+						JSON.stringify(['src/index.js', 'src/utils.js']),
+					)
+					.run();
+
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(200);
+				const data = await res.json();
+				expect(data.length).toBe(1);
+
+				// Assert text row strings are correctly expanded back into arrays
+				expect(data[0].tags).toEqual(['frontend', 'high-priority']);
+				expect(data[0].stack_trace).toEqual(['TypeError: Cannot read property of undefined']);
+				expect(data[0].affected_files).toEqual(['src/index.js', 'src/utils.js']);
+			});
+
+			it('200: Matches records by combining multiple filtering parameters concurrently (Unit Style)', async () => {
+				const userId = await createTestUser('filter_user', 'filter@ucsd.edu');
+				const developerId = await createTestUser('target_dev', 'dev@ucsd.edu');
+				const teamId = await createTestTeam('Filter Team');
+				const token = 'filter-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				// Issue A: Matches all combined search parameters
+				await env.DB.prepare(
+					`INSERT INTO issues (team_id, created_by, title, description, status, priority, assigned_to, category, difficulty)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				)
+					.bind(teamId, userId, 'Target Match', 'Desc', 'In Progress', 'High', developerId, 'Bug', 'Hard')
+					.run();
+
+				// Issue B: Holds a mismatch in 'difficulty' and 'status'
+				await env.DB.prepare(
+					`INSERT INTO issues (team_id, created_by, title, description, status, priority, assigned_to, category, difficulty)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				)
+					.bind(teamId, userId, 'Partial Mismatch', 'Desc', 'Open', 'High', developerId, 'Bug', 'Easy')
+					.run();
+
+				// Execute multiple constraints securely appended to search string context
+				const req = new Request(
+					`http://localhost/issues?team_id=${teamId}&status=In+Progress&priority=High&assigned_to=${developerId}&category=Bug&difficulty=Hard`,
+					{ headers: { Authorization: `Bearer ${token}` } },
+				);
+				const ctx = createExecutionContext();
+				const res = await worker.fetch(req, env, ctx);
+				await waitOnExecutionContext(ctx);
+
+				expect(res.status).toBe(200);
+				const data = await res.json();
+				expect(data.length).toBe(1);
+				expect(data[0].title).toBe('Target Match');
+			});
+
+			it('200: Alters element delivery order when combining sort_by column with explicit order=desc parameters (Unit Style)', async () => {
+				const userId = await createTestUser('sort_user', 'sort@ucsd.edu');
+				const teamId = await createTestTeam('Sorting Team');
+				const token = 'sort-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				// Insert "Alpha Issue" then "Beta Issue"
+				await env.DB.prepare('INSERT INTO issues (team_id, created_by, title, description) VALUES (?, ?, ?, ?)')
+					.bind(teamId, userId, 'Alpha Issue', 'First')
+					.run();
+				await env.DB.prepare('INSERT INTO issues (team_id, created_by, title, description) VALUES (?, ?, ?, ?)')
+					.bind(teamId, userId, 'Beta Issue', 'Second')
+					.run();
+
+				// Request descending alphabetical order by title
+				const req = new Request(`http://localhost/issues?team_id=${teamId}&sort_by=title&order=desc`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+				const ctx = createExecutionContext();
+				const res = await worker.fetch(req, env, ctx);
+				await waitOnExecutionContext(ctx);
+
+				expect(res.status).toBe(200);
+				const data = await res.json();
+				expect(data.length).toBe(2);
+				expect(data[0].title).toBe('Beta Issue');
+				expect(data[1].title).toBe('Alpha Issue');
+			});
+
+			it('200: Gracefully ignores unlisted or invalid sorting column fields without executing failures (Unit Style)', async () => {
+				const userId = await createTestUser('ignore_user', 'ignore@ucsd.edu');
+				const teamId = await createTestTeam('Ignore Validation Team');
+				const token = 'ignore-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				await createTestIssue(teamId, userId, 'Resilient Entry');
+
+				// Passing a non-existent column name inside sort param
+				const req = new Request(`http://localhost/issues?team_id=${teamId}&sort_by=malicious_injection_attempt`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+				const ctx = createExecutionContext();
+				const res = await worker.fetch(req, env, ctx);
+				await waitOnExecutionContext(ctx);
+
+				expect(res.status).toBe(200);
+				const data = await res.json();
+				expect(data.length).toBe(1);
+				expect(data[0].title).toBe('Resilient Entry');
+			});
+		});
+
+		describe('Failure Cases', () => {
+			it('400: Rejects the request with an error if team_id query parameter is left out completely (Integration Style)', async () => {
+				const userId = await createTestUser('missing_param_user', 'missing@ucsd.edu');
+				const token = 'missing-param-token';
+				await createTestSession(userId, token, 24);
+
+				const res = await SELF.fetch('http://localhost/issues', {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('team_id query param required');
+			});
+
+			it('400: Rejects request if team_id query parameter format is non-numeric or non-integer (Integration Style)', async () => {
+				const userId = await createTestUser('type_user', 'type@ucsd.edu');
+				const token = 'type-token';
+				await createTestSession(userId, token, 24);
+
+				const res = await SELF.fetch('http://localhost/issues?team_id=not-an-integer-string', {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid team_id format. Must be a positive integer.');
+			});
+
+			it('403: Rejects request with a forbidden error if an authenticated user attempts to read records from a team context without membership (Integration Style)', async () => {
+				const userId = await createTestUser('outsider_user', 'outsider@ucsd.edu');
+				const alienTeamId = await createTestTeam('Restricted Workspace');
+				const token = 'outsider-token';
+
+				// Setup active user session, but completely omit adding them to the target team membership matrix
+				await createTestSession(userId, token, 24);
+
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${alienTeamId}`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(403);
+				const data = await res.json();
+				expect(data.error).toBe('Forbidden');
+			});
+		});
+	});
 });
