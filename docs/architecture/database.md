@@ -93,7 +93,7 @@ This table is responsible for defining which users belong to which workspace, as
   - invite users
   - remove members
   - rename/delete teams
-  - leave team only if they are the only team member (note to self: need to handle them leaving as only member if there are pending invites to the team)
+  - leave team only if they are the only team member 
 - standard members have restricted permissions
 
 #### Design Reasoning

@@ -11,6 +11,7 @@ The D1 database is accessed through `env.DB` in every route handler. You never w
 ## The four operations
 
 **SELECT one row:**
+
 ```js
 const user = await env.DB.prepare('SELECT * FROM users WHERE id = ?')
     .bind(userId)
@@ -27,6 +28,7 @@ if (!user) return Response.json({ error: 'Not found' }, { status: 404 });
 ```
 
 **SELECT multiple rows:**
+
 ```js
 const { results } = await env.DB.prepare('SELECT * FROM issues WHERE team_id = ?')
     .bind(teamId)
@@ -42,6 +44,7 @@ results.map(issue => issue.title)
 ```
 
 **INSERT / UPDATE / DELETE:**
+
 ```js
 const { meta } = await env.DB.prepare(
     'INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?)'
@@ -52,6 +55,7 @@ const { meta } = await env.DB.prepare(
 ```
 
 **Check if a row exists:**
+
 ```js
 const member = await env.DB.prepare(
     'SELECT 1 FROM team_members WHERE user_id = ? AND team_id = ?'
@@ -66,23 +70,27 @@ if (!member) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
 Whatever the column is named in `schema.sql` is how you access it in code:
 
-| Schema column | In code |
-|---|---|
-| `created_by` | `issue.created_by` |
-| `team_name` | `team.team_name` |
-| `expires_at` | `session.expires_at` |
+
+| Schema column   | In code              |
+| --------------- | -------------------- |
+| `created_by`    | `issue.created_by`   |
+| `team_name`     | `team.team_name`     |
+| `expires_at`    | `session.expires_at` |
 | `password_hash` | `user.password_hash` |
+
 
 ---
 
 ## Rules
 
-| Do | Don't |
-|---|---|
-| Always use `?` placeholders and `.bind()` | Put variables directly in the SQL string (SQL injection risk) |
-| Use `.first()` when expecting one row | Use `.all()` when you only need one row |
-| Check `meta.changes === 0` to confirm a DELETE/UPDATE worked | Assume the operation succeeded |
-| Use `auth.userId` from `requireAuth` for user identity | Trust user IDs sent in the request body |
+
+| Do                                                           | Don't                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------- |
+| Always use `?` placeholders and `.bind()`                    | Put variables directly in the SQL string (SQL injection risk) |
+| Use `.first()` when expecting one row                        | Use `.all()` when you only need one row                       |
+| Check `meta.changes === 0` to confirm a DELETE/UPDATE worked | Assume the operation succeeded                                |
+| Use `auth.userId` from `requireAuth` for user identity       | Trust user IDs sent in the request body                       |
+
 
 ---
 
@@ -148,14 +156,16 @@ export async function handleIssues(request, env) {
 
 ## Schema quick reference
 
-| Table | Key columns |
-|---|---|
-| `users` | `id`, `username`, `email`, `password_hash` |
-| `teams` | `id`, `team_name` |
-| `team_members` | `team_id`, `user_id`, `role` |
-| `issues` | `id`, `team_id`, `created_by`, `assigned_to`, `title`, `status`, `priority` |
-| `sessions` | `id`, `user_id`, `token`, `expires_at` |
-| `invites` | `id`, `team_id`, `inviter_user_id`, `invited_user_id`, `status` |
+
+| Table          | Key columns                                                                 |
+| -------------- | --------------------------------------------------------------------------- |
+| `users`        | `id`, `username`, `email`, `password_hash`                                  |
+| `teams`        | `id`, `team_name`                                                           |
+| `team_members` | `team_id`, `user_id`, `role`                                                |
+| `issues`       | `id`, `team_id`, `created_by`, `assigned_to`, `title`, `status`, `priority` |
+| `sessions`     | `id`, `user_id`, `token`, `expires_at`                                      |
+| `invites`      | `id`, `team_id`, `inviter_user_id`, `invited_user_id`, `status`             |
+
 
 Full schema is in `schema.sql`.
 
@@ -163,9 +173,12 @@ Full schema is in `schema.sql`.
 
 ## Files
 
-| File | Purpose |
-|---|---|
-| `schema.sql` | All table definitions |
-| `src/index.js` | Router — passes `env.DB` to all route handlers |
-| `wrangler.jsonc` | Defines the D1 binding (`issue_tracker_db`) |
-| `src/lib/auth.js` | `requireAuth` middleware — see `AUTH.md` |
+
+| File              | Purpose                                        |
+| ----------------- | ---------------------------------------------- |
+| `schema.sql`      | All table definitions                          |
+| `src/index.js`    | Router — passes `env.DB` to all route handlers |
+| `wrangler.jsonc`  | Defines the D1 binding                         |
+| `src/lib/auth.js` | `requireAuth` middleware — see `AUTH.md`       |
+
+
