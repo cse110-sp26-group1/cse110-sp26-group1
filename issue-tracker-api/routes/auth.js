@@ -66,7 +66,7 @@ export async function handleAuth(request, env) {
 		// look up the user row that matches the user's email, return just the user id and password hash to the user variable.
 		const user = await env.DB.prepare('SELECT id, password_hash FROM users WHERE email = ?').bind(body.email).first();
 
-		// if no user was found matching that email or password is incorrect, return error.  
+		// if no user was found matching that email or password is incorrect, return error.
 		if (!user || !(await verifyPassword(body.password, user.password_hash))) {
 			return Response.json({ error: 'Invalid email or password' }, { status: 401 });
 		}
@@ -75,7 +75,7 @@ export async function handleAuth(request, env) {
 		const token = crypto.randomUUID();
 		const expires_at = sessionExpiresAt();
 
-		// insert new row into the sessions table that references the user's id. 
+		// insert new row into the sessions table that references the user's id.
 		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(user.id, token, expires_at).run();
 
 		return Response.json({ token, expires_at }, { status: 201 });
@@ -87,7 +87,7 @@ export async function handleAuth(request, env) {
 		// read the Authorization header to get the session token.
 		const header = request.headers.get('Authorization');
 
-		// if no Bearer token is present, there is nothing to log out. 
+		// if no Bearer token is present, there is nothing to log out.
 		if (!header?.startsWith('Bearer ')) {
 			return Response.json({ error: 'No session provided' }, { status: 400 });
 		}
