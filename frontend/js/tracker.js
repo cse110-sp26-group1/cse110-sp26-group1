@@ -21,17 +21,17 @@ const state = {
 
 let ISSUES = [];
 
-const inviteBackdrop = document.getElementById('inviteBackdrop');
-const confirmInviteBtn = document.getElementById('confirmInvite');
-const inviteInput = document.getElementById('inviteInput');
-const openInviteModalBtn = document.getElementById('openInviteModal');
+const inviteBackdrop = document.getElementById('invite-backdrop');
+const confirmInviteBtn = document.getElementById('confirm-invite');
+const inviteInput = document.getElementById('invite-input');
+const openInviteModalBtn = document.getElementById('open-invite-modal');
 
-const listEl = document.getElementById('issueList');
-const totalCountEl = document.getElementById('totalCount');
+const listEl = document.getElementById('issue-list');
+const totalCountEl = document.getElementById('total-count');
 
 const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-const fileList = document.getElementById('fileList');
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
 
 // helpers for invite listeners below
 /**
@@ -56,7 +56,7 @@ function closeInvite() {
 
 if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
 
-document.getElementById('cancelInvite').addEventListener('click', closeInvite);
+document.getElementById('cancel-invite').addEventListener('click', closeInvite);
 
 inviteBackdrop.addEventListener('click', (e) => {
 	if (e.target === inviteBackdrop) closeInvite();
@@ -99,7 +99,7 @@ function applyTeamFromUrl() {
 	const t = state.teams.find((team) => team.slug === slug);
 	if (!t) return;
 
-	document.getElementById('teamLabel').textContent = t.name;
+	document.getElementById('team-label').textContent = t.name;
 	const mark = document.querySelector('.team-switch > .mark');
 	mark.textContent = t.mark;
 	mark.style.background = `oklch(0.92 0.04 ${t.color})`;
@@ -230,7 +230,7 @@ function renderList() {
  * Creates team menu
  */
 function renderTeamMenu() {
-	const teamMenu = document.getElementById('teamMenu');
+	const teamMenu = document.getElementById('team-menu');
 
 	const currentId = Number(new URLSearchParams(location.search).get('team_id'));
 
@@ -410,8 +410,8 @@ function renderDetail() {
 // ============================================================
 // CONTROLS — search, sort, tag
 // ============================================================
-const searchInput = document.getElementById('issueSearch');
-const searchClearBtn = document.getElementById('issueSearchClear');
+const searchInput = document.getElementById('issue-search');
+const searchClearBtn = document.getElementById('issue-search-clear');
 
 /**
  * Show or hide the search clear control based on input value.
@@ -488,8 +488,8 @@ if (savedWidth) content.style.gridTemplateColumns = savedWidth;
 // ============================================================
 // TEAM MENU
 // ============================================================
-const teamSwitch = document.getElementById('teamSwitch');
-const teamMenu = document.getElementById('teamMenu');
+const teamSwitch = document.getElementById('team-switch');
+const teamMenu = document.getElementById('team-menu');
 teamSwitch.addEventListener('click', (e) => {
 	e.stopPropagation();
 	teamMenu.classList.toggle('open');
@@ -507,13 +507,13 @@ function toggleDetail() {
 	state.detailOpen = !state.detailOpen;
 	content.classList.toggle('collapsed-detail', !state.detailOpen);
 }
-document.getElementById('toggleDetail').addEventListener('click', toggleDetail);
+document.getElementById('toggle-detail').addEventListener('click', toggleDetail);
 
 // ============================================================
 // NEW ISSUE MODAL
 // ============================================================
-const newBackdrop = document.getElementById('newBackdrop');
-const confirmNewBtn = document.getElementById('confirmNew');
+const newBackdrop = document.getElementById('new-backdrop');
+const confirmNewBtn = document.getElementById('confirm-new');
 let pendingFiles = [];
 
 /**
@@ -522,7 +522,7 @@ let pendingFiles = [];
 function openNew() {
 	newBackdrop.classList.add('open');
 
-	const assigneeSelect = document.getElementById('nAssignee');
+	const assigneeSelect = document.getElementById('new-assignee');
 	if (assigneeSelect && state.teamMembers) {
 		const options = state.teamMembers
 			.map((m) => {
@@ -533,7 +533,7 @@ function openNew() {
 		assigneeSelect.innerHTML = `<option value="">Unassigned</option>${options}`;
 	}
 
-	setTimeout(() => document.getElementById('nTitle').focus(), 30);
+	setTimeout(() => document.getElementById('new-title').focus(), 30);
 }
 
 /**
@@ -547,13 +547,13 @@ function closeNew() {
  *
  */
 function resetForm() {
-	document.getElementById('nTitle').value = '';
-	document.getElementById('nDesc').value = '';
-	document.getElementById('fileList').innerHTML = '';
+	document.getElementById('new-title').value = '';
+	document.getElementById('new-desc').value = '';
+	document.getElementById('file-list').innerHTML = '';
 	pendingFiles = [];
 }
-document.getElementById('newIssue').addEventListener('click', openNew);
-document.getElementById('cancelNew').addEventListener('click', closeNew);
+document.getElementById('new-issue').addEventListener('click', openNew);
+document.getElementById('cancel-new').addEventListener('click', closeNew);
 newBackdrop.addEventListener('click', (e) => {
 	if (e.target === newBackdrop) closeNew();
 });
@@ -628,8 +628,8 @@ function renderFiles() {
 }
 
 confirmNewBtn.addEventListener('click', async () => {
-	const titleEl = document.getElementById('nTitle');
-	const descEl = document.getElementById('nDesc');
+	const titleEl = document.getElementById('new-title');
+	const descEl = document.getElementById('new-desc');
 	const title = titleEl.value.trim();
 	const desc = descEl.value.trim();
 
@@ -647,11 +647,11 @@ confirmNewBtn.addEventListener('click', async () => {
 	formData.append('description', desc);
 	if (state.currentTeamId) formData.append('team_id', state.currentTeamId);
 
-	const priority = document.getElementById('nPriority')?.value;
-	const category = document.getElementById('nCategory')?.value;
-	const assignee = document.getElementById('nAssignee')?.value;
-	const difficulty = document.getElementById('nDifficulty')?.value;
-	const tags = document.getElementById('nTags')?.value;
+	const priority = document.getElementById('new-priority')?.value;
+	const category = document.getElementById('new-category')?.value;
+	const assignee = document.getElementById('new-assignee')?.value;
+	const difficulty = document.getElementById('new-difficulty')?.value;
+	const tags = document.getElementById('new-tags')?.value;
 
 	if (priority) formData.append('priority', priority);
 	if (category) formData.append('category', category);
@@ -711,7 +711,7 @@ function showToast(msg) {
 	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
-document.getElementById('downloadSkills').addEventListener('click', () => {
+document.getElementById('download-skills').addEventListener('click', () => {
 	const blob = new Blob([SKILLS_MD], { type: 'text/markdown' });
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
@@ -832,7 +832,7 @@ async function initTracker() {
 		const currentTeam = teams.find((t) => t.id === teamId);
 
 		if (currentTeam) {
-			document.getElementById('teamLabel').textContent = currentTeam.team_name;
+			document.getElementById('team-label').textContent = currentTeam.team_name;
 			const markEl = document.querySelector('.team-switch > .mark');
 			const words = currentTeam.team_name.trim().split(' ');
 			markEl.textContent =

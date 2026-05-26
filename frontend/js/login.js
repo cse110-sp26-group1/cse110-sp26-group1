@@ -2,7 +2,7 @@ import { login, requireNoAuth } from './api.js';
 
 requireNoAuth();
 
-const authForm = document.getElementById('authForm');
+const authForm = document.getElementById('auth-form');
 
 /**
  * Handles sign-in form submit. Validates email and password, then
