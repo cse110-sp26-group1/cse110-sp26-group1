@@ -3,7 +3,8 @@
 */
 
 /* === body === */
-/*styles for the body
+
+/* styles for the body
 * displays the login and signup pages
 */
 body {
@@ -26,6 +27,7 @@ body {
 }
 
 /* === brand === */
+
 /* styles for the brand
 * displays the logo and name
 */
@@ -37,6 +39,7 @@ body {
 }
 
 /* === name === */
+
 /* styles for the name
 * style for logo
 */
@@ -57,9 +60,11 @@ body {
 }
 
 /* === title === */
+
 /* styles for the title
 * displays the title
 */
+
 /* heading 1 */
 h1.title {
 	margin: 0 0 6px;
@@ -73,6 +78,7 @@ p.sub {
 	margin: 0 0 28px;
 	color: var(--muted);
 }
+
 /* === tabs-seg === */
 .tabs-seg {
 	display: inline-flex;
@@ -110,11 +116,14 @@ p.sub {
 }
 
 /* === help-row === */
+
 /* styles for the help row
 * styles for the help row
 * displays the forgot password and help links
 */
+
 /* not used saved for stretch goals */
+
 /*
 .help-row {
 	display: flex;
@@ -141,9 +150,11 @@ p.sub {
 }
 
 /* === or === */
+
 /* styles for form of login
 * allows socialmedia login
 */
+
 /* not used saved for Google sign-in
 .or {
 	display: flex;
@@ -187,10 +198,13 @@ p.sub {
 	margin-right: 4px;
 }
 */
+
 /* === legal === */
+
 /* styles for the privacy and terms
 * displays the privacy and terms
 */
+
 /* not used saved for stretch goals
 .legal {
 	margin-top: 24px;
@@ -201,6 +215,7 @@ p.sub {
 */
 
 /* === poster === */
+
 /* styles for the poster background
 * displays the content on the right side of the page
 */
@@ -220,15 +235,17 @@ p.sub {
 	position: absolute;
 	inset: 0;
 	background:
-		radial-gradient(circle at 80% 10%, oklch(0.35 0.06 38) 0%, transparent 40%),
-		radial-gradient(circle at 10% 90%, oklch(0.3 0.04 220) 0%, transparent 50%);
+		radial-gradient(circle at 80% 10%, oklch(35% 0.06 38deg) 0%, transparent 40%),
+		radial-gradient(circle at 10% 90%, oklch(30% 0.04 220deg) 0%, transparent 50%);
 	opacity: 0.9;
 }
 
 /* === auth-switch === */
+
 /* styles for the auth-switch
 * displays the auth-switch
 */
+
 /* switch between login and signup */
 .auth-switch {
 	margin: 18px 0 0;
@@ -247,9 +264,11 @@ p.sub {
 }
 
 /* === media queries === */
+
 /* styles for the media queries
 * displays the media queries
 */
+
 /* not used saved for stretch goals
 @media (max-width: 880px) {
 	body {
