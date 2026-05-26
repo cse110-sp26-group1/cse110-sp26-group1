@@ -48,7 +48,7 @@ export async function handleSomething(request, env) {
 
 | Method | Endpoint | Body | Description |
 |---|---|---|---|
-| POST | `/auth/register` | `{ username, email, password }` | Create a new user — returns `{ success: true, token, expires_at }` |
+| POST | `/auth/register` | `{ username, email, password, first_name, last_name }` | Create a new user — returns `{ success: true, token, expires_at }` |
 | POST | `/auth/login` | `{ email, password }` | Returns `{ token, expires_at }` |
 | POST | `/auth/logout` | none (token in header) | Deletes the session |
 
