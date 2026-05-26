@@ -1,28 +1,104 @@
-import { ISSUES, TEAMS, PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './data.js';
+import { PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './constants.js';
 
-// ============================================================
+import { fetchIssues, fetchIssue, createIssue, updateIssue, deleteIssue } from './api.js';
+import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
+
+requireAuth(); // forces the user to sign up if this page is accessed without credentials
+
 // STATE
-// ============================================================
 const state = {
-	sort: 'priority', // priority | updated | difficulty
+	sort: 'priority',
 	tag: 'all',
-	selected: 142,
+	status: 'all',
+	priority: 'all',
+	query: '',
+	selected: null,
 	detailOpen: true,
+	teams: [],
+	currentTeamId: null,
+	teamMembers: [],
 };
 
-// ============================================================
-// TEAM SWITCH from query string
-// ============================================================
+let ISSUES = [];
+
+const inviteBackdrop = document.getElementById('inviteBackdrop');
+const confirmInviteBtn = document.getElementById('confirmInvite');
+const inviteInput = document.getElementById('inviteInput');
+const openInviteModalBtn = document.getElementById('openInviteModal');
+
+const listEl = document.getElementById('issueList');
+const totalCountEl = document.getElementById('totalCount');
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fileList = document.getElementById('fileList');
+
+// helpers for invite listeners below
 /**
- * Applies the selected team from the page query string.
+ *
+ */
+function openInvite() {
+	if (!state.currentTeamId) {
+		showToast('No active team selected.');
+		return;
+	}
+	inviteBackdrop.classList.add('open');
+	setTimeout(() => inviteInput.focus(), 30);
+}
+
+/**
+ *
+ */
+function closeInvite() {
+	inviteBackdrop.classList.remove('open');
+	inviteInput.value = '';
+}
+
+if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
+
+document.getElementById('cancelInvite').addEventListener('click', closeInvite);
+
+inviteBackdrop.addEventListener('click', (e) => {
+	if (e.target === inviteBackdrop) closeInvite();
+});
+
+confirmInviteBtn.addEventListener('click', async () => {
+	const val = inviteInput.value.trim();
+	if (!val) {
+		inviteInput.focus();
+		return;
+	}
+
+	const isEmail = val.includes('@');
+	const payload = isEmail ? { email: val } : { username: val };
+
+	const originalText = confirmInviteBtn.textContent;
+	confirmInviteBtn.textContent = 'Sending...';
+	confirmInviteBtn.disabled = true;
+
+	try {
+		await inviteToTeam(state.currentTeamId, payload);
+		showToast(`Invitation sent to ${val}`);
+		closeInvite();
+	} catch (err) {
+		showToast(err.message || 'Failed to send invite.');
+	} finally {
+		confirmInviteBtn.textContent = originalText;
+		confirmInviteBtn.disabled = false;
+	}
+});
+
+/**
+ *
  */
 function applyTeamFromUrl() {
 	const qs = new URLSearchParams(location.search);
 	const slug = qs.get('team');
-	if (!slug || !TEAMS[slug]) {
-		return;
-	}
-	const t = TEAMS[slug];
+
+	// Look up from our fetched state instead of the static object
+	const t = state.teams.find((team) => team.slug === slug);
+	if (!t) return;
+
 	document.getElementById('teamLabel').textContent = t.name;
 	const mark = document.querySelector('.team-switch > .mark');
 	mark.textContent = t.mark;
@@ -30,24 +106,78 @@ function applyTeamFromUrl() {
 	mark.style.color = `oklch(0.4 0.12 ${t.color})`;
 }
 
-// ============================================================
-// RENDER LIST
-// ============================================================
-const listEl = document.getElementById('issueList');
-const totalCountEl = document.getElementById('totalCount');
+/**
+ * Calculates issue counts and updates the sidebar UI
+ */
+function syncSidebar() {
+	if (!ISSUES) return;
+
+	const safeSet = (id, count) => {
+		const el = document.getElementById(id);
+		if (el) el.textContent = count;
+	};
+
+	safeSet('cnt-all', ISSUES.length);
+
+	safeSet('cnt-open', ISSUES.filter((i) => i.status === 'Open').length);
+	safeSet('cnt-prog', ISSUES.filter((i) => i.status === 'In Progress').length);
+	safeSet('cnt-done', ISSUES.filter((i) => ['Resolved', 'Closed'].includes(i.status)).length);
+
+	safeSet('cnt-crit', ISSUES.filter((i) => i.priority === 'Critical').length);
+	safeSet('cnt-high', ISSUES.filter((i) => i.priority === 'High').length);
+	safeSet('cnt-med', ISSUES.filter((i) => i.priority === 'Medium').length);
+	safeSet('cnt-low', ISSUES.filter((i) => i.priority === 'Low').length);
+
+	['bug', 'ui', 'infra', 'auth', 'perf'].forEach((t) => {
+		safeSet(`cnt-${t}`, ISSUES.filter((i) => (i.tags || []).includes(t)).length);
+	});
+}
+
+document.querySelectorAll('.sidebar .nav-item[data-group]').forEach((item) => {
+	item.addEventListener('click', () => {
+		document.querySelectorAll('.sidebar .nav-item').forEach((el) => el.classList.remove('active'));
+		item.classList.add('active');
+
+		const group = item.dataset.group;
+		const val = item.dataset.val;
+
+		state.tag = 'all';
+		state.status = 'all';
+		state.priority = 'all';
+
+		if (group === 'tag') state.tag = val;
+		if (group === 'status') state.status = val;
+		if (group === 'priority') state.priority = val;
+
+		renderList();
+	});
+});
 
 /**
- * Renders the issue list using the current sort and tag filters.
+ *
  */
 function renderList() {
+	syncSidebar();
+
 	let items = ISSUES.slice();
+
 	if (state.tag !== 'all') {
-		items = items.filter((i) => i.labels.includes(state.tag));
+		items = items.filter((i) => (i.tags || []).includes(state.tag));
 	}
+	if (state.status !== 'all') {
+		if (state.status === 'Resolved') {
+			items = items.filter((i) => ['Resolved', 'Closed'].includes(i.status));
+		} else {
+			items = items.filter((i) => i.status === state.status);
+		}
+	}
+	if (state.priority !== 'all') {
+		items = items.filter((i) => i.priority === state.priority);
+	}
+
 	if (state.sort === 'priority') {
 		items.sort((a, b) => PRI_ORDER[a.priority] - PRI_ORDER[b.priority] || STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
 	} else if (state.sort === 'updated') {
-		// ISSUES is already in newest-first insertion order; preserve it
 		items.sort((a, b) => ISSUES.indexOf(a) - ISSUES.indexOf(b));
 	} else if (state.sort === 'difficulty') {
 		items.sort((a, b) => b.difficulty - a.difficulty);
@@ -57,21 +187,19 @@ function renderList() {
 
 	let groups;
 	if (state.sort === 'priority') {
-		const buckets = { urgent: [], high: [], med: [], low: [] };
-		items.forEach((i) => buckets[i.priority].push(i));
+		const buckets = { Critical: [], High: [], Medium: [], Low: [] };
+		items.forEach((i) => buckets[i.priority]?.push(i));
 		groups = [
-			{ label: 'Urgent', rows: buckets.urgent },
-			{ label: 'High', rows: buckets.high },
-			{ label: 'Medium', rows: buckets.med },
-			{ label: 'Low', rows: buckets.low },
+			{ label: 'Critical', rows: buckets.Critical },
+			{ label: 'High', rows: buckets.High },
+			{ label: 'Medium', rows: buckets.Medium },
+			{ label: 'Low', rows: buckets.Low },
 		].filter((g) => g.rows.length);
 	} else if (state.sort === 'difficulty') {
 		const map = {};
 		items.forEach((i) => {
 			const k = `Difficulty ${i.difficulty}`;
-			if (!map[k]) {
-				map[k] = [];
-			}
+			if (!map[k]) map[k] = [];
 			map[k].push(i);
 		});
 		groups = Object.entries(map).map(([label, rows]) => ({ label, rows }));
@@ -82,9 +210,9 @@ function renderList() {
 	listEl.innerHTML = groups
 		.map(
 			(g) => `
-			<div class="group-head"><span>${g.label}</span><span class="count">${g.rows.length}</span></div>
-			${g.rows.map(rowHtml).join('')}
-		`,
+        <div class="group-head"><span>${g.label}</span><span class="count">${g.rows.length}</span></div>
+        ${g.rows.map(rowHtml).join('')}
+    `,
 		)
 		.join('');
 
@@ -93,33 +221,108 @@ function renderList() {
 			state.selected = Number(el.dataset.id);
 			renderList();
 			renderDetail();
-			if (!state.detailOpen) {
-				toggleDetail();
-			}
+			if (!state.detailOpen) toggleDetail();
 		});
 	});
 }
 
 /**
- * Builds the markup for one issue row.
- *
- * @param {object} i Issue record to render.
- * @returns {string} HTML for the issue row.
+ * Creates team menu
+ */
+function renderTeamMenu() {
+	const teamMenu = document.getElementById('teamMenu');
+
+	const currentId = Number(new URLSearchParams(location.search).get('team_id'));
+
+	const itemsHtml = state.teams
+		.map((t) => {
+			const words = t.team_name.trim().split(' ');
+			const mark = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : t.team_name.substring(0, 2).toUpperCase();
+
+			const isActive = t.id === currentId ? 'active' : '';
+
+			return `
+            <div class="item ${isActive}" data-id="${t.id}">
+                <span class="mark c1">${mark}</span>
+                ${t.team_name}
+            </div>
+        `;
+		})
+		.join('');
+
+	teamMenu.innerHTML = `
+        ${itemsHtml}
+        <div class="divider"></div>
+        <div class="item" data-action="all-teams">
+            <span class="mark all-teams-mark">+</span>
+            All teams &amp; settings
+        </div>
+    `;
+
+	teamMenu.querySelectorAll('.item[data-id]').forEach((it) => {
+		it.addEventListener('click', () => {
+			const id = it.dataset.id;
+			window.location.href = `tracker.html?team_id=${id}`;
+		});
+	});
+
+	teamMenu.querySelector('[data-action="all-teams"]').addEventListener('click', () => (location.href = 'teams.html'));
+}
+
+/**
+ * Renders the team members avatars in the sidebar based on real API data
+ */
+/**
+ * Renders the team members avatars in the sidebar based on real API data
+ */
+function renderTeamMembers() {
+	const membersContainer = document.querySelector('.sidebar .members');
+	if (!membersContainer) return;
+
+	if (!state.teamMembers || state.teamMembers.length === 0) {
+		membersContainer.innerHTML = '';
+		return;
+	}
+
+	const membersHtml = state.teamMembers
+		.map((member) => {
+			let initials = '??';
+
+			// safe check since API was not updated during tests
+			if (member.first_name && member.last_name) {
+				initials = (member.first_name.charAt(0) + member.last_name.charAt(0)).toUpperCase();
+			} else {
+				const identifier = member.username || member.email || '??';
+				initials = identifier.substring(0, 2).toUpperCase();
+			}
+
+			const displayName = member.first_name && member.last_name ? `${member.first_name} ${member.last_name}` : member.username;
+
+			return `<div class="avatar" title="${displayName} (${member.role})">${initials}</div>`;
+		})
+		.join('');
+
+	membersContainer.innerHTML = membersHtml;
+}
+
+/**
+ * Build HTML for a single issue row in the list.
+ * @param {object} i - Issue record.
+ * @returns {string} HTML string for the row.
  */
 function rowHtml(i) {
 	const isSel = state.selected === i.id;
-	const statusKey = i.status === 'in-progress' ? 'prog' : i.status;
+	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
 	return `
 	<div class="issue-row ${isSel ? 'selected' : ''}" data-id="${i.id}">
-		<span class="pri-mark ${i.priority}" title="${PRI_NAME[i.priority]}">${PRI_LABEL[i.priority]}</span>
-		<span class="id">TKR-${i.id}</span>
+		<span class="pri-mark ${i.priority.toLowerCase()}" title="${PRI_NAME[i.priority]}">${PRI_LABEL[i.priority]}</span>
 		<div class="title">
 			<span>${i.title}</span>
 			<span class="sub">${i.summary || ''}</span>
 		</div>
-		<div class="labels">${i.labels.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}</div>
+		<div class="labels">${i.tags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}</div>
 		<span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
-		<span class="updated">${i.updated}</span>
+		<span class="updated">${i.updated_at}</span>
 	</div>`;
 }
 
@@ -129,122 +332,114 @@ function rowHtml(i) {
 const detailEl = document.getElementById('detail');
 
 /**
- * Renders the selected issue in the detail pane.
+ *
  */
 function renderDetail() {
 	const i = ISSUES.find((x) => x.id === state.selected);
 	if (!i) {
 		detailEl.innerHTML = `
-			<div class="detail-empty">
-				<div class="glyph">◇</div>
-				<div>Select an issue to view details</div>
-			</div>`;
+            <div class="detail-empty">
+                <div class="glyph">◇</div>
+                <div>Select an issue to view details</div>
+            </div>`;
 		return;
 	}
 	const diffPips = Array.from({ length: 3 }, (_, k) => `<span class="d ${k < i.difficulty ? 'on' : ''}"></span>`).join('');
-	const statusKey = i.status === 'in-progress' ? 'prog' : i.status;
-	const processingBanner = i.status === 'pending' ? '<span class="processing">AI is enriching this issue…</span>' : '';
+	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
+
+	// FIX: temp thing for later loading
+	const processingBanner = i.tags.includes('ai-processing') ? '<span class="processing">AI is enriching this issue…</span>' : '';
+
+	let assigneeHtml = `<span class="avatar sm" style="background: transparent; border: 1px dashed #888; color: #888;">--</span><span style="font-size:13px; color: #888;">Unassigned</span>`;
+
+	if (i.assigned_to && state.teamMembers) {
+		const member = state.teamMembers.find((m) => m.id === i.assigned_to);
+		if (member) {
+			const initials =
+				(member.first_name?.charAt(0) || member.username?.charAt(0) || '?').toUpperCase() +
+				(member.last_name?.charAt(0) || '').toUpperCase();
+			const name = member.first_name && member.last_name ? `${member.first_name} ${member.last_name}` : member.username;
+			assigneeHtml = `<span class="avatar sm">${initials}</span><span style="font-size:13px;">${name}</span>`;
+		}
+	}
 
 	detailEl.innerHTML = `
-		<div class="detail-head">
-			<span class="id">TKR-${i.id}</span>
-			${processingBanner}
-			<div class="actions">
-				<button class="btn sm">Copy link</button>
-				<button class="btn sm">Edit</button>
-				<button class="btn sm primary">Mark done</button>
-			</div>
-		</div>
-		<div class="detail-body">
-			<h1 class="issue-title">${i.title}</h1>
+        <div class="detail-head">
+            ${processingBanner}
+            <div class="actions">
+                <button class="btn sm">Copy link</button>
+                <button class="btn sm edit-issue-btn">Edit</button>
+                <button class="btn sm primary mark-done-btn">Mark done</button>
+            </div>
+        </div>
+        <div class="detail-body">
+            <h1 class="issue-title">${i.title}</h1>
+            <div class="meta-strip">
+                <div class="cell">
+                    <span class="label">Status</span>
+                    <span class="chip st-${statusKey}">${STATUS_NAME[i.status] || i.status}</span>
+                </div>
+                <div class="cell">
+                    <span class="label">Priority</span>
+                    <span class="chip pri-${i.priority}"><span class="dot"></span>${PRI_NAME[i.priority] || i.priority}</span>
+                </div>
+                <div class="cell">
+                    <span class="label">Difficulty</span>
+                    <span class="diff">${diffPips}</span>
+                </div>
+                <div class="cell" style="flex:1; min-width:160px;">
+                    <span class="label">Labels</span>
+                    <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                    	${i.tags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}
+                    </div>
+                </div>
+                
+                <div class="cell">
+                    <span class="label">Assignee</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        ${assigneeHtml}
+                    </div>
+                </div>
 
-			<div class="meta-strip">
-				<div class="cell">
-					<span class="label">Status</span>
-					<span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
-				</div>
-				<div class="cell">
-					<span class="label">Priority</span>
-					<span class="chip pri-${i.priority}"><span class="dot"></span>${PRI_NAME[i.priority]}</span>
-				</div>
-				<div class="cell">
-					<span class="label">Difficulty</span>
-					<span class="diff">${diffPips}</span>
-				</div>
-				<div class="cell" style="flex:1; min-width:160px;">
-					<span class="label">Labels</span>
-					<div style="display:flex; gap:4px; flex-wrap:wrap;">
-						${i.labels.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}
-					</div>
-				</div>
-				<div class="cell">
-					<span class="label">Assignee</span>
-					<div style="display:flex; align-items:center; gap:6px;">
-						<span class="avatar sm">JK</span>
-						<span style="font-size:13px;">Jon K.</span>
-					</div>
-				</div>
-			</div>
-
-			${
-				i.summary
-					? `
-			<div class="summary-block">
-				<span class="label">Summary</span>
-				<p>${i.summary}</p>
-			</div>`
-					: ''
-			}
-
-			<div class="description">
-				${i.description || '<p class="muted">No description.</p>'}
-			</div>
-
-			${
-				i.attachments && i.attachments.length
-					? `
-			<div class="attachments">
-				<h4>Attachments · error logs &amp; traces</h4>
-				${i.attachments
-					.map(
-						(a) => `
-					<div class="att-row">
-						<div class="nm">
-							<span class="ic">${a.ic}</span>
-							${a.name}
-						</div>
-						<span class="sz">${a.size}</span>
-					</div>`,
-					)
-					.join('')}
-			</div>`
-					: ''
-			}
-
-			${
-				i.activity && i.activity.length
-					? `
-			<div class="activity">
-				<h4>Activity</h4>
-				${i.activity
-					.map(
-						(a) => `
-					<div class="item">
-						<span class="avatar sm">${a.who}</span>
-						<span>${a.what}</span>
-						<span class="when">${a.when}</span>
-					</div>`,
-					)
-					.join('')}
-			</div>`
-					: ''
-			}
-		</div>`;
+            </div>
+            ${i.summary ? `<div class="summary-block"><span class="label">Summary</span><p>${i.summary}</p></div>` : ''}
+            <div class="description">${i.description || '<p class="muted">No description.</p>'}</div>
+            </div>`;
 }
 
 // ============================================================
-// CONTROLS — sort, tag
+// CONTROLS — search, sort, tag
 // ============================================================
+const searchInput = document.getElementById('issueSearch');
+const searchClearBtn = document.getElementById('issueSearchClear');
+
+/**
+ * Show or hide the search clear control based on input value.
+ * @returns {void}
+ */
+function syncSearchClear() {
+	if (!searchInput || !searchClearBtn) {
+		return;
+	}
+	searchClearBtn.hidden = searchInput.value.length === 0;
+}
+
+if (searchInput && searchClearBtn) {
+	searchInput.addEventListener('input', () => {
+		state.query = searchInput.value.trim();
+		syncSearchClear();
+		renderList();
+	});
+
+	searchClearBtn.addEventListener('click', () => {
+		searchInput.value = '';
+		state.query = '';
+		syncSearchClear();
+		searchInput.focus();
+		renderList();
+	});
+}
+
 document.querySelectorAll('.sort-btn').forEach((b) => {
 	b.addEventListener('click', () => {
 		document.querySelectorAll('.sort-btn').forEach((x) => x.classList.remove('on'));
@@ -274,27 +469,21 @@ divider.addEventListener('mousedown', () => {
 	document.body.style.userSelect = 'none';
 });
 window.addEventListener('mouseup', () => {
-	if (!dragging) {
-		return;
-	}
+	if (!dragging) return;
 	dragging = false;
 	divider.classList.remove('dragging');
 	document.body.style.userSelect = '';
 	localStorage.setItem('detailWidth', content.style.gridTemplateColumns);
 });
 window.addEventListener('mousemove', (e) => {
-	if (!dragging) {
-		return;
-	}
+	if (!dragging) return;
 	const rect = content.getBoundingClientRect();
 	let left = e.clientX - rect.left;
 	left = Math.max(340, Math.min(rect.width - 380, left));
 	content.style.gridTemplateColumns = `${left}px 6px 1fr`;
 });
 const savedWidth = localStorage.getItem('detailWidth');
-if (savedWidth) {
-	content.style.gridTemplateColumns = savedWidth;
-}
+if (savedWidth) content.style.gridTemplateColumns = savedWidth;
 
 // ============================================================
 // TEAM MENU
@@ -307,36 +496,12 @@ teamSwitch.addEventListener('click', (e) => {
 });
 document.addEventListener('click', () => teamMenu.classList.remove('open'));
 teamMenu.addEventListener('click', (e) => e.stopPropagation());
-teamMenu.querySelectorAll('.item[data-slug]').forEach((it) => {
-	it.addEventListener('click', () => {
-		const slug = it.dataset.slug;
-		const t = TEAMS[slug];
-		if (!t) {
-			return;
-		}
-		teamMenu.querySelectorAll('.item').forEach((x) => x.classList.remove('active'));
-		it.classList.add('active');
-		document.getElementById('teamLabel').textContent = t.name;
-		const mark = document.querySelector('.team-switch > .mark');
-		mark.textContent = t.mark;
-		mark.style.background = `oklch(0.92 0.04 ${t.color})`;
-		mark.style.color = `oklch(0.4 0.12 ${t.color})`;
-		teamMenu.classList.remove('open');
-		showToast(`Switched to ${t.name}`);
-	});
-});
-const allTeamsItem = teamMenu.querySelector('[data-action="all-teams"]');
-if (allTeamsItem) {
-	allTeamsItem.addEventListener('click', () => {
-		location.href = 'teams.html';
-	});
-}
 
 // ============================================================
 // DETAIL TOGGLE
 // ============================================================
 /**
- * Toggles the detail pane between visible and collapsed states.
+ *
  */
 function toggleDetail() {
 	state.detailOpen = !state.detailOpen;
@@ -348,24 +513,38 @@ document.getElementById('toggleDetail').addEventListener('click', toggleDetail);
 // NEW ISSUE MODAL
 // ============================================================
 const newBackdrop = document.getElementById('newBackdrop');
+const confirmNewBtn = document.getElementById('confirmNew');
 let pendingFiles = [];
 
 /**
- * Opens the new-issue modal and focuses the title input.
+ *
  */
 function openNew() {
 	newBackdrop.classList.add('open');
+
+	const assigneeSelect = document.getElementById('nAssignee');
+	if (assigneeSelect && state.teamMembers) {
+		const options = state.teamMembers
+			.map((m) => {
+				const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username;
+				return `<option value="${m.id}">${name}</option>`;
+			})
+			.join('');
+		assigneeSelect.innerHTML = `<option value="">Unassigned</option>${options}`;
+	}
+
 	setTimeout(() => document.getElementById('nTitle').focus(), 30);
 }
+
 /**
- * Closes the new-issue modal and clears draft input.
+ *
  */
 function closeNew() {
 	newBackdrop.classList.remove('open');
 	resetForm();
 }
 /**
- * Resets the new-issue draft fields and pending attachments.
+ *
  */
 function resetForm() {
 	document.getElementById('nTitle').value = '';
@@ -376,54 +555,68 @@ function resetForm() {
 document.getElementById('newIssue').addEventListener('click', openNew);
 document.getElementById('cancelNew').addEventListener('click', closeNew);
 newBackdrop.addEventListener('click', (e) => {
-	if (e.target === newBackdrop) {
-		closeNew();
-	}
+	if (e.target === newBackdrop) closeNew();
 });
 
-// file upload
-const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-const fileList = document.getElementById('fileList');
-
 dropzone.addEventListener('click', () => fileInput.click());
+
 fileInput.addEventListener('change', (e) => addFiles(e.target.files));
+
 ['dragenter', 'dragover'].forEach((ev) =>
 	dropzone.addEventListener(ev, (e) => {
 		e.preventDefault();
 		dropzone.classList.add('drag');
 	}),
 );
+
 ['dragleave', 'drop'].forEach((ev) =>
 	dropzone.addEventListener(ev, (e) => {
 		e.preventDefault();
 		dropzone.classList.remove('drag');
 	}),
 );
+
 dropzone.addEventListener('drop', (e) => {
 	e.preventDefault();
 	addFiles(e.dataTransfer.files);
 });
+
 /**
- * Adds selected files to the pending attachment list.
- *
- * @param {FileList} files Files selected from the input or drop zone.
+ * Queue files from drag-and-drop or file input for a new issue.
+ * Rejects any files that are not text/log/json.
+ * @param {FileList|File[]} files - Files to attach.
+ * @returns {void}
  */
 function addFiles(files) {
-	Array.from(files).forEach((f) => pendingFiles.push(f));
+	const allowedTypes = ['text/plain', 'application/json'];
+	const allowedExtensions = ['.log', '.txt', '.json'];
+
+	Array.from(files).forEach((f) => {
+		// Check by MIME type or by file extension (for .log files which often lack a MIME type)
+		const isAllowed = allowedTypes.includes(f.type) || allowedExtensions.some((ext) => f.name.toLowerCase().endsWith(ext));
+
+		if (isAllowed) {
+			pendingFiles.push(f);
+		} else {
+			// Alert the user that their file was rejected
+			showToast(`Rejected ${f.name}: Only text/log files are allowed.`);
+		}
+	});
+
 	renderFiles();
 }
+
 /**
- * Renders pending attachment chips in the new-issue modal.
+ *
  */
 function renderFiles() {
 	fileList.innerHTML = pendingFiles
 		.map(
 			(f, idx) => `
-		<span class="file-chip">
-			${f.name}
-			<span class="x" data-idx="${idx}">×</span>
-		</span>`,
+        <span class="file-chip">
+            ${f.name}
+            <span class="x" data-idx="${idx}">×</span>
+        </span>`,
 		)
 		.join('');
 	fileList.querySelectorAll('.x').forEach((x) => {
@@ -434,11 +627,12 @@ function renderFiles() {
 	});
 }
 
-document.getElementById('confirmNew').addEventListener('click', () => {
+confirmNewBtn.addEventListener('click', async () => {
 	const titleEl = document.getElementById('nTitle');
 	const descEl = document.getElementById('nDesc');
 	const title = titleEl.value.trim();
 	const desc = descEl.value.trim();
+
 	if (!title) {
 		titleEl.focus();
 		return;
@@ -447,77 +641,68 @@ document.getElementById('confirmNew').addEventListener('click', () => {
 		descEl.focus();
 		return;
 	}
-	const newId = Math.max(...ISSUES.map((x) => x.id)) + 1;
-	const created = {
-		id: newId,
-		title,
-		summary: '',
-		description: `<p>${desc.replace(/\n/g, '</p><p>')}</p>`,
-		status: 'pending',
-		priority: 'med',
-		difficulty: 1,
-		labels: [],
-		attachments: pendingFiles.map((f) => ({ name: f.name, size: humanSize(f.size), ic: ext(f.name) })),
-		activity: [{ who: 'AL', what: 'created issue', when: 'just now' }],
-		updated: 'just now',
-	};
-	ISSUES.unshift(created);
-	state.selected = newId;
-	closeNew();
-	renderList();
-	renderDetail();
-	showToast(`Created TKR-${newId} — AI is finalizing details…`);
 
-	// Stand-in for the one-pass LLM enrichment described in the sprint plan:
-	// flip the status off "pending" so the row stops looking like a placeholder.
-	// Real implementation will replace this with a fetch() to the backend.
-	setTimeout(() => {
-		const idx = ISSUES.findIndex((x) => x.id === newId);
-		if (idx === -1) {
-			return;
+	const formData = new FormData();
+	formData.append('title', title);
+	formData.append('description', desc);
+	if (state.currentTeamId) formData.append('team_id', state.currentTeamId);
+
+	const priority = document.getElementById('nPriority')?.value;
+	const category = document.getElementById('nCategory')?.value;
+	const assignee = document.getElementById('nAssignee')?.value;
+	const difficulty = document.getElementById('nDifficulty')?.value;
+	const tags = document.getElementById('nTags')?.value;
+
+	if (priority) formData.append('priority', priority);
+	if (category) formData.append('category', category);
+	if (assignee) formData.append('assigned_to', assignee);
+	if (difficulty) formData.append('difficulty', difficulty);
+	if (tags) formData.append('tags', tags);
+
+	pendingFiles.forEach((f) => formData.append('attachments', f));
+
+	const originalText = confirmNewBtn.textContent;
+	confirmNewBtn.textContent = 'Creating...';
+	confirmNewBtn.disabled = true;
+
+	try {
+		showToast('Creating and analyzing issue...');
+
+		const response = await createIssue(formData);
+
+		ISSUES = await fetchIssues(state.currentTeamId);
+
+		if (response.id) {
+			state.selected = response.id;
+		} else {
+			state.selected = ISSUES[0]?.id ?? null;
 		}
-		ISSUES[idx].status = 'open';
-		ISSUES[idx].activity.unshift({ who: 'AI', what: 'enrichment completed', when: 'just now' });
+
+		closeNew();
 		renderList();
-		if (state.selected === newId) {
-			renderDetail();
+		renderDetail();
+
+		if (response.enriched && response.enriched.category) {
+			showToast(`Created: Tagged as a ${response.enriched.priority} priority ${response.enriched.category}`);
+		} else {
+			showToast('Issue created');
 		}
-	}, 2200);
+	} catch (err) {
+		showToast(err.message || 'Failed to create issue.');
+	} finally {
+		confirmNewBtn.textContent = originalText;
+		confirmNewBtn.disabled = false;
+	}
 });
-/**
- * Formats a byte count for display.
- *
- * @param {number} n File size in bytes.
- * @returns {string} Human-readable file size.
- */
-function humanSize(n) {
-	if (n < 1024) {
-		return n + ' B';
-	}
-	if (n < 1024 * 1024) {
-		return (n / 1024).toFixed(1) + ' KB';
-	}
-	return (n / 1024 / 1024).toFixed(1) + ' MB';
-}
-/**
- * Extracts a short uppercase file extension label.
- *
- * @param {string} name File name.
- * @returns {string} Extension label.
- */
-function ext(name) {
-	const e = (name.split('.').pop() || '').toUpperCase();
-	return e.length > 3 ? e.slice(0, 3) : e;
-}
 
 // ============================================================
-// TOAST
+// TOAST & DOWNLOADS
 // ============================================================
 const toast = document.getElementById('toast');
 /**
- * Shows a temporary toast notification.
- *
- * @param {string} msg Message to display.
+ * Show a short-lived toast notification.
+ * @param {string} msg - Message to display.
+ * @returns {void}
  */
 function showToast(msg) {
 	toast.textContent = msg;
@@ -526,9 +711,6 @@ function showToast(msg) {
 	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
-// ============================================================
-// skills.md DOWNLOAD
-// ============================================================
 document.getElementById('downloadSkills').addEventListener('click', () => {
 	const blob = new Blob([SKILLS_MD], { type: 'text/markdown' });
 	const url = URL.createObjectURL(blob);
@@ -543,16 +725,13 @@ document.getElementById('downloadSkills').addEventListener('click', () => {
 });
 
 // ============================================================
-// KEYBOARD: j/k to navigate, n for new, esc to close
+// KEYBOARD
 // ============================================================
 document.addEventListener('keydown', (e) => {
-	if (e.target.matches('input, textarea')) {
-		return;
-	}
+	if (e.target.matches('input, textarea')) return;
 	if (e.key === 'Escape') {
-		if (newBackdrop.classList.contains('open')) {
-			closeNew();
-		}
+		if (newBackdrop.classList.contains('open')) closeNew();
+		if (inviteBackdrop.classList.contains('open')) closeInvite();
 		teamMenu.classList.remove('open');
 	}
 	if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
@@ -564,8 +743,70 @@ document.addEventListener('keydown', (e) => {
 		const rows = Array.from(listEl.querySelectorAll('.issue-row'));
 		const idx = rows.findIndex((r) => Number(r.dataset.id) === state.selected);
 		const next = e.key === 'j' ? Math.min(rows.length - 1, idx + 1) : Math.max(0, idx - 1);
-		if (rows[next]) {
-			rows[next].click();
+		if (rows[next]) rows[next].click();
+	}
+});
+
+detailEl.addEventListener('click', async (e) => {
+	if (e.target.matches('.mark-done-btn')) {
+		const btn = e.target;
+		btn.textContent = 'Saving...';
+		btn.disabled = true;
+		try {
+			await updateIssue(state.selected, { status: 'Resolved' });
+
+			const index = ISSUES.findIndex((i) => i.id === state.selected);
+			if (index !== -1) ISSUES[index] = { ...ISSUES[index], status: 'Resolved' };
+
+			renderList();
+			renderDetail();
+			showToast('Issue marked as resolved');
+		} catch {
+			btn.textContent = 'Mark done';
+			btn.disabled = false;
+			showToast('Failed to update status');
+		}
+	}
+	if (e.target.matches('.edit-issue-btn')) {
+		const btn = e.target;
+		const currentIssue = ISSUES.find((i) => i.id === state.selected);
+		if (!currentIssue) return;
+
+		const newTitle = prompt('Edit Title:', currentIssue.title);
+		if (newTitle === null) return;
+		const newStatus = prompt('Edit Status (Open, In Progress, Resolved, Closed):', currentIssue.status);
+		if (newStatus === null) return;
+
+		const statusMap = {
+			open: 'Open',
+			'in-progress': 'In Progress',
+			'in progress': 'In Progress',
+			done: 'Resolved',
+			resolved: 'Resolved',
+			closed: 'Closed',
+		};
+		const normalisedStatus = statusMap[newStatus.trim().toLowerCase()] ?? newStatus.trim();
+
+		const updates = {
+			title: newTitle.trim() || currentIssue.title,
+			status: normalisedStatus || currentIssue.status,
+		};
+
+		btn.textContent = 'Saving...';
+		btn.disabled = true;
+		try {
+			await updateIssue(state.selected, updates);
+
+			const index = ISSUES.findIndex((i) => i.id === state.selected);
+			if (index !== -1) ISSUES[index] = { ...ISSUES[index], ...updates };
+
+			renderList();
+			renderDetail();
+			showToast('Issue updated');
+		} catch {
+			showToast('Failed to save edits');
+			btn.textContent = 'Edit';
+			btn.disabled = false;
 		}
 	}
 });
@@ -573,6 +814,56 @@ document.addEventListener('keydown', (e) => {
 // ============================================================
 // INIT
 // ============================================================
-applyTeamFromUrl();
-renderList();
-renderDetail();
+
+/**
+ *
+ */
+async function initTracker() {
+	const qs = new URLSearchParams(location.search);
+	const teamIdParam = qs.get('team_id');
+	const teamId = teamIdParam ? Number(teamIdParam) : null;
+
+	try {
+		const teams = await fetchTeams();
+		state.teams = teams;
+
+		renderTeamMenu();
+
+		const currentTeam = teams.find((t) => t.id === teamId);
+
+		if (currentTeam) {
+			document.getElementById('teamLabel').textContent = currentTeam.team_name;
+			const markEl = document.querySelector('.team-switch > .mark');
+			const words = currentTeam.team_name.trim().split(' ');
+			markEl.textContent =
+				words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : currentTeam.team_name.substring(0, 2).toUpperCase();
+		}
+
+		state.currentTeamId = currentTeam ? currentTeam.id : null;
+
+		if (state.currentTeamId) {
+			const [fetchedIssues, fetchedMembers] = await Promise.all([
+				fetchIssues(state.currentTeamId),
+				fetchTeamMembers(state.currentTeamId).catch(() => []),
+			]);
+
+			ISSUES = fetchedIssues;
+			state.teamMembers = fetchedMembers;
+		} else {
+			ISSUES = [];
+			state.teamMembers = [];
+		}
+
+		if (ISSUES.length > 0 && !ISSUES.find((i) => i.id === state.selected)) {
+			state.selected = ISSUES[0].id;
+		}
+
+		renderTeamMembers();
+		renderList();
+		renderDetail();
+	} catch {
+		showToast('Failed to load workspace data.');
+	}
+}
+
+initTracker();

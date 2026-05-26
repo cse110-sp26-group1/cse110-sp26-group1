@@ -1,0 +1,9 @@
+{
+	"name": "allegro-cli",
+	"version": "1.0.0",
+	"description": "CLI tool for Allegro",
+	"type": "module",
+	"bin": {
+		"allegro": "./index.js"
+	}
+}

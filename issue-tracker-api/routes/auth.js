@@ -51,7 +51,7 @@ export async function handleAuth(request, env) {
 
 		// if a match was found, reject to avoid duplicate accounts.
 		if (existing) {
-			return Response.json({ error: 'Email or username already in use' }, { status: 409 });
+			return Response.json({ error: 'Email or username is already in use' }, { status: 409 });
 		}
 
 		// hash the password before storing, never store plaintext.
