@@ -5,8 +5,8 @@ import { hashPassword, verifyPassword, sessionExpiresAt } from '../src/lib/auth.
  * @param {Request} request - The incoming Worker request.
  * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
  * @returns {Promise<Response>}
- *   201 — user registered/login successfully
- *   400 — missing required fields, or no session token on logout
+ *   201 — user registered/logged in successfully
+ *   400 — missing/invalid required fields, or no session token on logout
  *   401 — invalid credentials, invalid session token, or already-expired session
  *   409 — email or username already in use
  *   404 — route not matched
@@ -20,13 +20,34 @@ export async function handleAuth(request, env) {
 	if (url.pathname === '/auth/register' && method === 'POST') {
 		const body = await request.json();
 
-		// if any required field is missing return error.
-		if (!body.username || !body.email || !body.password) {
-			return Response.json({ error: 'username, email, and password are required' }, { status: 400 });
+		// if any required field is missing, return error.
+		if (!body.username || !body.email || !body.password || !body.first_name || !body.last_name) {
+			return Response.json({ error: 'username, email, password, first_name, and last_name are required' }, { status: 400 });
+		}
+
+		// ensure name fields are strings before calling .trim() on them.
+		if (
+			typeof body.username !== 'string' ||
+			typeof body.email !== 'string' ||
+			typeof body.first_name !== 'string' ||
+			typeof body.last_name !== 'string'
+		) {
+			return Response.json({ error: 'Invalid field types' }, { status: 400 });
+		}
+
+		// strip leading/trailing whitespace so " John " is treated the same as "John".
+		const username = body.username.trim();
+		const email = body.email.trim();
+		const firstName = body.first_name.trim();
+		const lastName = body.last_name.trim();
+
+		// after trimming, re-check that fields aren't blank.
+		if (!username || !email || !firstName || !lastName) {
+			return Response.json({ error: 'Fields cannot be empty' }, { status: 400 });
 		}
 
 		// check if a user with that email or username already exists.
-		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?').bind(body.email, body.username).first();
+		const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?').bind(email, username).first();
 
 		// if a match was found, reject to avoid duplicate accounts.
 		if (existing) {
@@ -37,8 +58,8 @@ export async function handleAuth(request, env) {
 		const password_hash = await hashPassword(body.password);
 
 		// insert the new user row and return the new user's id in the same query.
-		const row = await env.DB.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
-			.bind(body.username, body.email, password_hash)
+		const row = await env.DB.prepare('INSERT INTO users (username, first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?, ?) RETURNING id')
+			.bind(username, firstName, lastName, email, password_hash)
 			.first();
 
 		// ----- USER SUCCESSFULLY REGISTERED AND STORED IN THE DATABASE -----
