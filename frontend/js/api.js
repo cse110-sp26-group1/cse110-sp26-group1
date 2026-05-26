@@ -312,7 +312,6 @@ export async function fetchIssue(id) {
  * @returns {Promise<{ success: boolean }>}
  */
 export async function createIssue(data) {
-	// Send as FormData if files are attached, JSON otherwise
 	const isFormData = data instanceof FormData;
 	return request('/issues', {
 		method: 'POST',

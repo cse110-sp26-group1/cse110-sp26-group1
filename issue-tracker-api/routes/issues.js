@@ -1,9 +1,63 @@
 import { requireAuth } from '../src/lib/auth.js';
 import { requireTeamMember } from '../src/lib/teams.js';
+import { processIssue } from '../src/llm.js';
 
 const ISSUE_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const ISSUE_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 const ALLOWED_CATEGORIES = ['Bug', 'Feature', 'Task'];
+
+/**
+ * Picks the user value if present, otherwise the LLM value if it's in the
+ * allowed enum list, otherwise the fallback. Empty strings/null are skipped.
+ * @param userVal
+ * @param llmVal
+ * @param allowed
+ * @param fallback
+ */
+function pickEnum(userVal, llmVal, allowed, fallback) {
+	if (userVal && allowed.includes(userVal)) return userVal;
+	if (typeof llmVal === 'string' && allowed.includes(llmVal)) return llmVal;
+	return fallback;
+}
+
+/**
+ * Coerces a value into an array. The LLM parser may return a string, null, or
+ * an array; user input may already be an array.
+ * @param userVal
+ * @param llmVal
+ */
+function coerceArray(userVal, llmVal) {
+	if (Array.isArray(userVal)) return userVal;
+	if (Array.isArray(llmVal)) return llmVal;
+	return [];
+}
+
+/**
+ * Returns user value if non-empty string, else LLM value if non-empty (and not
+ * the literal "null" sentinel from the parser), else null.
+ * @param userVal
+ * @param llmVal
+ */
+function coerceText(userVal, llmVal) {
+	if (typeof userVal === 'string' && userVal.trim() !== '') return userVal;
+	if (typeof llmVal === 'string' && llmVal.trim() !== '' && llmVal !== 'null') return llmVal;
+	return null;
+}
+
+/**
+ * Stores LLM array fields (missing_information, steps_to_reproduce) as JSON
+ * strings, plain text otherwise. The schema column is TEXT either way.
+ * @param userVal
+ * @param llmVal
+ */
+function stringifyMaybeArray(userVal, llmVal) {
+	const v = userVal ?? llmVal ?? null;
+	if (v === null) return null;
+	if (Array.isArray(v)) return JSON.stringify(v);
+	if (typeof v === 'string' && v.trim() === '') return null;
+	if (v === 'null') return null;
+	return String(v);
+}
 
 /**
  * Handles all /issues routes: GET (list by team or view single), POST (create), PATCH (update), DELETE (remove).
@@ -269,17 +323,51 @@ export async function handleIssues(request, env) {
 			return Response.json({ error: `Invalid category. Must be one of: ${ALLOWED_CATEGORIES.join(', ')}` }, { status: 400 });
 		}
 
+		// LLM enrichment: ask DeepSeek to infer structured fields from the user's
+		// raw title + description. Failures (missing key, network, parse error)
+		// are non-fatal — we just fall back to user-supplied values + defaults.
+		let llm = {};
+		if (env.DEEPSEEK_API) {
+			try {
+				const rawInput = `${body.title.trim()}\n\n${body.description.trim()}`;
+				llm = await processIssue(rawInput, env.DEEPSEEK_API);
+			} catch (error) {
+				console.error('LLM enrichment failed:', error?.message ?? error);
+			}
+		}
+
+		const finalStatus = pickEnum(status, llm.status, ISSUE_STATUSES, 'Open');
+		const finalPriority = pickEnum(priority, llm.priority, ISSUE_PRIORITIES, 'Medium');
+		const finalCategory = pickEnum(category, llm.category, ALLOWED_CATEGORIES, 'Bug');
+		const finalDifficulty = body.difficulty || (llm.difficulty && llm.difficulty !== 'null' ? llm.difficulty : null);
+		const finalSummary = coerceText(body.summary, llm.summary);
+		const finalTags = JSON.stringify(coerceArray(body.tags, llm.tags));
+
+		const finalEntryPoint = coerceText(body.details?.entry_point, llm.entry_point ?? llm.details?.entry_point);
+		const finalErrorType = coerceText(body.details?.error_type, llm.error_type ?? llm.details?.error_type);
+		const finalErrorMessage = coerceText(body.details?.error_message, llm.error_message ?? llm.details?.error_message);
+		const finalStackTrace = JSON.stringify(coerceArray(body.details?.stack_trace, llm.stack_trace ?? llm.details?.stack_trace));
+		const finalAffectedFiles = JSON.stringify(coerceArray(body.details?.affected_files, llm.affected_files ?? llm.details?.affected_files));
+
+		const finalExpectedBehavior = coerceText(body.expected_behavior, llm.expected_behavior);
+		const finalActualBehavior = coerceText(body.actual_behavior, llm.actual_behavior);
+		const finalMissingInformation = stringifyMaybeArray(body.missing_information, llm.missing_information);
+		const finalStepsToReproduce = stringifyMaybeArray(body.steps_to_reproduce, llm.steps_to_reproduce);
+		const finalHypothesis = coerceText(body.hypothesis, llm.hypothesis);
+
 		const now = new Date().toISOString();
 
-		const { success } = await env.DB.prepare(
+		const result = await env.DB.prepare(
 			`
 			INSERT INTO issues (
 				team_id, created_by, title, description, summary,
 				status, priority, category, tags, difficulty,
-				entry_point, error_type, error_message, stack_trace,
-				affected_files, assigned_to, created_at, updated_at
+				entry_point, error_type, error_message, stack_trace, affected_files,
+				expected_behavior, actual_behavior, missing_information, steps_to_reproduce, hypothesis,
+				assigned_to, created_at, updated_at
 			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			RETURNING id
 			`,
 		)
 			.bind(
@@ -287,24 +375,53 @@ export async function handleIssues(request, env) {
 				auth.userId,
 				body.title.trim(),
 				body.description.trim(),
-				body.summary || null,
-				status || 'Open',
-				priority || 'Medium',
-				category || 'Bug',
-				JSON.stringify(body.tags || []),
-				body.difficulty || null,
-				body.details?.entry_point || null,
-				body.details?.error_type || null,
-				body.details?.error_message || null,
-				JSON.stringify(body.details?.stack_trace || []),
-				JSON.stringify(body.details?.affected_files || []),
+				finalSummary,
+				finalStatus,
+				finalPriority,
+				finalCategory,
+				finalTags,
+				finalDifficulty,
+				finalEntryPoint,
+				finalErrorType,
+				finalErrorMessage,
+				finalStackTrace,
+				finalAffectedFiles,
+				finalExpectedBehavior,
+				finalActualBehavior,
+				finalMissingInformation,
+				finalStepsToReproduce,
+				finalHypothesis,
 				assignedTo,
 				now,
 				now,
 			)
-			.run();
+			.first();
 
-		return Response.json({ success }, { status: 201 });
+		return Response.json(
+			{
+				success: true,
+				id: result?.id ?? null,
+				enriched: {
+					summary: finalSummary,
+					status: finalStatus,
+					priority: finalPriority,
+					category: finalCategory,
+					difficulty: finalDifficulty,
+					tags: JSON.parse(finalTags),
+					entry_point: finalEntryPoint,
+					error_type: finalErrorType,
+					error_message: finalErrorMessage,
+					stack_trace: JSON.parse(finalStackTrace),
+					affected_files: JSON.parse(finalAffectedFiles),
+					expected_behavior: finalExpectedBehavior,
+					actual_behavior: finalActualBehavior,
+					missing_information: finalMissingInformation,
+					steps_to_reproduce: finalStepsToReproduce,
+					hypothesis: finalHypothesis,
+				},
+			},
+			{ status: 201 },
+		);
 	}
 
 	// PATCH /issues/:id

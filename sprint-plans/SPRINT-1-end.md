@@ -69,7 +69,7 @@ Required tables:
 -   team_members relationship handling
 -   issues table (must support team filtering)
 
-> Refer to [this example](/research/backend-research/db-tables-example.md)
+> Refer to [this example](../research/backend-demos/db-tables-example.md)
 
 Important clarification (team/workspace model):
 

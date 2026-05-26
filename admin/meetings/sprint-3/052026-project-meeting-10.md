@@ -21,7 +21,7 @@ Review current Sprint progress, discuss presentation/demo preparation, debug bac
 - Amberly
 
 ### Time and Place:
-May 18, 2026 | 4:34 PM – 4:49 PM | Zoom Meeting
+May 20, 2026 | 4:34 PM – 4:49 PM | Zoom Meeting
 
 ## Agenda
 - Sprint progress review
