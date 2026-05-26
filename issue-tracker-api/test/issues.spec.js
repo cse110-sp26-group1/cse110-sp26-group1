@@ -427,6 +427,25 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(data.error).toBe('Invalid team_id format. Must be a positive integer.');
 			});
 
+			it('400: Rejects request if assigned_to query parameter format is non-numeric (Integration Style)', async () => {
+				const userId = await createTestUser('assigned_to_type_user', 'at_type@ucsd.edu');
+				const teamId = await createTestTeam('Assigned To Type Team');
+				const token = 'at-type-token';
+
+				// Seed valid session and team membership context
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				// Pass an invalid non-numeric string to the assigned_to filter
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}&assigned_to=not-a-number`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid assigned_to format. Must be a positive integer.');
+			});
+
 			it('403: Rejects request with a forbidden error if an authenticated user attempts to read records from a team context without membership (Integration Style)', async () => {
 				const userId = await createTestUser('outsider_user', 'outsider@ucsd.edu');
 				const alienTeamId = await createTestTeam('Restricted Workspace');
