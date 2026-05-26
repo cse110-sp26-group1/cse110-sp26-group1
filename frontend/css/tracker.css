@@ -46,6 +46,36 @@ body {
 	color: var(--ink);
 }
 
+
+.activity {
+	margin-top: 30px;
+	padding-top: 18px;
+	border-top: 1px solid var(--line);
+	max-width: 60ch;
+}
+
+.activity h4 {
+	margin: 0 0 12px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.activity .item {
+	display: flex;
+	gap: 10px;
+	padding: 8px 0;
+	font-size: 13px;
+	color: var(--ink-2);
+}
+
+.activity .item .when {
+	font-family: var(--mono);
+	font-size: 11.5px;
+	color: var(--muted);
+	margin-left: auto;
+	flex: 0 0 auto;
+}
+
 /* team switcher */
 .team-switch {
 	display: inline-flex;
@@ -154,6 +184,97 @@ body {
 .team-menu .item .mark.all-teams-mark {
 	background: var(--surface-2);
 	color: var(--muted);
+}
+
+/* detail */
+.detail {
+	display: grid;
+	grid-template-rows: auto 1fr;
+	min-height: 0;
+	background: var(--surface);
+	border-left: 1px solid var(--line);
+}
+
+.detail-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 22px;
+	border-bottom: 1px solid var(--line);
+	gap: 8px;
+}
+
+.detail-head .id {
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.detail-head .actions {
+	display: flex;
+	gap: 4px;
+}
+
+.detail-body {
+	overflow-y: auto;
+	padding: 24px 32px 60px;
+}
+
+.detail-body h1.issue-title {
+	margin: 0 0 12px;
+	font-size: 24px;
+	font-weight: 600;
+	letter-spacing: -0.015em;
+	line-height: 1.25;
+	max-width: 60ch;
+}
+
+.divider {
+	background: var(--line);
+	cursor: col-resize;
+	position: relative;
+}
+
+
+.divider:hover,
+.divider.dragging {
+	background: var(--accent);
+}
+
+.divider::after {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 2px;
+	height: 24px;
+	background: var(--line-strong);
+	border-radius: 2px;
+}
+
+.divider:hover::after,
+.divider.dragging::after {
+	background: #fff;
+}
+
+.summary-block {
+	background: var(--surface-2);
+	border-left: 2px solid var(--ink);
+	padding: 14px 18px;
+	margin: 0 0 22px;
+	border-radius: 0 var(--r-2) var(--r-2) 0;
+	max-width: 60ch;
+}
+
+.summary-block .label {
+	margin-bottom: 6px;
+	display: block;
+}
+
+.summary-block p {
+	margin: 0;
+	line-height: 1.55;
+	font-size: 14px;
 }
 
 .team-menu .divider {
@@ -425,6 +546,15 @@ body {
 	display: none;
 }
 
+.group-head .count {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 3px;
+	padding: 0 5px;
+	font-size: 10px;
+	color: var(--ink-2);
+}
+
 /* list pane */
 .list-pane {
 	display: grid;
@@ -561,15 +691,6 @@ body {
 	z-index: 1;
 }
 
-.group-head .count {
-	background: var(--surface);
-	border: 1px solid var(--line);
-	border-radius: 3px;
-	padding: 0 5px;
-	font-size: 10px;
-	color: var(--ink-2);
-}
-
 .issue-row {
 	display: grid;
 	grid-template-columns: auto minmax(0, 1fr) auto auto auto;
@@ -666,77 +787,6 @@ body {
 	text-align: center;
 }
 
-/* divider */
-.divider {
-	background: var(--line);
-	cursor: col-resize;
-	position: relative;
-}
-
-.divider:hover,
-.divider.dragging {
-	background: var(--accent);
-}
-
-.divider::after {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	width: 2px;
-	height: 24px;
-	background: var(--line-strong);
-	border-radius: 2px;
-}
-
-.divider:hover::after,
-.divider.dragging::after {
-	background: #fff;
-}
-
-/* detail */
-.detail {
-	display: grid;
-	grid-template-rows: auto 1fr;
-	min-height: 0;
-	background: var(--surface);
-	border-left: 1px solid var(--line);
-}
-
-.detail-head {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 10px 22px;
-	border-bottom: 1px solid var(--line);
-	gap: 8px;
-}
-
-.detail-head .id {
-	font-family: var(--mono);
-	font-size: 12px;
-	color: var(--muted);
-}
-
-.detail-head .actions {
-	display: flex;
-	gap: 4px;
-}
-
-.detail-body {
-	overflow-y: auto;
-	padding: 24px 32px 60px;
-}
-
-.detail-body h1.issue-title {
-	margin: 0 0 12px;
-	font-size: 24px;
-	font-weight: 600;
-	letter-spacing: -0.015em;
-	line-height: 1.25;
-	max-width: 60ch;
-}
-
 .meta-strip {
 	display: flex;
 	flex-wrap: wrap;
@@ -757,26 +807,6 @@ body {
 
 .meta-strip .cell .label {
 	font-size: 10px;
-}
-
-.summary-block {
-	background: var(--surface-2);
-	border-left: 2px solid var(--ink);
-	padding: 14px 18px;
-	margin: 0 0 22px;
-	border-radius: 0 var(--r-2) var(--r-2) 0;
-	max-width: 60ch;
-}
-
-.summary-block .label {
-	margin-bottom: 6px;
-	display: block;
-}
-
-.summary-block p {
-	margin: 0;
-	line-height: 1.55;
-	font-size: 14px;
 }
 
 .description {
@@ -869,35 +899,6 @@ body {
 	color: var(--muted);
 	font-family: var(--mono);
 	font-size: 11.5px;
-}
-
-.activity {
-	margin-top: 30px;
-	padding-top: 18px;
-	border-top: 1px solid var(--line);
-	max-width: 60ch;
-}
-
-.activity h4 {
-	margin: 0 0 12px;
-	font-size: 13px;
-	font-weight: 600;
-}
-
-.activity .item {
-	display: flex;
-	gap: 10px;
-	padding: 8px 0;
-	font-size: 13px;
-	color: var(--ink-2);
-}
-
-.activity .item .when {
-	font-family: var(--mono);
-	font-size: 11.5px;
-	color: var(--muted);
-	margin-left: auto;
-	flex: 0 0 auto;
 }
 
 /* processing indicator on the detail header */
