@@ -82,10 +82,10 @@ document.querySelectorAll('.decline-btn').forEach((btn) => {
 
 document.getElementById('confirmCreate').addEventListener('click', async () => {
 	const nameEl = document.getElementById('teamName');
-	const _bioEl = document.getElementById('teamBio'); // add bio support next (STRETCH GOAL)
+	//const _bioEl = document.getElementById('teamBio'); // add bio support next (STRETCH GOAL)
 
 	const name = nameEl.value.trim();
-	const _bio = _bioEl.value.trim();
+	//const _bio = _bioEl.value.trim();
 
 	if (!name) {
 		nameEl.focus();
