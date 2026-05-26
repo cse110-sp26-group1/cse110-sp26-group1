@@ -1039,6 +1039,31 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect((await resFiles.json()).error).toBe('Invalid affected_files format. Must be an array of strings.');
 			});
 
+			it('400: Rejects request if tags query parameter format is a string instead of an array (Integration Style)', async () => {
+				const userId = await createTestUser('patch_tags_type_user', 'tags_type@ucsd.edu');
+				const teamId = await createTestTeam('Tags Type Patch Team');
+				const token = 'tags-type-patch-token';
+
+				// Seed valid session and team membership context
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				const issueId = await createTestIssue(teamId, userId);
+
+				// Pass an invalid string datatype directly to the tags parameter
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ tags: 'invalid-string-instead-of-array' }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid tags format');
+			});
+
 			it('400: Mid-Flight Assignment Guard: Blocks reassignments if assigned_to user does not belong to team context (Integration Style)', async () => {
 				const userId = await createTestUser('patch_fail_user_4', 'pfu4@ucsd.edu');
 				const outsiderId = await createTestUser('unlinked_outsider', 'out@ucsd.edu');

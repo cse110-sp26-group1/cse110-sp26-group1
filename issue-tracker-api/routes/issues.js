@@ -120,8 +120,12 @@ export async function handleIssues(request, env) {
 
 		const assignedToParam = url.searchParams.get('assigned_to');
 		if (assignedToParam !== null) {
+			const assignedTo = Number(assignedToParam);
+			if (Number.isNaN(assignedTo) || !Number.isInteger(assignedTo) || assignedTo <= 0) {
+				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
+			}
 			query += ' AND assigned_to = ?';
-			bindings.push(Number(assignedToParam));
+			bindings.push(assignedTo);
 		}
 
 		const categoryParam = url.searchParams.get('category');
