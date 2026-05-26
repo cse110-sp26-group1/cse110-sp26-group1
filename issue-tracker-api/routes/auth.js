@@ -58,7 +58,9 @@ export async function handleAuth(request, env) {
 		const password_hash = await hashPassword(body.password);
 
 		// insert the new user row and return the new user's id in the same query.
-		const row = await env.DB.prepare('INSERT INTO users (username, first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?, ?) RETURNING id')
+		const row = await env.DB.prepare(
+			'INSERT INTO users (username, first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?, ?) RETURNING id',
+		)
 			.bind(username, firstName, lastName, email, password_hash)
 			.first();
 
