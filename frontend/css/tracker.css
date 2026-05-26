@@ -46,7 +46,6 @@ body {
 	color: var(--ink);
 }
 
-
 .activity {
 	margin-top: 30px;
 	padding-top: 18px;
@@ -234,7 +233,6 @@ body {
 	cursor: col-resize;
 	position: relative;
 }
-
 
 .divider:hover,
 .divider.dragging {
