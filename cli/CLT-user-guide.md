@@ -10,12 +10,29 @@
 
 # Getting Started
 
+### Mac Users
+- Run `nvm install 18`.
+- Run `nvm use 18`.
 - Go to the `cli` directory.
-- Run `npm install -g .` to install the `allegro` command line tool.
-- Run `allegro help` to confirm the CLI is installed.
-- Log in with the email you use for the Allegro website.
-- You will be prompted for your password in the terminal.
+- Run `npm link`.
+- Run `allegro help` to confirm the command line tool is installed.
+- Log in using the same email address you use for the Allegro website.
+- Enter your password when prompted in the terminal.
 
+### Windows Users
+- Open a terminal as an administrator.
+- [Download NVM for Windows here, then click "Download from GitHub"](https://www.nvmnode.com/guide/download.html#google_vignette).
+- Verify your NVM installation by running `nvm version`.
+- Run `nvm install 18`.
+- Run `nvm use 18`.
+- Close the administrator terminal and switch back to a regular terminal session.
+- Run `nvm version` again to confirm NVM is available in the regular terminal session.
+- Go to the `cli` directory.
+- Run `npm link`.
+- Run `allegro help` to confirm the command line tool is installed.
+- Log in using the same email address you use for the Allegro website.
+- Enter your password when prompted in the terminal.
+  
 ## Commands
 
 ```bash
