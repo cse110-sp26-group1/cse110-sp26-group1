@@ -25,6 +25,9 @@ args.slice(1).forEach((arg) => {
 // Positional argument (e.g. the issue ID)
 const id = args[1];
 
+/**
+ *
+ */
 function printUsage() {
 	console.error('Usage:');
 	console.error('  allegro login --email=xxx');
@@ -36,6 +39,10 @@ function printUsage() {
 	console.error('  allegro resolve_issue <id>');
 }
 
+/**
+ *
+ * @param queryFlags
+ */
 function buildQueryString(queryFlags) {
 	const params = new URLSearchParams();
 
@@ -49,6 +56,11 @@ function buildQueryString(queryFlags) {
 	return queryString ? `?${queryString}` : '';
 }
 
+/**
+ *
+ * @param issues
+ * @param statusFilterApplied
+ */
 function formatIssueList(issues, statusFilterApplied) {
 	if (!Array.isArray(issues)) {
 		return issues;
@@ -71,6 +83,9 @@ function formatIssueList(issues, statusFilterApplied) {
 }
 
 // Helper: load saved token
+/**
+ *
+ */
 function getToken() {
 	if (!fs.existsSync(CONFIG_FILE)) {
 		console.error('Not logged in. Run: allegro login --email=xxx');
@@ -80,6 +95,9 @@ function getToken() {
 	return config.token;
 }
 
+/**
+ *
+ */
 function promptForPassword() {
 	return new Promise((resolve, reject) => {
 		if (!process.stdin.isTTY || !process.stdout.isTTY) {
@@ -135,6 +153,12 @@ function promptForPassword() {
 }
 
 // Helper: make API requests
+/**
+ *
+ * @param method
+ * @param endpoint
+ * @param body
+ */
 async function request(method, endpoint, body = null) {
 	const token = getToken();
 	const res = await fetch(`${BASE_URL}${endpoint}`, {

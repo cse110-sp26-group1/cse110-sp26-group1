@@ -14,14 +14,17 @@ body {
 	top: 0;
 	z-index: 5;
 }
+
 .brand {
 	display: flex;
 	align-items: center;
 	gap: 10px;
 }
+
 .brand .name {
 	font-weight: 600;
 }
+
 .user-menu {
 	display: flex;
 	align-items: center;
@@ -42,12 +45,14 @@ main {
 	margin-bottom: 32px;
 	gap: 16px;
 }
+
 .hero h1 {
 	margin: 0 0 4px;
 	font-size: 30px;
 	font-weight: 600;
 	letter-spacing: -0.02em;
 }
+
 .hero p {
 	margin: 0;
 	color: var(--muted);
@@ -69,6 +74,7 @@ main {
 	gap: 10px;
 	margin-bottom: 24px;
 }
+
 .search-row .input {
 	max-width: 320px;
 }
@@ -80,10 +86,12 @@ main {
 	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 	gap: 14px;
 }
+
 team-card {
 	/* Let the custom element wrapper disappear so its template participates in the grid. */
 	display: contents;
 }
+
 .team {
 	padding: 18px 20px 16px;
 	display: flex;
@@ -100,16 +108,19 @@ team-card {
 	box-shadow: var(--shadow-1);
 	text-align: left;
 }
+
 .team:hover {
 	border-color: var(--ink-2);
 	transform: translateY(-1px);
 	box-shadow: var(--shadow-2);
 }
+
 .team-head {
 	display: flex;
 	align-items: center;
 	gap: 12px;
 }
+
 .team-mark {
 	width: 40px;
 	height: 40px;
@@ -124,25 +135,29 @@ team-card {
 	letter-spacing: 0.02em;
 	flex: 0 0 auto;
 }
+
 .team-mark.c1 {
-	background: oklch(0.92 0.04 38);
-	color: oklch(0.4 0.12 38);
-	border-color: oklch(0.85 0.05 38);
+	background: oklch(92% 0.04 38deg);
+	color: oklch(40% 0.12 38deg);
+	border-color: oklch(85% 0.05 38deg);
 }
+
 .team-mark.c2 {
-	background: oklch(0.92 0.04 200);
-	color: oklch(0.38 0.1 200);
-	border-color: oklch(0.85 0.05 200);
+	background: oklch(92% 0.04 200deg);
+	color: oklch(38% 0.1 200deg);
+	border-color: oklch(85% 0.05 200deg);
 }
+
 .team-mark.c3 {
-	background: oklch(0.93 0.04 130);
-	color: oklch(0.38 0.1 130);
-	border-color: oklch(0.85 0.05 130);
+	background: oklch(93% 0.04 130deg);
+	color: oklch(38% 0.1 130deg);
+	border-color: oklch(85% 0.05 130deg);
 }
+
 .team-mark.c4 {
-	background: oklch(0.92 0.04 320);
-	color: oklch(0.4 0.1 320);
-	border-color: oklch(0.85 0.05 320);
+	background: oklch(92% 0.04 320deg);
+	color: oklch(40% 0.1 320deg);
+	border-color: oklch(85% 0.05 320deg);
 }
 
 .team h2 {
@@ -152,6 +167,7 @@ team-card {
 	line-height: 1.2;
 	letter-spacing: -0.005em;
 }
+
 .team .slug {
 	font-family: var(--mono);
 	font-size: 11px;
@@ -167,15 +183,18 @@ team-card {
 	padding: 10px 0;
 	border-top: 1px solid var(--line);
 }
+
 .stats .stat {
 	display: flex;
 	flex-direction: column;
 }
+
 .stats .stat .n {
 	font-size: 18px;
 	font-weight: 600;
 	letter-spacing: -0.01em;
 }
+
 .stats .stat .l {
 	font-family: var(--mono);
 	font-size: 10px;
@@ -190,16 +209,20 @@ team-card {
 	justify-content: space-between;
 	align-items: center;
 }
+
 .members {
 	display: inline-flex;
 }
+
 .members .avatar {
 	margin-left: -8px;
 	background: var(--surface);
 }
+
 .members .avatar:first-child {
 	margin-left: 0;
 }
+
 .members .more {
 	margin-left: -8px;
 	width: 28px;
@@ -214,6 +237,7 @@ team-card {
 	font-weight: 600;
 	border: 1px solid var(--line);
 }
+
 .last-active {
 	font-size: 12px;
 	color: var(--muted);
@@ -229,10 +253,12 @@ team-card {
 	color: var(--muted);
 	min-height: 100%;
 }
+
 .team.new:hover {
 	background: var(--surface-2);
 	color: var(--ink);
 }
+
 .team.new .plus {
 	width: 40px;
 	height: 40px;
@@ -244,6 +270,7 @@ team-card {
 	font-size: 22px;
 	margin: 0 auto 4px;
 }
+
 .team.new h2 {
 	font-size: 15px;
 }
@@ -254,11 +281,13 @@ team-card {
 	border-top: 1px solid var(--line);
 	padding-top: 24px;
 }
+
 .invites h3 {
 	margin: 0 0 10px;
 	font-size: 14px;
 	font-weight: 600;
 }
+
 .invite {
 	display: flex;
 	align-items: center;
@@ -269,25 +298,30 @@ team-card {
 	border-radius: var(--r-2);
 	margin-bottom: 8px;
 }
+
 .invite .info {
 	display: flex;
 	align-items: center;
 	gap: 12px;
 }
+
 .invite .info .team-mark {
 	width: 32px;
 	height: 32px;
 	font-size: 13px;
 }
+
 .invite .actions {
 	display: flex;
 	gap: 6px;
 }
+
 .invite p {
 	margin: 0;
 	font-size: 12.5px;
 	color: var(--muted);
 }
+
 .invite strong {
 	font-weight: 600;
 	color: var(--ink);

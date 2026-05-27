@@ -4,10 +4,10 @@ import { initPasswordToggles } from './view-password.js';
 requireNoAuth();
 initPasswordToggles(); // wires up the eye button next to the password field
 
-const authForm = document.getElementById('authForm');
+const authForm = document.getElementById('auth-form');
 
-const firstEl = document.getElementById('first');
-const lastEl = document.getElementById('last');
+const firstEl = document.getElementById('first-name');
+const lastEl = document.getElementById('last-name');
 const usernameEl = document.getElementById('username');
 const emailEl = document.getElementById('email');
 const passwordEl = document.getElementById('password');

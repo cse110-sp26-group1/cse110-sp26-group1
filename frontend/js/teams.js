@@ -4,8 +4,8 @@ import './components/team-card.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
 
-const backdrop = document.getElementById('createBackdrop');
-const teamNameEl = document.getElementById('teamName');
+const backdrop = document.getElementById('create-backdrop');
+const teamNameEl = document.getElementById('team-name');
 const toast = document.getElementById('toast');
 
 /**
@@ -23,12 +23,12 @@ function closeModal() {
 	backdrop.classList.remove('open');
 }
 
-document.getElementById('createTeam').addEventListener('click', openModal);
-document.getElementById('createTeam2').addEventListener('click', (e) => {
+document.getElementById('create-team').addEventListener('click', openModal);
+document.getElementById('create-team-2').addEventListener('click', (e) => {
 	e.preventDefault();
 	openModal();
 });
-document.getElementById('cancelCreate').addEventListener('click', closeModal);
+document.getElementById('cancel-create').addEventListener('click', closeModal);
 backdrop.addEventListener('click', (e) => {
 	if (e.target === backdrop) {
 		closeModal();
@@ -80,9 +80,9 @@ document.querySelectorAll('.decline-btn').forEach((btn) => {
 	});
 });
 
-document.getElementById('confirmCreate').addEventListener('click', async () => {
-	const nameEl = document.getElementById('teamName');
-	//const _bioEl = document.getElementById('teamBio'); // add bio support next (STRETCH GOAL)
+document.getElementById('confirm-create').addEventListener('click', async () => {
+	const nameEl = document.getElementById('team-name');
+	const _bioEl = document.getElementById('team-bio'); // add bio support next (STRETCH GOAL)
 
 	const name = nameEl.value.trim();
 	//const _bio = _bioEl.value.trim();
@@ -92,7 +92,7 @@ document.getElementById('confirmCreate').addEventListener('click', async () => {
 		return;
 	}
 
-	const confirmBtn = document.getElementById('confirmCreate');
+	const confirmBtn = document.getElementById('confirm-create');
 	const originalText = confirmBtn.textContent;
 	confirmBtn.textContent = 'Creating...';
 	confirmBtn.disabled = true;
@@ -126,7 +126,7 @@ document.getElementById('confirmCreate').addEventListener('click', async () => {
  * Loads pending invites and wires accept/decline actions after rendering them.
  */
 async function loadInvites() {
-	const section = document.getElementById('invitesSection');
+	const section = document.getElementById('invites-section');
 	if (!section) return;
 
 	let invites;
@@ -211,8 +211,7 @@ async function loadInvites() {
 async function initTeamsPage() {
 	try {
 		const teams = await fetchTeams();
-		const grid = document.getElementById('teamGrid');
-		// Preserve the static "new team" card while replacing only real teams.
+		const grid = document.getElementById('team-grid');
 		const createBtnHtml = grid.querySelector('.team.new').outerHTML;
 
 		const teamCards = teams.map((team) => {
@@ -231,7 +230,7 @@ async function initTeamsPage() {
 		grid.replaceChildren(...teamCards);
 		grid.insertAdjacentHTML('beforeend', createBtnHtml);
 
-		document.getElementById('createTeam2').addEventListener('click', (e) => {
+		document.getElementById('create-team-2').addEventListener('click', (e) => {
 			e.preventDefault();
 			openModal();
 		});

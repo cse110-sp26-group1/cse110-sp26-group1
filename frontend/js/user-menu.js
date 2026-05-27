@@ -2,10 +2,10 @@
 // Loaded as a plain script (like theme.js) after the matching HTML is in the DOM.
 // Sign-out is frontend-only for now: navigates to login.html without calling the API.
 
-const userSwitch = document.getElementById('userSwitch');
-const userAvatar = document.getElementById('userAvatar');
-const userDropdown = document.getElementById('userDropdown');
-const signOutBtn = document.getElementById('signOutBtn');
+const userSwitch = document.getElementById('user-switch');
+const userAvatar = document.getElementById('user-avatar');
+const userDropdown = document.getElementById('user-dropdown');
+const signOutBtn = document.getElementById('sign-out-btn');
 
 try {
 	const user = JSON.parse(localStorage.getItem('allegro_user') ?? '{}');
