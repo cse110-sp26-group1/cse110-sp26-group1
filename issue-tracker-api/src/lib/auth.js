@@ -1,4 +1,6 @@
 const PBKDF2_ITERATIONS = 100000;
+
+// User session lasts for 24 hours of inactivity before they need to login again.
 const SESSION_TTL_HOURS = 24;
 
 // ----- Password hashing (Web Crypto / PBKDF2 — no external deps) -----
@@ -49,16 +51,20 @@ export async function verifyPassword(password, stored) {
  */
 export async function requireAuth(request, env) {
 	const header = request.headers.get('Authorization');
+	// reject anything that isn't a Bearer token (missing header, wrong scheme, etc.)
 	if (!header?.startsWith('Bearer ')) {
 		return { error: Response.json({ error: 'Unauthorized' }, { status: 401 }) };
 	}
 
-	const token = header.slice(7);
+	const token = header.slice(7); // strip "Bearer " (7 chars) to get the raw token
+	// look up the session row that matches this token, return just the user ID and expiry time to the session variable
 	const session = await env.DB.prepare('SELECT user_id, expires_at FROM sessions WHERE token = ?').bind(token).first();
 
+	// token doesn't match any session row
 	if (!session) {
 		return { error: Response.json({ error: 'Invalid session' }, { status: 401 }) };
 	}
+	// token exists but has passed its 24hr expiry — delete it to keep the table clean
 	if (new Date(session.expires_at) < new Date()) {
 		await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
 		return { error: Response.json({ error: 'Session expired' }, { status: 401 }) };
