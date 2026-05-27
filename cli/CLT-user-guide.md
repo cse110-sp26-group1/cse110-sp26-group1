@@ -100,8 +100,7 @@ allegro help
 - `sort_by`: string. Example values: `id`, `title`, `status`, `priority`, `category`, `difficulty`, `created_at`, `updated_at`, `assigned_to`
 - `order`: string. Valid values: `asc` or `desc`
 
-## Notes
+## Additional Notes
 
 - If a status contains spaces, wrap it in quotes, for example: `--status="In Progress"`.
 - `list_issues` returns a compact issue summary by default and hides issues with status `Resolved` or `Closed`. Pass `--status=Resolved` or `--status=Closed` to see them.
-- Detailed task-specific workflow instructions should live in `SKILLS.md`.
