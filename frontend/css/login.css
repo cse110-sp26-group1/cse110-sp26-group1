@@ -240,10 +240,6 @@ p.sub {
 	opacity: 0.9;
 }
 
-/* === password toggle === */
-/* styles for the password toggle
-* allows users to toggle the visibility of their password input
-*/
 .password-wrapper {
 	position: relative;
 }

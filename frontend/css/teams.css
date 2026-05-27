@@ -82,7 +82,6 @@ main {
 /* team grid */
 .grid {
 	display: grid;
-	/* teams.js swaps API cards into this grid while keeping the create card. */
 	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 	gap: 14px;
 }

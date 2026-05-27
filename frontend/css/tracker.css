@@ -531,7 +531,6 @@ body {
 /* ============ CONTENT (list + detail) ============ */
 .content {
 	display: grid;
-	/* tracker.js mutates this template during divider drag and persists it. */
 	grid-template-columns: minmax(340px, 1.1fr) 6px minmax(380px, 1.4fr);
 	min-height: 0;
 }
@@ -686,7 +685,6 @@ body {
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
 	color: var(--muted);
-	/* Group headers stay visible while long issue lists scroll underneath. */
 	position: sticky;
 	top: 0;
 	z-index: 1;
