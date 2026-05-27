@@ -5,6 +5,7 @@
 		<title>Your teams - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
+			// Keep this before CSS so the saved theme is applied before first paint.
 			try {
 				if (localStorage.getItem('theme') === 'dark') {
 					document.documentElement.classList.add('dark');
@@ -23,14 +24,14 @@
 				<span class="name">Allegro</span>
 			</div>
 			<div class="user-menu">
-				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
+				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
 				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
-				<div class="user-switch" id="userSwitch">
-					<button type="button" class="avatar user-avatar" id="userAvatar" aria-haspopup="true" aria-expanded="false" title="Ada Lovelace">
+				<div class="user-switch" id="user-switch">
+					<button type="button" class="avatar user-avatar" id="user-avatar" aria-haspopup="true" aria-expanded="false" title="Ada Lovelace">
 						AL
 					</button>
-					<div class="user-dropdown" id="userDropdown" role="menu">
-						<button type="button" class="item" id="signOutBtn" role="menuitem">Sign out</button>
+					<div class="user-dropdown" id="user-dropdown" role="menu">
+						<button type="button" class="item" id="sign-out-btn" role="menuitem">Sign out</button>
 					</div>
 				</div>
 			</div>
@@ -45,7 +46,7 @@
 				<div class="hero-actions">
 					<!--Commenting out until implemented-->
 					<!--<button class="btn">Join with code</button>-->
-					<button class="btn primary" id="createTeam">+ New team</button>
+					<button class="btn primary" id="create-team">+ New team</button>
 				</div>
 			</div>
 
@@ -54,8 +55,8 @@
 				<button class="btn">Sort: recent ▾</button>
 			</div>
 
-			<div class="grid" id="teamGrid">
-				<button class="team new" id="createTeam2">
+			<div class="grid" id="team-grid">
+				<button class="team new" id="create-team-2">
 					<div>
 						<div class="plus">+</div>
 						<h2>Create new team</h2>
@@ -64,12 +65,12 @@
 				</button>
 			</div>
 
-			<section class="invites" id="invitesSection">
+			<section class="invites" id="invites-section">
 				<h3>Pending invitations</h3>
 			</section>
 		</main>
 
-		<div class="backdrop" id="createBackdrop">
+		<div class="backdrop" id="create-backdrop">
 			<div class="modal">
 				<div class="modal-head">
 					<h3>Create a new team</h3>
@@ -78,16 +79,16 @@
 				<div class="modal-body">
 					<div class="field">
 						<label>Team name <span class="req">*</span></label>
-						<input class="input" id="teamName" placeholder="e.g. Roost Robotics" />
+						<input class="input" id="team-name" placeholder="e.g. Roost Robotics" />
 					</div>
 					<div class="field">
 						<label>Short bio <span class="optional-label">(optional)</span></label>
-						<textarea class="textarea" id="teamBio" placeholder="What does this team work on?"></textarea>
+						<textarea class="textarea" id="team-bio" placeholder="What does this team work on?"></textarea>
 					</div>
 				</div>
 				<div class="modal-foot">
-					<button class="btn" id="cancelCreate">Cancel</button>
-					<button class="btn primary" id="confirmCreate">Create team</button>
+					<button class="btn" id="cancel-create">Cancel</button>
+					<button class="btn primary" id="confirm-create">Create team</button>
 				</div>
 			</div>
 		</div>

@@ -1,4 +1,4 @@
-# Allegro Sprint 3 Plan — Week 3
+# Allegro Sprint 3 Plan 
 
 ## 1. Meeting Plans
 

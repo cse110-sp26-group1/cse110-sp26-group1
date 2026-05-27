@@ -21,21 +21,21 @@ const state = {
 
 let ISSUES = [];
 
-const inviteBackdrop = document.getElementById('inviteBackdrop');
-const confirmInviteBtn = document.getElementById('confirmInvite');
-const inviteInput = document.getElementById('inviteInput');
-const openInviteModalBtn = document.getElementById('openInviteModal');
+const inviteBackdrop = document.getElementById('invite-backdrop');
+const confirmInviteBtn = document.getElementById('confirm-invite');
+const inviteInput = document.getElementById('invite-input');
+const openInviteModalBtn = document.getElementById('open-invite-modal');
 
-const listEl = document.getElementById('issueList');
-const totalCountEl = document.getElementById('totalCount');
+const listEl = document.getElementById('issue-list');
+const totalCountEl = document.getElementById('total-count');
 
 const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-const fileList = document.getElementById('fileList');
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
 
 // helpers for invite listeners below
 /**
- *
+ * Opens the invite modal only after a team has been resolved from the URL.
  */
 function openInvite() {
 	if (!state.currentTeamId) {
@@ -47,7 +47,7 @@ function openInvite() {
 }
 
 /**
- *
+ * Closes the invite modal and clears the draft recipient.
  */
 function closeInvite() {
 	inviteBackdrop.classList.remove('open');
@@ -56,7 +56,7 @@ function closeInvite() {
 
 if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
 
-document.getElementById('cancelInvite').addEventListener('click', closeInvite);
+document.getElementById('cancel-invite').addEventListener('click', closeInvite);
 
 inviteBackdrop.addEventListener('click', (e) => {
 	if (e.target === inviteBackdrop) closeInvite();
@@ -89,17 +89,18 @@ confirmInviteBtn.addEventListener('click', async () => {
 });
 
 /**
- *
+ * Applies the team selected by URL slug after teams are fetched.
  */
 function applyTeamFromUrl() {
 	const qs = new URLSearchParams(location.search);
 	const slug = qs.get('team');
 
 	// Look up from our fetched state instead of the static object
+	// The page can only render teams returned by the API for this user.
 	const t = state.teams.find((team) => team.slug === slug);
 	if (!t) return;
 
-	document.getElementById('teamLabel').textContent = t.name;
+	document.getElementById('team-label').textContent = t.name;
 	const mark = document.querySelector('.team-switch > .mark');
 	mark.textContent = t.mark;
 	mark.style.background = `oklch(0.92 0.04 ${t.color})`;
@@ -108,6 +109,7 @@ function applyTeamFromUrl() {
 
 /**
  * Calculates issue counts and updates the sidebar UI
+ * Reuses the fetched issue list so counts match the active team and filters.
  */
 function syncSidebar() {
 	if (!ISSUES) return;
@@ -154,7 +156,7 @@ document.querySelectorAll('.sidebar .nav-item[data-group]').forEach((item) => {
 });
 
 /**
- *
+ * Filters, sorts, groups, and re-renders the issue list.
  */
 function renderList() {
 	syncSidebar();
@@ -187,6 +189,7 @@ function renderList() {
 
 	let groups;
 	if (state.sort === 'priority') {
+		// Priority groups stay in product order even when some buckets are empty.
 		const buckets = { Critical: [], High: [], Medium: [], Low: [] };
 		items.forEach((i) => buckets[i.priority]?.push(i));
 		groups = [
@@ -221,6 +224,8 @@ function renderList() {
 			state.selected = Number(el.dataset.id);
 			renderList();
 			renderDetail();
+			// Selection should reveal the pane; otherwise a row click can look
+			// ignored after the user has collapsed issue details.
 			if (!state.detailOpen) toggleDetail();
 		});
 	});
@@ -228,9 +233,10 @@ function renderList() {
 
 /**
  * Creates team menu
+ * Renders the team switcher from API-backed team membership.
  */
 function renderTeamMenu() {
-	const teamMenu = document.getElementById('teamMenu');
+	const teamMenu = document.getElementById('team-menu');
 
 	const currentId = Number(new URLSearchParams(location.search).get('team_id'));
 
@@ -274,6 +280,7 @@ function renderTeamMenu() {
  */
 /**
  * Renders the team members avatars in the sidebar based on real API data
+ * Falls back to username/email when profile names are not present.
  */
 function renderTeamMembers() {
 	const membersContainer = document.querySelector('.sidebar .members');
@@ -289,6 +296,7 @@ function renderTeamMembers() {
 			let initials = '??';
 
 			// safe check since API was not updated during tests
+			// Older API fixtures may not have profile names yet.
 			if (member.first_name && member.last_name) {
 				initials = (member.first_name.charAt(0) + member.last_name.charAt(0)).toUpperCase();
 			} else {
@@ -332,7 +340,7 @@ function rowHtml(i) {
 const detailEl = document.getElementById('detail');
 
 /**
- *
+ * Renders the currently selected issue, including derived assignee display.
  */
 function renderDetail() {
 	const i = ISSUES.find((x) => x.id === state.selected);
@@ -348,6 +356,8 @@ function renderDetail() {
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
 
 	// FIX: temp thing for later loading
+	// The backend flags issues being enriched by tagging them instead of
+	// introducing a separate transient status.
 	const processingBanner = i.tags.includes('ai-processing') ? '<span class="processing">AI is enriching this issue…</span>' : '';
 
 	let assigneeHtml = `<span class="avatar sm" style="background: transparent; border: 1px dashed #888; color: #888;">--</span><span style="font-size:13px; color: #888;">Unassigned</span>`;
@@ -410,8 +420,8 @@ function renderDetail() {
 // ============================================================
 // CONTROLS — search, sort, tag
 // ============================================================
-const searchInput = document.getElementById('issueSearch');
-const searchClearBtn = document.getElementById('issueSearchClear');
+const searchInput = document.getElementById('issue-search');
+const searchClearBtn = document.getElementById('issue-search-clear');
 
 /**
  * Show or hide the search clear control based on input value.
@@ -479,6 +489,8 @@ window.addEventListener('mousemove', (e) => {
 	if (!dragging) return;
 	const rect = content.getBoundingClientRect();
 	let left = e.clientX - rect.left;
+	// Clamp the divider so both panes remain usable before persisting the grid
+	// template as the user's preferred layout.
 	left = Math.max(340, Math.min(rect.width - 380, left));
 	content.style.gridTemplateColumns = `${left}px 6px 1fr`;
 });
@@ -488,8 +500,8 @@ if (savedWidth) content.style.gridTemplateColumns = savedWidth;
 // ============================================================
 // TEAM MENU
 // ============================================================
-const teamSwitch = document.getElementById('teamSwitch');
-const teamMenu = document.getElementById('teamMenu');
+const teamSwitch = document.getElementById('team-switch');
+const teamMenu = document.getElementById('team-menu');
 teamSwitch.addEventListener('click', (e) => {
 	e.stopPropagation();
 	teamMenu.classList.toggle('open');
@@ -501,28 +513,28 @@ teamMenu.addEventListener('click', (e) => e.stopPropagation());
 // DETAIL TOGGLE
 // ============================================================
 /**
- *
+ * Collapses or restores the detail pane.
  */
 function toggleDetail() {
 	state.detailOpen = !state.detailOpen;
 	content.classList.toggle('collapsed-detail', !state.detailOpen);
 }
-document.getElementById('toggleDetail').addEventListener('click', toggleDetail);
+document.getElementById('toggle-detail').addEventListener('click', toggleDetail);
 
 // ============================================================
 // NEW ISSUE MODAL
 // ============================================================
-const newBackdrop = document.getElementById('newBackdrop');
-const confirmNewBtn = document.getElementById('confirmNew');
+const newBackdrop = document.getElementById('new-backdrop');
+const confirmNewBtn = document.getElementById('confirm-new');
 let pendingFiles = [];
 
 /**
- *
+ * Opens the new issue modal and refreshes assignee options from team members.
  */
 function openNew() {
 	newBackdrop.classList.add('open');
 
-	const assigneeSelect = document.getElementById('nAssignee');
+	const assigneeSelect = document.getElementById('new-assignee');
 	if (assigneeSelect && state.teamMembers) {
 		const options = state.teamMembers
 			.map((m) => {
@@ -533,27 +545,27 @@ function openNew() {
 		assigneeSelect.innerHTML = `<option value="">Unassigned</option>${options}`;
 	}
 
-	setTimeout(() => document.getElementById('nTitle').focus(), 30);
+	setTimeout(() => document.getElementById('new-title').focus(), 30);
 }
 
 /**
- *
+ * Closes the new issue modal and discards unsent draft state.
  */
 function closeNew() {
 	newBackdrop.classList.remove('open');
 	resetForm();
 }
 /**
- *
+ * Clears fields that only exist in the client-side issue draft.
  */
 function resetForm() {
-	document.getElementById('nTitle').value = '';
-	document.getElementById('nDesc').value = '';
-	document.getElementById('fileList').innerHTML = '';
+	document.getElementById('new-title').value = '';
+	document.getElementById('new-desc').value = '';
+	document.getElementById('file-list').innerHTML = '';
 	pendingFiles = [];
 }
-document.getElementById('newIssue').addEventListener('click', openNew);
-document.getElementById('cancelNew').addEventListener('click', closeNew);
+document.getElementById('new-issue').addEventListener('click', openNew);
+document.getElementById('cancel-new').addEventListener('click', closeNew);
 newBackdrop.addEventListener('click', (e) => {
 	if (e.target === newBackdrop) closeNew();
 });
@@ -593,6 +605,8 @@ function addFiles(files) {
 
 	Array.from(files).forEach((f) => {
 		// Check by MIME type or by file extension (for .log files which often lack a MIME type)
+		// Many .log files arrive without a useful MIME type, so extension is a
+		// deliberate fallback rather than a duplicate validation path.
 		const isAllowed = allowedTypes.includes(f.type) || allowedExtensions.some((ext) => f.name.toLowerCase().endsWith(ext));
 
 		if (isAllowed) {
@@ -607,7 +621,7 @@ function addFiles(files) {
 }
 
 /**
- *
+ * Re-renders attachment chips so each remove button matches pendingFiles.
  */
 function renderFiles() {
 	fileList.innerHTML = pendingFiles
@@ -628,8 +642,8 @@ function renderFiles() {
 }
 
 confirmNewBtn.addEventListener('click', async () => {
-	const titleEl = document.getElementById('nTitle');
-	const descEl = document.getElementById('nDesc');
+	const titleEl = document.getElementById('new-title');
+	const descEl = document.getElementById('new-desc');
 	const title = titleEl.value.trim();
 	const desc = descEl.value.trim();
 
@@ -647,11 +661,11 @@ confirmNewBtn.addEventListener('click', async () => {
 	formData.append('description', desc);
 	if (state.currentTeamId) formData.append('team_id', state.currentTeamId);
 
-	const priority = document.getElementById('nPriority')?.value;
-	const category = document.getElementById('nCategory')?.value;
-	const assignee = document.getElementById('nAssignee')?.value;
-	const difficulty = document.getElementById('nDifficulty')?.value;
-	const tags = document.getElementById('nTags')?.value;
+	const priority = document.getElementById('new-priority')?.value;
+	const category = document.getElementById('new-category')?.value;
+	const assignee = document.getElementById('new-assignee')?.value;
+	const difficulty = document.getElementById('new-difficulty')?.value;
+	const tags = document.getElementById('new-tags')?.value;
 
 	if (priority) formData.append('priority', priority);
 	if (category) formData.append('category', category);
@@ -666,17 +680,27 @@ confirmNewBtn.addEventListener('click', async () => {
 	confirmNewBtn.disabled = true;
 
 	try {
-		showToast('Creating issue...');
-		await createIssue(formData);
+		showToast('Creating and analyzing issue...');
+
+		const response = await createIssue(formData);
 
 		ISSUES = await fetchIssues(state.currentTeamId);
 
-		state.selected = ISSUES[0]?.id ?? null;
+		if (response.id) {
+			state.selected = response.id;
+		} else {
+			state.selected = ISSUES[0]?.id ?? null;
+		}
 
 		closeNew();
 		renderList();
 		renderDetail();
-		showToast('Issue created');
+
+		if (response.enriched && response.enriched.category) {
+			showToast(`Created: Tagged as a ${response.enriched.priority} priority ${response.enriched.category}`);
+		} else {
+			showToast('Issue created');
+		}
 	} catch (err) {
 		showToast(err.message || 'Failed to create issue.');
 	} finally {
@@ -701,7 +725,7 @@ function showToast(msg) {
 	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
-document.getElementById('downloadSkills').addEventListener('click', () => {
+document.getElementById('download-skills').addEventListener('click', () => {
 	const blob = new Blob([SKILLS_MD], { type: 'text/markdown' });
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
@@ -710,6 +734,7 @@ document.getElementById('downloadSkills').addEventListener('click', () => {
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
+	// Object URLs hold browser resources until explicitly released.
 	URL.revokeObjectURL(url);
 	showToast('skills.md downloaded');
 });
@@ -732,6 +757,8 @@ document.addEventListener('keydown', (e) => {
 		e.preventDefault();
 		const rows = Array.from(listEl.querySelectorAll('.issue-row'));
 		const idx = rows.findIndex((r) => Number(r.dataset.id) === state.selected);
+		// Navigate through the rendered rows so active filters and groups define
+		// the keyboard order.
 		const next = e.key === 'j' ? Math.min(rows.length - 1, idx + 1) : Math.max(0, idx - 1);
 		if (rows[next]) rows[next].click();
 	}
@@ -775,6 +802,8 @@ detailEl.addEventListener('click', async (e) => {
 			resolved: 'Resolved',
 			closed: 'Closed',
 		};
+		// Prompt input accepts user-friendly aliases but the API stores the
+		// canonical status labels used elsewhere in this file.
 		const normalisedStatus = statusMap[newStatus.trim().toLowerCase()] ?? newStatus.trim();
 
 		const updates = {
@@ -806,7 +835,7 @@ detailEl.addEventListener('click', async (e) => {
 // ============================================================
 
 /**
- *
+ * Loads team context, then fetches issues and members for the active team.
  */
 async function initTracker() {
 	const qs = new URLSearchParams(location.search);
@@ -822,7 +851,7 @@ async function initTracker() {
 		const currentTeam = teams.find((t) => t.id === teamId);
 
 		if (currentTeam) {
-			document.getElementById('teamLabel').textContent = currentTeam.team_name;
+			document.getElementById('team-label').textContent = currentTeam.team_name;
 			const markEl = document.querySelector('.team-switch > .mark');
 			const words = currentTeam.team_name.trim().split(' ');
 			markEl.textContent =
@@ -832,6 +861,8 @@ async function initTracker() {
 		state.currentTeamId = currentTeam ? currentTeam.id : null;
 
 		if (state.currentTeamId) {
+			// Members are optional for rendering; issues are not. Keep the page
+			// usable if the member endpoint is unavailable.
 			const [fetchedIssues, fetchedMembers] = await Promise.all([
 				fetchIssues(state.currentTeamId),
 				fetchTeamMembers(state.currentTeamId).catch(() => []),

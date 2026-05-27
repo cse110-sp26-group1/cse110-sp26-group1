@@ -1,8 +1,10 @@
 import { login, requireNoAuth } from './api.js';
+import { initPasswordToggles } from './view-password.js';
 
 requireNoAuth();
+initPasswordToggles();
 
-const authForm = document.getElementById('authForm');
+const authForm = document.getElementById('auth-form');
 
 /**
  * Handles sign-in form submit. Validates email and password, then

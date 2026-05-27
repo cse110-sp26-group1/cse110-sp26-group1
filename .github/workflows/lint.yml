@@ -20,8 +20,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run ESLint
-        run: npm run lint
+      - name: Run ESLint (JS)
+        run: npm run lint:js
+
+      - name: Run Stylelint (CSS)
+        run: npm run lint:css
+
+      - name: Run HTMLHint (HTML)
+        run: npm run lint:html
 
       - name: Check formatting
         run: npm run format:check

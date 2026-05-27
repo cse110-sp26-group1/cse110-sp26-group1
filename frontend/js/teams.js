@@ -4,8 +4,8 @@ import './components/team-card.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
 
-const backdrop = document.getElementById('createBackdrop');
-const teamNameEl = document.getElementById('teamName');
+const backdrop = document.getElementById('create-backdrop');
+const teamNameEl = document.getElementById('team-name');
 const toast = document.getElementById('toast');
 
 /**
@@ -23,12 +23,12 @@ function closeModal() {
 	backdrop.classList.remove('open');
 }
 
-document.getElementById('createTeam').addEventListener('click', openModal);
-document.getElementById('createTeam2').addEventListener('click', (e) => {
+document.getElementById('create-team').addEventListener('click', openModal);
+document.getElementById('create-team-2').addEventListener('click', (e) => {
 	e.preventDefault();
 	openModal();
 });
-document.getElementById('cancelCreate').addEventListener('click', closeModal);
+document.getElementById('cancel-create').addEventListener('click', closeModal);
 backdrop.addEventListener('click', (e) => {
 	if (e.target === backdrop) {
 		closeModal();
@@ -63,6 +63,7 @@ document.querySelectorAll('.accept-btn').forEach((btn) => {
 			e.target.closest('.invite').remove();
 
 			// Re-render the grid to show the newly unlocked team
+			// The accepted invite creates team membership server-side.
 			initTeamsPage();
 		} catch {
 			showToast('Failed to accept invite.');
@@ -79,19 +80,19 @@ document.querySelectorAll('.decline-btn').forEach((btn) => {
 	});
 });
 
-document.getElementById('confirmCreate').addEventListener('click', async () => {
-	const nameEl = document.getElementById('teamName');
-	const _bioEl = document.getElementById('teamBio'); // add bio support next (STRETCH GOAL)
+document.getElementById('confirm-create').addEventListener('click', async () => {
+	const nameEl = document.getElementById('team-name');
+	const _bioEl = document.getElementById('team-bio'); // add bio support next (STRETCH GOAL)
 
 	const name = nameEl.value.trim();
-	const _bio = _bioEl.value.trim();
+	//const _bio = _bioEl.value.trim();
 
 	if (!name) {
 		nameEl.focus();
 		return;
 	}
 
-	const confirmBtn = document.getElementById('confirmCreate');
+	const confirmBtn = document.getElementById('confirm-create');
 	const originalText = confirmBtn.textContent;
 	confirmBtn.textContent = 'Creating...';
 	confirmBtn.disabled = true;
@@ -122,10 +123,10 @@ document.getElementById('confirmCreate').addEventListener('click', async () => {
 });
 
 /**
- *
+ * Loads pending invites and wires accept/decline actions after rendering them.
  */
 async function loadInvites() {
-	const section = document.getElementById('invitesSection');
+	const section = document.getElementById('invites-section');
 	if (!section) return;
 
 	let invites;
@@ -163,6 +164,8 @@ async function loadInvites() {
 		)
 		.join('');
 
+	// Invites are inserted after the heading so the static section shell can
+	// stay in HTML while the rows reflect the latest API state.
 	section.querySelector('h3').insertAdjacentHTML('afterend', list);
 
 	section.querySelectorAll('.accept-btn').forEach((btn) => {
@@ -203,12 +206,12 @@ async function loadInvites() {
 }
 
 /**
- *
+ * Loads the user's teams and rebuilds the dashboard grid from API data.
  */
 async function initTeamsPage() {
 	try {
 		const teams = await fetchTeams();
-		const grid = document.getElementById('teamGrid');
+		const grid = document.getElementById('team-grid');
 		const createBtnHtml = grid.querySelector('.team.new').outerHTML;
 
 		const teamCards = teams.map((team) => {
@@ -227,7 +230,7 @@ async function initTeamsPage() {
 		grid.replaceChildren(...teamCards);
 		grid.insertAdjacentHTML('beforeend', createBtnHtml);
 
-		document.getElementById('createTeam2').addEventListener('click', (e) => {
+		document.getElementById('create-team-2').addEventListener('click', (e) => {
 			e.preventDefault();
 			openModal();
 		});
