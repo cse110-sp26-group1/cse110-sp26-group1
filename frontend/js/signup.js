@@ -2,10 +2,10 @@ import { createAccount, login, requireNoAuth } from './api.js';
 
 requireNoAuth();
 
-const authForm = document.getElementById('authForm');
+const authForm = document.getElementById('auth-form');
 
-const firstEl = document.getElementById('first');
-const lastEl = document.getElementById('last');
+const firstEl = document.getElementById('first-name');
+const lastEl = document.getElementById('last-name');
 const usernameEl = document.getElementById('username');
 const emailEl = document.getElementById('email');
 const passwordEl = document.getElementById('password');
