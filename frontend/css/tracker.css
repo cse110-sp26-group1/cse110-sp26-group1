@@ -536,6 +536,7 @@ body {
 }
 
 .content.collapsed-detail {
+	/* State class toggled by #toggleDetail; hides the resizable detail pane. */
 	grid-template-columns: 1fr;
 }
 

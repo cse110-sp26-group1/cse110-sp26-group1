@@ -240,6 +240,57 @@ p.sub {
 	opacity: 0.9;
 }
 
+.password-wrapper {
+	position: relative;
+}
+
+.password-input {
+	padding-right: 40px;
+}
+
+.password-toggle {
+	position: absolute;
+	right: 8px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	padding: 4px;
+	cursor: pointer;
+	color: var(--muted);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--r-1);
+	transition: color 0.12s;
+	line-height: 0;
+}
+
+.password-toggle:hover {
+	color: var(--ink);
+}
+
+.password-toggle:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
+}
+
+.password-toggle-icon {
+	display: block;
+}
+
+.password-toggle-icon-hide {
+	display: none;
+}
+
+.password-toggle[aria-pressed='true'] .password-toggle-icon-show {
+	display: none;
+}
+
+.password-toggle[aria-pressed='true'] .password-toggle-icon-hide {
+	display: block;
+}
+
 /* === auth-switch === */
 
 /* styles for the auth-switch
