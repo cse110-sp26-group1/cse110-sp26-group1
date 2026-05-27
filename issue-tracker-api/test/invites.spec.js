@@ -6,6 +6,10 @@ import sqlSchemaRaw from '../schema.sql?raw';
 // HELPER FUNCTIONS
 // ============================================
 
+/**
+ * Cleans all database tables between tests
+ * @returns {Promise<void>}
+ */
 async function cleanDatabase() {
 	await env.DB.exec(`
     DELETE FROM sessions;
@@ -17,6 +21,12 @@ async function cleanDatabase() {
   `);
 }
 
+/**
+ * Creates a test user
+ * @param {string} username - User's username
+ * @param {string} email - User's email
+ * @returns {Promise<number>} User ID
+ */
 async function createTestUser(username, email) {
 	const row = await env.DB.prepare(
 		`INSERT INTO users (username, first_name, last_name, email, password_hash)
@@ -27,6 +37,13 @@ async function createTestUser(username, email) {
 	return row.id;
 }
 
+/**
+ * Creates a session for a user
+ * @param {number} userId - User ID
+ * @param {string} token - Session token
+ * @param {number} ttlHours - Time to live in hours (negative for expired)
+ * @returns {Promise<void>}
+ */
 async function createTestSession(userId, token, ttlHours = 24) {
 	const expiryDate = new Date();
 	expiryDate.setHours(expiryDate.getHours() + ttlHours);
@@ -35,21 +52,42 @@ async function createTestSession(userId, token, ttlHours = 24) {
 		.run();
 }
 
-async function createTestTeam(teamName, creatorId = null) {
-	const row = await env.DB.prepare(`INSERT INTO teams (team_name) VALUES (?) RETURNING id`).bind(teamName).first();
-	const teamId = row.id;
-
-	if (creatorId) {
-		await env.DB.prepare('INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)').bind(teamId, creatorId, 'admin').run();
-	}
-
-	return teamId;
+/**
+ * Creates a team using the API endpoint
+ * @param {string} teamName - Team name
+ * @returns {Promise<number>} Team ID
+ */
+async function createTestTeam(teamName) {
+	const response = await SELF.fetch('http://localhost/teams', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({ team_name: teamName }),
+	});
+	const data = await response.json();
+	return data.team_id;
 }
 
+/**
+ * Adds a user to a team with a role
+ * @param {number} userId - User ID
+ * @param {number} teamId - Team ID
+ * @param {string} role - Role ('admin' or 'member')
+ * @returns {Promise<void>}
+ */
 async function createTeamMembership(userId, teamId, role = 'member') {
-	await env.DB.prepare('INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)').bind(teamId, userId, role).run();
+	await env.DB.prepare('INSERT INTO team_members (user_id, team_id, role) VALUES (?, ?, ?)').bind(userId, teamId, role).run();
 }
 
+/**
+ * Creates an invite
+ * @param {number} teamId - Team ID
+ * @param {number} inviterId - Inviter user ID
+ * @param {number} invitedId - Invited user ID
+ * @param {string} status - Invite status
+ * @returns {Promise<number>} Invite ID
+ */
 async function createTestInvite(teamId, inviterId, invitedId, status = 'pending') {
 	const row = await env.DB.prepare(
 		`INSERT INTO invites (team_id, inviter_user_id, invited_user_id, status, created_at)
@@ -60,6 +98,11 @@ async function createTestInvite(teamId, inviterId, invitedId, status = 'pending'
 	return row.id;
 }
 
+/**
+ * Returns auth headers for API requests
+ * @param {string} token - Bearer token
+ * @returns {{Authorization: string, 'Content-Type': string}}
+ */
 function authHeaders(token) {
 	return {
 		Authorization: `Bearer ${token}`,
@@ -85,6 +128,9 @@ describe('Invites Endpoint Testing Suite', () => {
 		await cleanDatabase();
 	});
 
+	// ============================================
+	// GET /invites - AUTHENTICATION & ACCESS CONTROL
+	// ============================================
 	describe('GET /invites - RequireAuth & Access Verification', () => {
 		describe('Success Cases', () => {
 			it('200: returns pending invites for authenticated user with team and inviter info', async () => {
@@ -94,7 +140,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(inviteeId, token, 24);
 
-				const teamId = await createTestTeam('Backend Team', inviterId);
+				const teamId = await createTestTeam('Backend Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch('http://localhost/invites', {
@@ -115,6 +162,8 @@ describe('Invites Endpoint Testing Suite', () => {
 			it('401: rejects request when Authorization header is missing', async () => {
 				const response = await SELF.fetch('http://localhost/invites');
 				expect(response.status).toBe(401);
+				const data = await response.json();
+				expect(data.error).toBe('Unauthorized');
 			});
 
 			it('401: rejects request when session token is invalid', async () => {
@@ -122,6 +171,8 @@ describe('Invites Endpoint Testing Suite', () => {
 					headers: { Authorization: 'Bearer invalid-token' },
 				});
 				expect(response.status).toBe(401);
+				const data = await response.json();
+				expect(data.error).toBe('Invalid session');
 			});
 
 			it('401: rejects request when session token is expired', async () => {
@@ -133,10 +184,15 @@ describe('Invites Endpoint Testing Suite', () => {
 					headers: authHeaders(token),
 				});
 				expect(response.status).toBe(401);
+				const data = await response.json();
+				expect(data.error).toBe('Session expired');
 			});
 		});
 	});
 
+	// ============================================
+	// GET /invites/:id
+	// ============================================
 	describe('GET /invites/:id', () => {
 		describe('Success Cases', () => {
 			it('200: returns invite details for the invited user', async () => {
@@ -146,7 +202,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(inviteeId, token, 24);
 
-				const teamId = await createTestTeam('Backend Team', inviterId);
+				const teamId = await createTestTeam('Backend Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}`, {
@@ -168,7 +225,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(inviterId, token, 24);
 
-				const teamId = await createTestTeam('Backend Team', inviterId);
+				const teamId = await createTestTeam('Backend Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}`, {
@@ -188,7 +246,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(outsiderId, token, 24);
 
-				const teamId = await createTestTeam('Backend Team', inviterId);
+				const teamId = await createTestTeam('Backend Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}`, {
@@ -224,6 +283,9 @@ describe('Invites Endpoint Testing Suite', () => {
 		});
 	});
 
+	// ============================================
+	// POST /invites
+	// ============================================
 	describe('POST /invites', () => {
 		describe('Success Cases', () => {
 			it('201: creates pending invite when admin invites user', async () => {
@@ -233,7 +295,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(adminId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', adminId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(adminId, teamId, 'admin');
 
 				const response = await SELF.fetch('http://localhost/invites', {
 					method: 'POST',
@@ -245,6 +308,44 @@ describe('Invites Endpoint Testing Suite', () => {
 				const data = await response.json();
 				expect(data.success).toBe(true);
 				expect(data.invite_id).toBeDefined();
+			});
+
+			it('200: allows inviting by username instead of user_id', async () => {
+				const adminId = await createTestUser('admin', 'admin@test.com');
+				await createTestUser('targetuser', 'target@test.com');
+				const token = 'admin-token';
+
+				await createTestSession(adminId, token, 24);
+
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(adminId, teamId, 'admin');
+
+				const response = await SELF.fetch('http://localhost/invites', {
+					method: 'POST',
+					headers: authHeaders(token),
+					body: JSON.stringify({ team_id: teamId, username: 'targetuser' }),
+				});
+
+				expect(response.status).toBe(201);
+			});
+
+			it('200: allows inviting by email instead of user_id', async () => {
+				const adminId = await createTestUser('admin', 'admin@test.com');
+				await createTestUser('emailuser', 'emailuser@test.com');
+				const token = 'admin-token';
+
+				await createTestSession(adminId, token, 24);
+
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(adminId, teamId, 'admin');
+
+				const response = await SELF.fetch('http://localhost/invites', {
+					method: 'POST',
+					headers: authHeaders(token),
+					body: JSON.stringify({ team_id: teamId, email: 'emailuser@test.com' }),
+				});
+
+				expect(response.status).toBe(201);
 			});
 		});
 
@@ -264,7 +365,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(userId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', userId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(userId, teamId, 'admin');
 
 				const response = await SELF.fetch('http://localhost/invites', {
 					method: 'POST',
@@ -284,7 +386,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(memberId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', ownerId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(ownerId, teamId, 'admin');
 				await createTeamMembership(memberId, teamId, 'member');
 
 				const response = await SELF.fetch('http://localhost/invites', {
@@ -303,7 +406,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(adminId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', adminId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(adminId, teamId, 'admin');
 				await createTeamMembership(memberId, teamId, 'member');
 
 				const response = await SELF.fetch('http://localhost/invites', {
@@ -324,7 +428,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(adminId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', adminId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(adminId, teamId, 'admin');
 
 				await SELF.fetch('http://localhost/invites', {
 					method: 'POST',
@@ -350,7 +455,9 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(adminId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', adminId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(adminId, teamId, 'admin');
+
 				await createTestInvite(teamId, adminId, userId, 'declined');
 
 				const response = await SELF.fetch('http://localhost/invites', {
@@ -386,7 +493,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(adminId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', adminId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(adminId, teamId, 'admin');
 
 				const response = await SELF.fetch('http://localhost/invites', {
 					method: 'POST',
@@ -396,9 +504,64 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				expect(response.status).toBe(400);
 			});
+
+			it('403: returns error when team does not exist', async () => {
+				const adminId = await createTestUser('admin', 'admin@test.com');
+				const userId = await createTestUser('user', 'user@test.com');
+				const token = 'admin-token';
+
+				await createTestSession(adminId, token, 24);
+
+				const response = await SELF.fetch('http://localhost/invites', {
+					method: 'POST',
+					headers: authHeaders(token),
+					body: JSON.stringify({ team_id: 99999, invited_user_id: userId }),
+				});
+
+				expect(response.status).toBe(403);
+			});
+
+			it('404: returns error when email does not match any user', async () => {
+				const adminId = await createTestUser('admin', 'admin@test.com');
+				const token = 'admin-token';
+
+				await createTestSession(adminId, token, 24);
+
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(adminId, teamId, 'admin');
+
+				const response = await SELF.fetch('http://localhost/invites', {
+					method: 'POST',
+					headers: authHeaders(token),
+					body: JSON.stringify({ team_id: teamId, email: 'nonexistent@test.com' }),
+				});
+
+				expect(response.status).toBe(404);
+			});
+
+			it('404: returns error when username does not match any user', async () => {
+				const adminId = await createTestUser('admin', 'admin@test.com');
+				const token = 'admin-token';
+
+				await createTestSession(adminId, token, 24);
+
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(adminId, teamId, 'admin');
+
+				const response = await SELF.fetch('http://localhost/invites', {
+					method: 'POST',
+					headers: authHeaders(token),
+					body: JSON.stringify({ team_id: teamId, username: 'nonexistent' }),
+				});
+
+				expect(response.status).toBe(404);
+			});
 		});
 	});
 
+	// ============================================
+	// PATCH /invites/:id/accept
+	// ============================================
 	describe('PATCH /invites/:id/accept', () => {
 		describe('Success Cases', () => {
 			it('200: accepts invite and adds user to team', async () => {
@@ -408,7 +571,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(inviteeId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', inviterId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}/accept`, {
@@ -432,7 +596,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(otherId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', inviterId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}/accept`, {
@@ -450,7 +615,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(inviteeId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', inviterId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'accepted');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}/accept`, {
@@ -489,6 +655,9 @@ describe('Invites Endpoint Testing Suite', () => {
 		});
 	});
 
+	// ============================================
+	// PATCH /invites/:id/reject
+	// ============================================
 	describe('PATCH /invites/:id/reject', () => {
 		describe('Success Cases', () => {
 			it('200: declines invite without adding to team', async () => {
@@ -498,7 +667,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(inviteeId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', inviterId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}/reject`, {
@@ -522,7 +692,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(otherId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', inviterId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}/reject`, {
@@ -561,6 +732,9 @@ describe('Invites Endpoint Testing Suite', () => {
 		});
 	});
 
+	// ============================================
+	// DELETE /invites/:id
+	// ============================================
 	describe('DELETE /invites/:id', () => {
 		describe('Success Cases', () => {
 			it('200: allows inviter to delete invite', async () => {
@@ -570,7 +744,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(inviterId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', inviterId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}`, {
@@ -590,7 +765,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(inviteeId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', inviterId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}`, {
@@ -611,7 +787,8 @@ describe('Invites Endpoint Testing Suite', () => {
 
 				await createTestSession(outsiderId, token, 24);
 
-				const teamId = await createTestTeam('Test Team', inviterId);
+				const teamId = await createTestTeam('Test Team');
+				await createTeamMembership(inviterId, teamId, 'admin');
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
 				const response = await SELF.fetch(`http://localhost/invites/${inviteId}`, {
@@ -650,3 +827,4 @@ describe('Invites Endpoint Testing Suite', () => {
 		});
 	});
 });
+EOF;
