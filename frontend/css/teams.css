@@ -87,6 +87,7 @@ main {
 }
 
 team-card {
+	/* Let the custom element wrapper disappear so its template participates in the grid. */
 	display: contents;
 }
 
@@ -174,6 +175,7 @@ team-card {
 }
 
 .stats {
+	/* Stats markup remains in the template for future data, but team-card.js hides it today. */
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
 	gap: 4px;

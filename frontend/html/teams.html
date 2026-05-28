@@ -5,6 +5,7 @@
 		<title>Your teams - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
+			// Keep this before CSS so the saved theme is applied before first paint.
 			try {
 				if (localStorage.getItem('theme') === 'dark') {
 					document.documentElement.classList.add('dark');

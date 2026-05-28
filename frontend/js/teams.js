@@ -63,6 +63,7 @@ document.querySelectorAll('.accept-btn').forEach((btn) => {
 			e.target.closest('.invite').remove();
 
 			// Re-render the grid to show the newly unlocked team
+			// The accepted invite creates team membership server-side.
 			initTeamsPage();
 		} catch {
 			showToast('Failed to accept invite.');
@@ -84,7 +85,7 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 	const _bioEl = document.getElementById('team-bio'); // add bio support next (STRETCH GOAL)
 
 	const name = nameEl.value.trim();
-	const _bio = _bioEl.value.trim();
+	//const _bio = _bioEl.value.trim();
 
 	if (!name) {
 		nameEl.focus();
@@ -122,7 +123,7 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 });
 
 /**
- *
+ * Loads pending invites and wires accept/decline actions after rendering them.
  */
 async function loadInvites() {
 	const section = document.getElementById('invites-section');
@@ -163,6 +164,8 @@ async function loadInvites() {
 		)
 		.join('');
 
+	// Invites are inserted after the heading so the static section shell can
+	// stay in HTML while the rows reflect the latest API state.
 	section.querySelector('h3').insertAdjacentHTML('afterend', list);
 
 	section.querySelectorAll('.accept-btn').forEach((btn) => {
@@ -203,7 +206,7 @@ async function loadInvites() {
 }
 
 /**
- *
+ * Loads the user's teams and rebuilds the dashboard grid from API data.
  */
 async function initTeamsPage() {
 	try {
