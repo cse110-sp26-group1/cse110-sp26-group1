@@ -1,7 +1,8 @@
 import { requireTeamAdmin } from './teams.js';
 
 /**
- * Resolves `invited_user_id` from a request body that may use id, username, or email.
+ * Resolves `invited_user_id` from a request body that may use id, username, or email
+ * since front end sends EITHER username or email
  * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
  * @param {{ invited_user_id?: number, username?: string, email?: string }} body - Invite recipient fields.
  * @returns {Promise<{ invitedUserId: number } | { error: Response }>}
