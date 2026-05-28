@@ -34,8 +34,8 @@ May 28, 2026 | 11:35am–11:45pm @ Zoom
 
 ### Frontend Update
 - Frontend work will be done by Amberly; some backend team members will assist depending on progress made today
-- Stretch goal: explore how many times the LLM can be called if a user wants to update tasks
-- Work on help button implementation based on user feedback
+- Stretch goal: explore how many times the LLM can be called if a user wants to update issues
+- Work on help button implementation based on feedback from other teams
 
 ### Backend Update
 - Michael completed unit testing and will work on updating `agent.js` after PR is reviewed
