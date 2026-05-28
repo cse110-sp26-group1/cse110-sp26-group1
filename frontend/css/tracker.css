@@ -1055,7 +1055,8 @@ body {
 	color: var(--accent);
 }
 
-/* AI Highlight*/
+/* AI Highlight */
+
 /* Styles for the "Summary" and "Hypothesis" AI sections */
 .ai-content-block {
 	border: 1px solid var(--line);

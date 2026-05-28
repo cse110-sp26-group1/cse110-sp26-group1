@@ -24,6 +24,11 @@ body {
 /* content container */
 .stage .inner {
 	width: min(380px, 100%);
+	background: var(--surface);
+	padding: 32px;
+	border-radius: var(--r-3);
+	border: 1px solid var(--line);
+	box-shadow: var(--shadow-1);
 }
 
 /* === brand === */
@@ -34,8 +39,11 @@ body {
 .brand {
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	gap: 10px;
-	margin-bottom: 36px;
+	margin-bottom: 48px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--line);
 }
 
 /* === name === */
@@ -67,16 +75,19 @@ body {
 
 /* heading 1 */
 h1.title {
-	margin: 0 0 6px;
-	font-size: 26px;
+	margin: 0 0 12px;
+	font-size: 32px;
 	font-weight: 600;
 	letter-spacing: -0.015em;
+	text-align: center;
 }
 
 /* paragraph */
 p.sub {
-	margin: 0 0 28px;
+	margin: 0 0 32px;
 	color: var(--muted);
+	font-size: 14px;
+	text-align: center;
 }
 
 /* === tabs-seg === */
@@ -341,34 +352,4 @@ p.sub {
 .row2 label {
 	font-size: 11px;
 	margin-bottom: 4px;
-}
-
-/* Form container refinement to match the clean white-box-on-beige look */
-.stage .inner {
-	background: var(--surface);
-	padding: 32px;
-	border-radius: var(--r-3);
-	border: 1px solid var(--line);
-	box-shadow: var(--shadow-1);
-}
-
-/* Spacing refinement for the "Welcome back" / "Create Account" titles */
-h1.title {
-	font-size: 32px;
-	margin-bottom: 12px;
-	text-align: center;
-}
-
-p.sub {
-	text-align: center;
-	font-size: 14px;
-	margin-bottom: 32px;
-}
-
-/* Centering the brand for the login/signup view */
-.brand {
-	justify-content: center;
-	border-bottom: 1px solid var(--line);
-	padding-bottom: 12px;
-	margin-bottom: 48px;
 }

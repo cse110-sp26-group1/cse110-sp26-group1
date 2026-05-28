@@ -751,7 +751,10 @@ html.dark .theme-toggle::before {
 	color: var(--ink-2);
 	font-size: 13px;
 }
-.filter-item:hover { background: var(--surface-2); }
+
+.filter-item:hover {
+	background: var(--surface-2);
+}
 
 /* The circle indicator */
 .filter-item .indicator {
@@ -764,10 +767,14 @@ html.dark .theme-toggle::before {
 }
 
 /* Filled circle logic for active sort/filter */
-.filter-item.active { background: var(--surface-3); font-weight: 500; }
-.filter-item.active .indicator { 
-	background: currentColor; 
-	border-color: transparent; 
+.filter-item.active {
+	background: var(--surface-3);
+	font-weight: 500;
+}
+
+.filter-item.active .indicator {
+	background: currentcolor;
+	border-color: transparent;
 }
 
 /* Details Page Metadata Grid & Edit Toggle */
@@ -818,6 +825,7 @@ html.dark .theme-toggle::before {
 	color: var(--muted);
 	cursor: pointer;
 }
+
 .chip.tag-more:hover {
 	background: var(--line-strong);
 	color: var(--ink);

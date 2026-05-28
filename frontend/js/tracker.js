@@ -1,6 +1,6 @@
 import { PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './constants.js';
 
-import { fetchIssues, fetchIssue, createIssue, updateIssue, deleteIssue } from './api.js';
+import { fetchIssues, createIssue, updateIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
@@ -90,25 +90,6 @@ confirmInviteBtn.addEventListener('click', async () => {
 });
 
 /**
- * Applies the team selected by URL slug after teams are fetched.
- */
-function applyTeamFromUrl() {
-	const qs = new URLSearchParams(location.search);
-	const slug = qs.get('team');
-
-	// Look up from our fetched state instead of the static object
-	// The page can only render teams returned by the API for this user.
-	const t = state.teams.find((team) => team.slug === slug);
-	if (!t) return;
-
-	document.getElementById('team-label').textContent = t.name;
-	const mark = document.querySelector('.team-switch > .mark');
-	mark.textContent = t.mark;
-	mark.style.background = `oklch(0.92 0.04 ${t.color})`;
-	mark.style.color = `oklch(0.4 0.12 ${t.color})`;
-}
-
-/**
  * Calculates issue counts and updates the sidebar UI
  * Reuses the fetched issue list so counts match the active team and filters.
  */
@@ -147,7 +128,7 @@ document.querySelectorAll('.sidebar .filter-item[data-group]').forEach((item) =>
 			item.classList.remove('active');
 		} else {
 			// Remove active from sibling items in the same group
-			document.querySelectorAll(`.sidebar .filter-item[data-group="${group}"]`).forEach(el => el.classList.remove('active'));
+			document.querySelectorAll(`.sidebar .filter-item[data-group="${group}"]`).forEach((el) => el.classList.remove('active'));
 			state[group] = val;
 			item.classList.add('active');
 		}
@@ -161,7 +142,7 @@ document.getElementById('clear-all-btn')?.addEventListener('click', () => {
 	state.tag = 'all';
 	state.status = 'all';
 	state.priority = 'all';
-	document.querySelectorAll('.sidebar .filter-item').forEach(el => el.classList.remove('active'));
+	document.querySelectorAll('.sidebar .filter-item').forEach((el) => el.classList.remove('active'));
 	renderList();
 });
 
@@ -331,13 +312,14 @@ function renderTeamMembers() {
 function rowHtml(i) {
 	const isSel = state.selected === i.id;
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
-	
+
 	// Tag Shrink Logic
 	const maxTags = 2;
 	const visibleTags = i.tags.slice(0, maxTags);
 	const moreCount = i.tags.length - maxTags;
-	
-	const tagsHtml = visibleTags.map(l => `<span class="chip tag-${l}">${l}</span>`).join('') + 
+
+	const tagsHtml =
+		visibleTags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('') +
 		(moreCount > 0 ? `<span class="chip tag-more">+${moreCount}</span>` : '');
 
 	return `
@@ -399,7 +381,7 @@ function renderDetail() {
 				<div class="meta-col">
 					<span class="label-sm">LABELS</span>
 					<div class="tag-container">
-						${i.tags.map(t => `<span class="chip sm">${t}</span>`).join('')}
+						${i.tags.map((t) => `<span class="chip sm">${t}</span>`).join('')}
 					</div>
 				</div>
 				<div class="meta-col">

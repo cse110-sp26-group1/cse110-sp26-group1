@@ -82,10 +82,8 @@ document.querySelectorAll('.decline-btn').forEach((btn) => {
 
 document.getElementById('confirm-create').addEventListener('click', async () => {
 	const nameEl = document.getElementById('team-name');
-	const _bioEl = document.getElementById('team-bio'); // add bio support next (STRETCH GOAL)
 
 	const name = nameEl.value.trim();
-	//const _bio = _bioEl.value.trim();
 
 	if (!name) {
 		nameEl.focus();
@@ -98,12 +96,6 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 	confirmBtn.disabled = true;
 
 	try {
-		const words = name.split(' ');
-		let mark = words[0].substring(0, 2).toUpperCase();
-		if (words.length > 1) {
-			mark = (words[0][0] + words[1][0]).toUpperCase();
-		}
-
 		const newTeam = await createTeam({
 			team_name: name,
 		});
@@ -264,15 +256,15 @@ if (sortTrigger && sortMenu) {
 	sortMenu.querySelectorAll('.sort-item').forEach((item) => {
 		item.addEventListener('click', () => {
 			// Remove active state (and filled circle) from all items
-			sortMenu.querySelectorAll('.sort-item').forEach(el => el.classList.remove('active'));
-			
+			sortMenu.querySelectorAll('.sort-item').forEach((el) => el.classList.remove('active'));
+
 			// Add active state to selected item
 			item.classList.add('active');
-			
+
 			// Update the trigger button text to reflect current sort view
 			const sortName = item.textContent.trim();
 			sortTrigger.textContent = `Sort: ${sortName.toLowerCase()} ▾`;
-			
+
 			sortMenu.classList.remove('open');
 			showToast(`Sorting teams by ${sortName.toLowerCase()}`);
 		});

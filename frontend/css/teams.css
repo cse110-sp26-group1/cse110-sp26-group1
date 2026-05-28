@@ -358,42 +358,6 @@ team-card {
 }
 
 .sort-item.active .circle {
-	background: currentColor;
-	border-color: transparent;
-}
-
-/* Consistent UI for sorting indicators on the teams page */
-.sort-item {
-	display: flex;
-	align-items: center;
-	padding: 6px 12px;
-	font-size: 13px;
-	border-radius: var(--r-1);
-	cursor: pointer;
-	color: var(--ink-2);
-}
-
-.sort-item:hover {
-	background: var(--surface-2);
-}
-
-/* The circle indicator to be used in the "Sort: recent" dropdown */
-.sort-item .circle {
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	border: 1.5px solid var(--line-strong);
-	margin-right: 10px;
-	flex-shrink: 0;
-}
-
-/* Logic for the filled-in circle when a sort is selected */
-.sort-item.active {
-	background: var(--surface-3);
-	font-weight: 500;
-}
-
-.sort-item.active .circle {
-	background: currentColor;
+	background: currentcolor;
 	border-color: transparent;
 }
