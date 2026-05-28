@@ -10,25 +10,24 @@
 body {
 	min-height: 100vh;
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	place-items: center;
+	padding: 48px 24px;
 }
 
 /* centers the content in the body */
 .stage {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 48px 40px;
+	width: 100%;
+	max-width: min(440px, 100%);
 }
 
 /* content container */
 .stage .inner {
-	width: min(380px, 100%);
+	width: 100%;
 	background: var(--surface);
-	padding: 32px;
-	border-radius: var(--r-3);
+	padding: 32px 40px;
+	border-radius: 0;
 	border: 1px solid var(--line);
-	box-shadow: var(--shadow-1);
+	box-shadow: none;
 }
 
 /* === brand === */
@@ -230,6 +229,8 @@ p.sub {
 /* styles for the poster background
 * displays the content on the right side of the page
 */
+
+/* saved for stretch goals
 .poster {
 	background: var(--ink);
 	color: #e9e4d8;
@@ -250,7 +251,7 @@ p.sub {
 		radial-gradient(circle at 10% 90%, oklch(30% 0.04 220deg) 0%, transparent 50%);
 	opacity: 0.9;
 }
-
+*/
 .password-wrapper {
 	position: relative;
 }

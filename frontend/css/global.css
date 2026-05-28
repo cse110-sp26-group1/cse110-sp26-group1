@@ -726,9 +726,12 @@ html.dark .chip-btn.on {
 
 /* Login poster is a fixed-dark decorative panel — keep it dark in both modes
    (its CSS uses var(--ink) which would otherwise invert to a light surface). */
+
+/* saved for stretch goal
 html.dark .poster {
 	background: #0c0b09;
 }
+*/
 
 /* theme toggle icon (sun/moon) */
 .theme-toggle::before {
