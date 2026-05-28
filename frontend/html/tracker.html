@@ -23,8 +23,8 @@
 			<div class="left">
 				<a href="teams.html" title="Back to teams"><div class="logo"></div></a>
 				<div class="crumbs">
+					<!-- Removed "/" separator and "Views" link  -->
 					<a href="teams.html">Teams</a>
-					<span class="sep">/</span>
 				</div>
 				<div class="team-switch" id="team-switch">
 					<span class="mark"></span>
@@ -94,64 +94,63 @@
 		<div class="app">
 			<!-- SIDEBAR -->
 			<aside class="sidebar">
-				<!-- data-group/data-val are read by tracker.js to drive filtering. -->
+				<!-- Removed "Views" Nav Section  -->
+
 				<div class="nav-section">
-					<div class="label"><span>Views</span></div>
-					<div class="nav-item active" data-group="view" data-val="all">
-						<span class="ic sq fill"></span> All issues <span class="count" id="cnt-all">0</span>
+					<div class="label-sm">STATUS</div>
+					<!-- Items use .active and .indicator to drive the filled circle logic -->
+					<div class="filter-item active" data-group="status" data-val="Open">
+						<span class="indicator"></span> Open <span class="count" id="cnt-open">0</span>
+					</div>
+					<div class="filter-item" data-group="status" data-val="In Progress">
+						<span class="indicator"></span> In progress <span class="count" id="cnt-prog">0</span>
+					</div>
+					<div class="filter-item" data-group="status" data-val="Resolved">
+						<span class="indicator"></span> Done <span class="count" id="cnt-done">0</span>
 					</div>
 				</div>
 
 				<div class="nav-section">
-					<div class="label"><span>Status</span></div>
-					<div class="nav-item" data-group="status" data-val="Open">
-						<span class="ic"></span> Open <span class="count" id="cnt-open">0</span>
+					<div class="label-sm">PRIORITY</div>
+					<div class="filter-item pri-urgent" data-group="priority" data-val="Critical">
+						<span class="indicator"></span> Urgent <span class="count" id="cnt-crit">0</span>
 					</div>
-					<div class="nav-item" data-group="status" data-val="In Progress">
-						<span class="ic fill"></span> In progress <span class="count" id="cnt-prog">0</span>
+					<div class="filter-item pri-high" data-group="priority" data-val="High">
+						<span class="indicator"></span> High <span class="count" id="cnt-high">0</span>
 					</div>
-					<div class="nav-item" data-group="status" data-val="Resolved">
-						<span class="ic"></span> Done <span class="count" id="cnt-done">0</span>
+					<div class="filter-item pri-med" data-group="priority" data-val="Medium">
+						<span class="indicator"></span> Medium <span class="count" id="cnt-med">0</span>
 					</div>
-				</div>
-
-				<div class="nav-section">
-					<div class="label"><span>Priority</span></div>
-					<div class="nav-item pri-urgent" data-group="priority" data-val="Critical">
-						<span class="ic dot"></span> Urgent <span class="count" id="cnt-crit">0</span>
-					</div>
-					<div class="nav-item pri-high" data-group="priority" data-val="High">
-						<span class="ic dot"></span> High <span class="count" id="cnt-high">0</span>
-					</div>
-					<div class="nav-item pri-med" data-group="priority" data-val="Medium">
-						<span class="ic dot"></span> Medium <span class="count" id="cnt-med">0</span>
-					</div>
-					<div class="nav-item pri-low" data-group="priority" data-val="Low">
-						<span class="ic dot"></span> Low <span class="count" id="cnt-low">0</span>
+					<div class="filter-item pri-low" data-group="priority" data-val="Low">
+						<span class="indicator"></span> Low <span class="count" id="cnt-low">0</span>
 					</div>
 				</div>
 
 				<div class="nav-section">
-					<div class="label"><span>Tags</span></div>
-					<div class="nav-item" data-group="tag" data-val="bug">
-						<span class="ic dot label-bug"></span> bug <span class="count" id="cnt-bug">0</span>
+					<div class="label-sm">TAGS</div>
+					<div class="filter-item" data-group="tag" data-val="bug">
+						<span class="indicator label-bug"></span> bug <span class="count" id="cnt-bug">0</span>
 					</div>
-					<div class="nav-item" data-group="tag" data-val="ui">
-						<span class="ic dot label-ui"></span> ui <span class="count" id="cnt-ui">0</span>
+					<div class="filter-item" data-group="tag" data-val="ui">
+						<span class="indicator label-ui"></span> ui <span class="count" id="cnt-ui">0</span>
 					</div>
-					<div class="nav-item" data-group="tag" data-val="infra">
-						<span class="ic dot label-infra"></span> infra <span class="count" id="cnt-infra">0</span>
+					<div class="filter-item" data-group="tag" data-val="infra">
+						<span class="indicator label-infra"></span> infra <span class="count" id="cnt-infra">0</span>
 					</div>
-					<div class="nav-item" data-group="tag" data-val="auth">
-						<span class="ic dot label-auth"></span> auth <span class="count" id="cnt-auth">0</span>
+					<div class="filter-item" data-group="tag" data-val="auth">
+						<span class="indicator label-auth"></span> auth <span class="count" id="cnt-auth">0</span>
 					</div>
-					<div class="nav-item" data-group="tag" data-val="perf">
-						<span class="ic dot label-perf"></span> perf <span class="count" id="cnt-perf">0</span>
+					<div class="filter-item" data-group="tag" data-val="perf">
+						<span class="indicator label-perf"></span> perf <span class="count" id="cnt-perf">0</span>
+					</div>
+					<!-- Added Advanced Filter link to reset sorts/filters -->
+					<div class="sidebar-footer">
+						<button class="clear-filters-btn" id="clear-all-btn">Advanced Filter</button>
 					</div>
 				</div>
 
 				<div class="nav-section">
-					<div class="label" style="display: flex; justify-content: space-between; align-items: center">
+					<div class="label-sm" style="display: flex; justify-content: space-between; align-items: center">
 						<span>Team</span>
 						<button class="btn ghost sm" id="open-invite-modal" style="padding: 0 6px" title="Invite user">+</button>
 					</div>
@@ -171,43 +170,36 @@
 				<!-- LIST -->
 				<div class="list-pane">
 					<div class="list-head">
-						<h1>All issues <span class="count" id="total-count">23</span></h1>
+						<!-- Total issues count header -->
+						<h1>All issues <span class="count" id="total-count">0</span></h1>
 						<div class="actions">
-							<button class="btn" id="toggle-detail" title="Toggle detail pane">⇆ Detail</button>
+							<!-- Detail toggle button -->
+							<button class="btn" id="toggle-detail" title="Toggle detail pane">← Details</button>
 							<button class="btn primary" id="new-issue">+ New issue</button>
 						</div>
 					</div>
 
 					<div class="filter-bar">
 						<div class="filter-group">
-							<span class="label">Sort</span>
+							<span class="label-sm">SORT</span>
+							<!-- Multiple sort triggers -->
 							<button class="sort-btn on" data-sort="priority">priority <span class="arrow">↓</span></button>
 							<button class="sort-btn" data-sort="updated">updated</button>
 							<button class="sort-btn" data-sort="difficulty">difficulty</button>
 						</div>
-						<div class="filter-divider"></div>
-						<!-- Tags: Do we need this ? -->
-						<div class="filter-group">
-							<span class="label">Tags</span>
-							<button class="chip-btn on" data-tag="all">all</button>
-							<button class="chip-btn" data-tag="bug">bug</button>
-							<button class="chip-btn" data-tag="ui">ui</button>
-							<button class="chip-btn" data-tag="infra">infra</button>
-							<button class="chip-btn" data-tag="auth">auth</button>
-							<button class="chip-btn" data-tag="perf">perf</button>
-						</div>
 					</div>
 
+					<!-- Issue list where tags and shrink logic will be rendered -->
 					<div class="list" id="issue-list">
 						<!-- groups + rows are JS-rendered -->
 					</div>
 				</div>
 
 				<!-- DIVIDER -->
-				<!-- tracker.js stores this split-pane width in localStorage. -->
 				<div class="divider" id="divider"></div>
 
 				<!-- DETAIL -->
+				<!-- Details pane is targeted by JS for rendering view/edit modes -->
 				<div class="detail" id="detail">
 					<!-- JS-rendered -->
 				</div>
@@ -273,7 +265,6 @@
 					</div>
 					<div class="field">
 						<label>Error logs &amp; traces <span class="optional-label">(optional)</span></label>
-						<!-- File input stays hidden; dropzone clicks and drops are proxied in tracker.js. -->
 						<div class="dropzone" id="dropzone">
 							Drop files here or <span class="browse">browse</span>
 							<span class="small">.log · .txt · .json</span>
@@ -311,7 +302,6 @@
 		<div class="toast" id="toast"></div>
 
 		<script src="../js/theme.js"></script>
-		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
 		<script src="../js/user-menu.js"></script>
 		<script type="module" src="../js/tracker.js"></script>
 	</body>
