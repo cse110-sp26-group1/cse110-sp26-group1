@@ -13,7 +13,10 @@ const command = args[0];
 const validStatuses = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
 
-// Parse flags like --status=investigating
+/**
+ * Parsed CLI flags in key=value format.
+ * @type {Record<string, string>}
+ */
 const flags = {};
 args.slice(1).forEach((arg) => {
 	if (arg.startsWith('--')) {
@@ -22,11 +25,12 @@ args.slice(1).forEach((arg) => {
 	}
 });
 
-// Positional argument (e.g. the issue ID)
 const id = args[1];
 
 /**
+ * Prints the supported CLI commands and their expected usage.
  *
+ * @returns {void}
  */
 function printUsage() {
 	console.error('Usage:');
@@ -40,8 +44,12 @@ function printUsage() {
 }
 
 /**
+ * Builds a URL query string from a set of optional CLI flags.
  *
- * @param queryFlags
+ * Empty, null, and undefined values are omitted from the final query string.
+ *
+ * @param {Record<string, string | undefined>} queryFlags - Key-value pairs to serialize.
+ * @returns {string} The serialized query string, including the leading `?` when needed.
  */
 function buildQueryString(queryFlags) {
 	const params = new URLSearchParams();
@@ -57,9 +65,14 @@ function buildQueryString(queryFlags) {
 }
 
 /**
+ * Formats the issue list response for terminal output, so that it
+ * shows a brief summary with id, title, summary, category, tags and status fields
  *
- * @param issues
- * @param statusFilterApplied
+ * By default, resolved and closed issues are hidden so the CLI shows active issues.
+ *
+ * @param {unknown} issues - Raw issue list returned by the API.
+ * @param {boolean} statusFilterApplied - Whether the user explicitly requested a status filter.
+ * @returns {unknown} A compact list of issues, or the original value if the response is not an array.
  */
 function formatIssueList(issues, statusFilterApplied) {
 	if (!Array.isArray(issues)) {
@@ -82,9 +95,12 @@ function formatIssueList(issues, statusFilterApplied) {
 	return formattedIssues.filter((issue) => issue.status !== 'Resolved' && issue.status !== 'Closed');
 }
 
-// Helper: load saved token
 /**
+ * Loads the saved session token from the local CLI config file.
  *
+ * Exits the process if the user is not currently logged in.
+ *
+ * @returns {string} The saved bearer token.
  */
 function getToken() {
 	if (!fs.existsSync(CONFIG_FILE)) {
@@ -96,7 +112,10 @@ function getToken() {
 }
 
 /**
+ * Prompts the user for a password in the terminal and masks input with `*`.
  *
+ *
+ * @returns {Promise<string>} The password entered by the user.
  */
 function promptForPassword() {
 	return new Promise((resolve, reject) => {
@@ -152,12 +171,16 @@ function promptForPassword() {
 	});
 }
 
-// Helper: make API requests
 /**
+ * Sends an authenticated request to the Allegro backend API.
  *
- * @param method
- * @param endpoint
- * @param body
+ * The saved session token is attached as a bearer token, and JSON responses are parsed
+ * automatically when possible.
+ *
+ * @param {string} method - HTTP method to send.
+ * @param {string} endpoint - API path relative to the configured base URL.
+ * @param {Record<string, unknown> | null} [body=null] - Optional JSON request body.
+ * @returns {Promise<{ ok: boolean, data: unknown }>} Parsed API response and status flag.
  */
 async function request(method, endpoint, body = null) {
 	const token = getToken();
