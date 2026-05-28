@@ -1,11 +1,11 @@
 /** @type {string[]} Valid issue status values. */
-const ISSUE_STATUSES = ['open', 'in progress', 'resolved', 'closed'];
+const ISSUE_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 
 /** @type {string[]} Valid issue priority values. */
-const ISSUE_PRIORITIES = ['low', 'medium', 'high', 'critical'];
+const ISSUE_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 
 /** @type {string[]} Valid issue category values. */
-const ALLOWED_CATEGORIES = ['bug', 'feature', 'task'];
+const ALLOWED_CATEGORIES = ['Bug', 'Feature', 'Task'];
 
 /**
  * Fields the agent is explicitly not allowed to set or update.
@@ -28,7 +28,7 @@ const JSON_ARRAY_FIELDS = ['tags', 'stack_trace', 'affected_files'];
  * Handles all /agents routes for AI agent access to the issues table.
  *
  * @param {Request} request - The incoming Worker request.
- * @param {{ issue_tracker_db: D1Database }} env - Worker environment with the D1 database binding.
+ * @param {{ DB: D1Database }} env - Worker environment with the D1 database binding.
  * @returns {Promise<Response>}
  *   200 — issue returned (GET), issue updated (PATCH)
  *   201 — issue created (POST)
@@ -58,7 +58,7 @@ export async function handleAgents(request, env) {
 	// stored JSON strings back into arrays.
 	// -----------------------------------------------------------------------
 	if (method === 'GET' && issueId) {
-		const issue = await env.issue_tracker_db.prepare('SELECT * FROM issues WHERE id = ?').bind(Number(issueId)).first();
+		const issue = await env.DB.prepare('SELECT * FROM issues WHERE id = ?').bind(Number(issueId)).first();
 
 		if (!issue) {
 			return Response.json({ error: 'Issue not found' }, { status: 404 });
@@ -83,15 +83,14 @@ export async function handleAgents(request, env) {
 	// fields itself with full structured context.
 	// -----------------------------------------------------------------------
 	if (method === 'POST' && !issueId) {
-		// gets created_by from session token 
+		// gets created_by from session token
 		const header = request.headers.get('Authorization');
 		if (!header?.startsWith('Bearer ')) {
 			return Response.json({ error: 'No session provided' }, { status: 401 });
 		}
 
 		const token = header.slice(7);
-		const session = await env.issue_tracker_db
-			.prepare('SELECT user_id FROM sessions WHERE token = ? AND expires_at > datetime("now")')
+		const session = await env.DB.prepare('SELECT user_id FROM sessions WHERE token = ? AND expires_at > datetime("now")')
 			.bind(token)
 			.first();
 
@@ -149,9 +148,8 @@ export async function handleAgents(request, env) {
 		const now = new Date().toISOString();
 
 		// Insert all fields the agent provides. Array fields are stringified for storage.
-		const { success } = await env.issue_tracker_db
-			.prepare(
-				`
+		const { success } = await env.DB.prepare(
+			`
 				INSERT INTO issues (
 					team_id, created_by, title, summary,
 					status, priority, category, difficulty, tags,
@@ -161,15 +159,15 @@ export async function handleAgents(request, env) {
 					created_at, updated_at
 				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				`,
-			)
+		)
 			.bind(
 				parsedTeamId,
 				parsedCreatedBy,
 				body.title.trim(),
 				body.summary || null,
-				body.status || 'open',
-				body.priority || 'medium',
-				body.category || 'bug',
+				body.status || 'Open',
+				body.priority || 'Medium',
+				body.category || 'Bug',
 				body.difficulty || null,
 				JSON.stringify(body.tags || []),
 				body.entry_point || null,
@@ -251,8 +249,7 @@ export async function handleAgents(request, env) {
 			return body[key];
 		});
 
-		const result = await env.issue_tracker_db
-			.prepare(`UPDATE issues SET ${setClause}, updated_at = ? WHERE id = ?`)
+		const result = await env.DB.prepare(`UPDATE issues SET ${setClause}, updated_at = ? WHERE id = ?`)
 			.bind(...values, now, Number(issueId))
 			.run();
 

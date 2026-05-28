@@ -95,10 +95,6 @@ export default {
 			return withCors(await handleAgents(request, env), request);
 		}
 
-		if (path.startsWith('/agents')) {
-			return handleAgents(request, envWithDb);
-		}
-
 		return withCors(new Response('Not Found', { status: 404 }), request);
 	},
 };

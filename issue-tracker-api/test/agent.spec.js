@@ -10,9 +10,10 @@ import sqlSchemaRaw from '../schema.sql?raw';
  * @returns {Promise<number>} The id of the created user.
  */
 async function createTestUser(username, email) {
-	const row = await env.issue_tracker_db
-		.prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id')
-		.bind(username, email, 'mock_hash')
+	const row = await env.DB.prepare(
+		'INSERT INTO users (username, first_name, last_name, email, password_hash) VALUES (?, ?, ?, ?, ?) RETURNING id',
+	)
+		.bind(username, 'Test', 'User', email, 'mock_hash')
 		.first();
 	return row.id;
 }
@@ -23,7 +24,7 @@ async function createTestUser(username, email) {
  * @returns {Promise<number>} The id of the created team.
  */
 async function createTestTeam(teamName) {
-	const row = await env.issue_tracker_db.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id').bind(teamName).first();
+	const row = await env.DB.prepare('INSERT INTO teams (team_name) VALUES (?) RETURNING id').bind(teamName).first();
 	return row.id;
 }
 
@@ -36,8 +37,7 @@ async function createTestTeam(teamName) {
  * @returns {Promise<number>} The id of the created issue.
  */
 async function createTestIssue(teamId, createdBy, title = 'Sample Agent Issue') {
-	const row = await env.issue_tracker_db
-		.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
+	const row = await env.DB.prepare('INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id')
 		.bind(teamId, createdBy, title)
 		.first();
 	return row.id;
@@ -52,10 +52,7 @@ async function createTestIssue(teamId, createdBy, title = 'Sample Agent Issue') 
 async function createTestSession(userId) {
 	const token = crypto.randomUUID();
 	const expiresAt = new Date(Date.now() + 1000 * 60 * 60).toISOString(); // 1 hour from now
-	await env.issue_tracker_db
-		.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)')
-		.bind(userId, token, expiresAt)
-		.run();
+	await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(userId, token, expiresAt).run();
 	return token;
 }
 
@@ -68,12 +65,12 @@ describe('Agent Endpoint Testing Suite', () => {
 			.filter((line) => line.length > 0)
 			.join(' ');
 
-		await env.issue_tracker_db.exec(cleanSql);
+		await env.DB.exec(cleanSql);
 	});
 
 	beforeEach(async () => {
 		// Clear all tables before each test to ensure full isolation
-		await env.issue_tracker_db.exec(`
+		await env.DB.exec(`
 			DELETE FROM sessions;
 			DELETE FROM invites;
 			DELETE FROM issues;
@@ -227,9 +224,9 @@ describe('Agent Endpoint Testing Suite', () => {
 						team_id: teamId,
 						title: 'Full issue',
 						summary: 'A full issue with all fields',
-						status: 'open',
-						priority: 'high',
-						category: 'bug',
+						status: 'Open',
+						priority: 'High',
+						category: 'Bug',
 						difficulty: 'hard',
 						tags: ['auth', 'critical'],
 						entry_point: 'src/auth.js',
@@ -252,11 +249,11 @@ describe('Agent Endpoint Testing Suite', () => {
 
 				expect(res.status).toBe(201);
 
-				const issue = await env.issue_tracker_db.prepare('SELECT * FROM issues WHERE title = ?').bind('Full issue').first();
+				const issue = await env.DB.prepare('SELECT * FROM issues WHERE title = ?').bind('Full issue').first();
 				expect(issue).not.toBeNull();
 				expect(issue.summary).toBe('A full issue with all fields');
-				expect(issue.status).toBe('open');
-				expect(issue.priority).toBe('high');
+				expect(issue.status).toBe('Open');
+				expect(issue.priority).toBe('High');
 			});
 
 			it('201: issue created by agent appears in the issues table with correct created_by', async () => {
@@ -270,7 +267,7 @@ describe('Agent Endpoint Testing Suite', () => {
 					body: JSON.stringify({ team_id: teamId, title: 'Verify stored issue' }),
 				});
 
-				const issue = await env.issue_tracker_db.prepare('SELECT * FROM issues WHERE title = ?').bind('Verify stored issue').first();
+				const issue = await env.DB.prepare('SELECT * FROM issues WHERE title = ?').bind('Verify stored issue').first();
 				expect(issue).not.toBeNull();
 				expect(issue.team_id).toBe(teamId);
 				expect(issue.created_by).toBe(userId);
@@ -287,10 +284,10 @@ describe('Agent Endpoint Testing Suite', () => {
 					body: JSON.stringify({ team_id: teamId, title: 'Default fields issue' }),
 				});
 
-				const issue = await env.issue_tracker_db.prepare('SELECT * FROM issues WHERE title = ?').bind('Default fields issue').first();
-				expect(issue.status).toBe('open');
-				expect(issue.priority).toBe('medium');
-				expect(issue.category).toBe('bug');
+				const issue = await env.DB.prepare('SELECT * FROM issues WHERE title = ?').bind('Default fields issue').first();
+				expect(issue.status).toBe('Open');
+				expect(issue.priority).toBe('Medium');
+				expect(issue.category).toBe('Bug');
 			});
 		});
 
@@ -494,7 +491,7 @@ describe('Agent Endpoint Testing Suite', () => {
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: 'in progress' }),
+					body: JSON.stringify({ status: 'In Progress' }),
 				});
 
 				expect(res.status).toBe(200);
@@ -511,7 +508,7 @@ describe('Agent Endpoint Testing Suite', () => {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						status: 'resolved',
+						status: 'Resolved',
 						resolution_notes: 'Fixed the null check',
 						token_usage: 800,
 					}),
@@ -522,8 +519,8 @@ describe('Agent Endpoint Testing Suite', () => {
 
 				expect(res.status).toBe(200);
 
-				const issue = await env.issue_tracker_db.prepare('SELECT * FROM issues WHERE id = ?').bind(issueId).first();
-				expect(issue.status).toBe('resolved');
+				const issue = await env.DB.prepare('SELECT * FROM issues WHERE id = ?').bind(issueId).first();
+				expect(issue.status).toBe('Resolved');
 				expect(issue.resolution_notes).toBe('Fixed the null check');
 				expect(issue.token_usage).toBe(800);
 			});
@@ -533,15 +530,15 @@ describe('Agent Endpoint Testing Suite', () => {
 				const teamId = await createTestTeam('Timestamp Team');
 				const issueId = await createTestIssue(teamId, userId, 'Timestamp issue');
 
-				const before = await env.issue_tracker_db.prepare('SELECT updated_at FROM issues WHERE id = ?').bind(issueId).first();
+				const before = await env.DB.prepare('SELECT updated_at FROM issues WHERE id = ?').bind(issueId).first();
 
 				await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: 'in progress' }),
+					body: JSON.stringify({ status: 'In Progress' }),
 				});
 
-				const after = await env.issue_tracker_db.prepare('SELECT updated_at FROM issues WHERE id = ?').bind(issueId).first();
+				const after = await env.DB.prepare('SELECT updated_at FROM issues WHERE id = ?').bind(issueId).first();
 
 				expect(after.updated_at).not.toBe(before.updated_at);
 			});
@@ -604,7 +601,7 @@ describe('Agent Endpoint Testing Suite', () => {
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: 'resolved', description: 'blocked' }),
+					body: JSON.stringify({ status: 'Resolved', description: 'blocked' }),
 				});
 
 				expect(res.status).toBe(400);
@@ -652,7 +649,7 @@ describe('Agent Endpoint Testing Suite', () => {
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify([{ status: 'resolved' }]),
+					body: JSON.stringify([{ status: 'Resolved' }]),
 				});
 
 				expect(res.status).toBe(400);
@@ -664,7 +661,7 @@ describe('Agent Endpoint Testing Suite', () => {
 				const res = await SELF.fetch('http://localhost/agents/bad-id', {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: 'resolved' }),
+					body: JSON.stringify({ status: 'Resolved' }),
 				});
 
 				expect(res.status).toBe(400);
@@ -676,7 +673,7 @@ describe('Agent Endpoint Testing Suite', () => {
 				const res = await SELF.fetch('http://localhost/agents/99999', {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: 'resolved' }),
+					body: JSON.stringify({ status: 'Resolved' }),
 				});
 
 				expect(res.status).toBe(404);
