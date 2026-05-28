@@ -1,41 +1,18 @@
-import { login } from './mock-api.js';
+import { login, requireNoAuth } from './api.js';
+import { initPasswordToggles } from './view-password.js';
 
-const tabLogin = document.getElementById('tabLogin');
-const tabSignup = document.getElementById('tabSignup');
-const body = document.body;
+requireNoAuth();
+initPasswordToggles();
 
-const authForm = document.getElementById('authForm');
-const submitBtn = document.getElementById('submitBtn');
+const authForm = document.getElementById('auth-form');
 
 /**
- * Switches the auth form between login and signup modes.
+ * Handles sign-in form submit. Validates email and password, then
+ * redirects to the teams page. No API call until backend auth is wired.
  *
- * @param {string} mode Selected auth mode.
+ * @param {SubmitEvent} e Form submit event.
  */
-function setMode(mode) {
-	body.classList.toggle('mode-login', mode === 'login');
-	body.classList.toggle('mode-signup', mode === 'signup');
-	tabLogin.classList.toggle('on', mode === 'login');
-	tabSignup.classList.toggle('on', mode === 'signup');
-	tabLogin.setAttribute('aria-selected', String(mode === 'login'));
-	tabSignup.setAttribute('aria-selected', String(mode === 'signup'));
-}
-tabLogin.addEventListener('click', () => setMode('login'));
-tabSignup.addEventListener('click', () => setMode('signup'));
-
-// submit → teams page (prototype — real auth wiring happens in the backend integration)
-document.getElementById('authForm').addEventListener('submit', (e) => {
-	e.preventDefault();
-	const emailEl = document.getElementById('email');
-	const email = emailEl.value.trim();
-	if (!email) {
-		emailEl.focus();
-		return;
-	}
-	location.href = 'teams.html';
-});
-
-authForm.addEventListener('submit', async (e) => {
+async function handleLoginSubmit(e) {
 	e.preventDefault();
 	const emailEl = document.getElementById('email');
 	const passwordEl = document.getElementById('password');
@@ -49,18 +26,15 @@ authForm.addEventListener('submit', async (e) => {
 		return;
 	}
 
-	const originalText = submitBtn.textContent;
-	submitBtn.textContent = 'Authenticating...';
-	submitBtn.disabled = true;
-
 	try {
-		await login(email, password);
-
+		const { token, expires_at } = await login(email, password);
+		localStorage.setItem('allegro_token', token);
+		localStorage.setItem('allegro_token_expires', expires_at);
 		location.href = 'teams.html';
 	} catch (err) {
-		console.error(err);
-		alert('Login failed. Please check your credentials.');
-		submitBtn.textContent = originalText;
-		submitBtn.disabled = false;
+		emailEl.setCustomValidity(err.message ?? 'Invalid credentials');
+		emailEl.reportValidity();
 	}
-});
+}
+
+authForm.addEventListener('submit', handleLoginSubmit);

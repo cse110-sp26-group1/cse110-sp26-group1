@@ -37,12 +37,12 @@ export async function handleTeams(request, env) {
 
 		const { results } = await env.DB.prepare(
 			`
-				SELECT teams.*, team_members.role
-				FROM teams
-				JOIN team_members
-				ON teams.id = team_members.team_id
-				WHERE team_members.user_id = ?
-			`,
+                SELECT teams.*, team_members.role
+                FROM teams
+                JOIN team_members
+                ON teams.id = team_members.team_id
+                WHERE team_members.user_id = ?
+            `,
 		)
 			.bind(auth.userId)
 			.all();
@@ -68,12 +68,12 @@ export async function handleTeams(request, env) {
 
 		const team = await env.DB.prepare(
 			`
-				SELECT teams.*, team_members.role
-				FROM teams
-				JOIN team_members
-				ON teams.id = team_members.team_id
-				WHERE teams.id = ? AND team_members.user_id = ?
-			`,
+                SELECT teams.*, team_members.role
+                FROM teams
+                JOIN team_members
+                ON teams.id = team_members.team_id
+                WHERE teams.id = ? AND team_members.user_id = ?
+            `,
 		)
 			.bind(parsedTeamId, auth.userId)
 			.first();
@@ -103,9 +103,9 @@ export async function handleTeams(request, env) {
 		// Create the team first.
 		const result = await env.DB.prepare(
 			`
-				INSERT INTO teams (team_name, created_at)
-				VALUES (?, ?)
-			`,
+                INSERT INTO teams (team_name, created_at)
+                VALUES (?, ?)
+            `,
 		)
 			.bind(body.team_name.trim(), now)
 			.run();
@@ -115,9 +115,9 @@ export async function handleTeams(request, env) {
 		// Then add the creator as admin of that team.
 		await env.DB.prepare(
 			`
-				INSERT INTO team_members (user_id, team_id, role)
-				VALUES (?, ?, ?)
-			`,
+                INSERT INTO team_members (user_id, team_id, role)
+                VALUES (?, ?, ?)
+            `,
 		)
 			.bind(auth.userId, newTeamId, 'admin')
 			.run();
@@ -161,10 +161,10 @@ export async function handleTeams(request, env) {
 
 		await env.DB.prepare(
 			`
-				UPDATE teams
-				SET team_name = ?
-				WHERE id = ?
-			`,
+                UPDATE teams
+                SET team_name = ?
+                WHERE id = ?
+            `,
 		)
 			.bind(body.team_name.trim(), parsedTeamId)
 			.run();
@@ -201,9 +201,9 @@ export async function handleTeams(request, env) {
 		// team_members.team_id references teams(id) ON DELETE CASCADE.
 		await env.DB.prepare(
 			`
-				DELETE FROM teams
-				WHERE id = ?
-			`,
+                DELETE FROM teams
+                WHERE id = ?
+            `,
 		)
 			.bind(parsedTeamId)
 			.run();
@@ -231,12 +231,12 @@ export async function handleTeams(request, env) {
 
 		const { results } = await env.DB.prepare(
 			`
-				SELECT users.id, users.username, users.email, team_members.role
-				FROM users
-				JOIN team_members
-				ON users.id = team_members.user_id
-				WHERE team_members.team_id = ?
-			`,
+                SELECT users.id, users.username, users.email, users.first_name, users.last_name, team_members.role
+                FROM users
+                JOIN team_members
+                ON users.id = team_members.user_id
+                WHERE team_members.team_id = ?
+            `,
 		)
 			.bind(parsedTeamId)
 			.all();
@@ -267,10 +267,10 @@ export async function handleTeams(request, env) {
 
 		const targetMembership = await env.DB.prepare(
 			`
-				SELECT role
-				FROM team_members
-				WHERE team_id = ? AND user_id = ?
-			`,
+                SELECT role
+                FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            `,
 		)
 			.bind(parsedTeamId, parsedUserId)
 			.first();
@@ -287,9 +287,9 @@ export async function handleTeams(request, env) {
 
 		await env.DB.prepare(
 			`
-				DELETE FROM team_members
-				WHERE team_id = ? AND user_id = ?
-			`,
+                DELETE FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            `,
 		)
 			.bind(parsedTeamId, parsedUserId)
 			.run();
@@ -317,10 +317,10 @@ export async function handleTeams(request, env) {
 
 		const membership = await env.DB.prepare(
 			`
-				SELECT role
-				FROM team_members
-				WHERE team_id = ? AND user_id = ?
-			`,
+                SELECT role
+                FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            `,
 		)
 			.bind(parsedTeamId, auth.userId)
 			.first();
@@ -331,10 +331,10 @@ export async function handleTeams(request, env) {
 
 		const { results: members } = await env.DB.prepare(
 			`
-				SELECT user_id, role
-				FROM team_members
-				WHERE team_id = ?
-			`,
+                SELECT user_id, role
+                FROM team_members
+                WHERE team_id = ?
+            `,
 		)
 			.bind(parsedTeamId)
 			.all();
@@ -343,9 +343,9 @@ export async function handleTeams(request, env) {
 		if (membership.role !== 'admin') {
 			await env.DB.prepare(
 				`
-					DELETE FROM team_members
-					WHERE team_id = ? AND user_id = ?
-				`,
+                    DELETE FROM team_members
+                    WHERE team_id = ? AND user_id = ?
+                `,
 			)
 				.bind(parsedTeamId, auth.userId)
 				.run();
@@ -371,9 +371,9 @@ export async function handleTeams(request, env) {
 		// the team itself.
 		await env.DB.prepare(
 			`
-				DELETE FROM teams
-				WHERE id = ?
-			`,
+                DELETE FROM teams
+                WHERE id = ?
+            `,
 		)
 			.bind(parsedTeamId)
 			.run();

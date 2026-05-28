@@ -1,19 +1,19 @@
-/* ============================================================
-   Issue Tracker — shared styles
-   Aesthetic: warm-neutral, hairline-rule, single coral accent
-   ============================================================ */
+/*
+* global.css
+* styles for the entire application
+*/
 
 :root {
 	/* surfaces */
-	--bg: #faf8f4;
-	--surface: #ffffff;
+	--bg: #faf8f4; /* background color */
+	--surface: #fff; /* main surface color */
 	--surface-2: #f5f2eb;
 	--surface-3: #ece8de;
 
 	/* ink */
-	--ink: #1a1a1a;
+	--ink: #1a1a1a; /* main text color */
 	--ink-2: #3d3a35;
-	--muted: #8a8478;
+	--muted: #8a8478; /* muted text color */
 	--muted-2: #b5afa1;
 
 	/* lines */
@@ -21,26 +21,26 @@
 	--line-strong: #cfc8b8;
 
 	/* accent (warm coral) */
-	--accent: oklch(0.62 0.14 38);
-	--accent-ink: oklch(0.45 0.14 38);
-	--accent-soft: oklch(0.95 0.035 38);
+	--accent: oklch(62% 0.14 38deg);
+	--accent-ink: oklch(45% 0.14 38deg);
+	--accent-soft: oklch(95% 0.035 38deg);
 
 	/* priorities */
-	--pri-urgent: oklch(0.55 0.18 25);
-	--pri-high: oklch(0.62 0.14 38);
-	--pri-med: oklch(0.66 0.11 75);
-	--pri-low: oklch(0.58 0.07 220);
+	--pri-urgent: oklch(55% 0.18 25deg);
+	--pri-high: oklch(62% 0.14 38deg);
+	--pri-med: oklch(66% 0.11 75deg);
+	--pri-low: oklch(58% 0.07 220deg);
 
 	/* status */
-	--st-pending: oklch(0.65 0.05 80);
-	--st-open: oklch(0.55 0.08 250);
-	--st-prog: oklch(0.62 0.12 70);
-	--st-done: oklch(0.55 0.1 150);
-	--st-closed: oklch(0.55 0.02 80);
+	--st-pending: oklch(65% 0.05 80deg);
+	--st-open: oklch(55% 0.08 250deg);
+	--st-prog: oklch(62% 0.12 70deg);
+	--st-done: oklch(55% 0.1 150deg);
+	--st-closed: oklch(55% 0.02 80deg);
 
 	/* type */
-	--sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
-	--mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Menlo', Consolas, monospace;
+	--sans: -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', helvetica, arial, sans-serif;
+	--mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Menlo', consolas, monospace;
 
 	/* radii */
 	--r-1: 4px;
@@ -56,6 +56,7 @@
 * {
 	box-sizing: border-box;
 }
+
 html,
 body {
 	margin: 0;
@@ -66,12 +67,14 @@ body {
 	font-size: 14px;
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
-	text-rendering: optimizeLegibility;
+	text-rendering: optimizelegibility;
 }
+
 a {
 	color: inherit;
 	text-decoration: none;
 }
+
 button {
 	font: inherit;
 	color: inherit;
@@ -84,16 +87,19 @@ button {
 	letter-spacing: -0.015em;
 	line-height: 1.15;
 }
+
 .h-1 {
 	font-size: 22px;
 	font-weight: 600;
 	letter-spacing: -0.01em;
 }
+
 .h-2 {
 	font-size: 16px;
 	font-weight: 600;
 	letter-spacing: -0.005em;
 }
+
 .label {
 	font-family: var(--mono);
 	font-size: 10.5px;
@@ -102,9 +108,11 @@ button {
 	color: var(--muted);
 	font-weight: 500;
 }
+
 .muted {
 	color: var(--muted);
 }
+
 .mono {
 	font-family: var(--mono);
 }
@@ -120,6 +128,47 @@ button {
 .optional-label {
 	font-weight: 400;
 	color: var(--muted);
+}
+
+/* ------- brand logo ------- */
+
+/*
+ * CSS-drawn Allegro mark (empty <div class="logo">).
+ * Used on login, signup, teams, and tracker. Single 24px size everywhere.
+ * Colors use --ink / --bg so light and dark themes invert automatically.
+ */
+
+/* Square tile */
+.logo {
+	width: 24px;
+	height: 24px;
+	background: var(--ink);
+	border-radius: 5px;
+	position: relative;
+	flex: 0 0 auto; /* do not shrink in flex headers */
+}
+
+/* Horizontal bars (::after draws two lines; box-shadow adds the third) */
+.logo::before,
+.logo::after {
+	content: '';
+	position: absolute;
+	background: var(--bg);
+}
+
+.logo::before {
+	top: 7px;
+	left: 5px;
+	width: 14px;
+	height: 1.5px;
+}
+
+.logo::after {
+	top: 11px;
+	left: 5px;
+	width: 10px;
+	height: 1.5px;
+	box-shadow: 0 4px 0 var(--bg);
 }
 
 /* ------- buttons ------- */
@@ -141,48 +190,59 @@ button {
 		transform 0.04s;
 	white-space: nowrap;
 }
+
 .btn:hover {
 	background: var(--surface-2);
 	border-color: var(--ink-2);
 }
+
 .btn:active {
 	transform: translateY(0.5px);
 }
+
 .btn.primary {
 	background: var(--ink);
 	color: #f7f4ee;
 	border-color: var(--ink);
 }
+
 .btn.primary:hover {
 	background: #000;
 	border-color: #000;
 }
+
 .btn.accent {
 	background: var(--accent);
 	color: #fff;
 	border-color: var(--accent);
 }
+
 .btn.accent:hover {
 	background: var(--accent-ink);
 	border-color: var(--accent-ink);
 }
+
 .btn.ghost {
 	background: transparent;
 	border-color: transparent;
 }
+
 .btn.ghost:hover {
 	background: var(--surface-2);
 	border-color: var(--line);
 }
+
 .btn.sm {
 	padding: 4px 8px;
 	font-size: 12px;
 }
+
 .btn.icon {
 	padding: 6px;
 	aspect-ratio: 1;
 	justify-content: center;
 }
+
 .btn[disabled] {
 	opacity: 0.4;
 	cursor: not-allowed;
@@ -204,18 +264,24 @@ select.input {
 		border-color 0.12s,
 		box-shadow 0.12s;
 }
-.input:focus,
-.textarea:focus,
-select.input:focus {
-	outline: none;
-	border-color: var(--ink);
-	box-shadow: 0 0 0 3px #00000010;
-}
+
 .textarea {
 	resize: vertical;
 	min-height: 100px;
 	line-height: 1.55;
 }
+
+.input:focus,
+.input:focus-visible,
+.textarea:focus,
+.textarea:focus-visible,
+select.input:focus,
+select.input:focus-visible {
+	outline: none;
+	border-color: var(--ink);
+	box-shadow: 0 0 0 3px #00000010;
+}
+
 .input::placeholder,
 .textarea::placeholder {
 	color: var(--muted-2);
@@ -224,6 +290,7 @@ select.input:focus {
 .field {
 	margin-bottom: 14px;
 }
+
 .field > label {
 	display: block;
 	font-size: 12.5px;
@@ -231,11 +298,13 @@ select.input:focus {
 	margin-bottom: 6px;
 	color: var(--ink-2);
 }
+
 .field .hint {
 	font-size: 12px;
 	color: var(--muted);
 	margin-top: 4px;
 }
+
 .field .req {
 	color: var(--accent-ink);
 }
@@ -256,85 +325,99 @@ select.input:focus {
 	white-space: nowrap;
 	line-height: 1.7;
 }
+
 .chip .dot {
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
-	background: currentColor;
+	background: currentcolor;
 	flex: 0 0 auto;
 }
+
 .chip.pri-urgent {
 	color: var(--pri-urgent);
-	background: oklch(0.96 0.03 25);
-	border-color: oklch(0.85 0.06 25);
+	background: oklch(96% 0.03 25deg);
+	border-color: oklch(85% 0.06 25deg);
 }
+
 .chip.pri-high {
 	color: var(--pri-high);
-	background: oklch(0.96 0.025 38);
-	border-color: oklch(0.86 0.05 38);
+	background: oklch(96% 0.025 38deg);
+	border-color: oklch(86% 0.05 38deg);
 }
+
 .chip.pri-med {
 	color: var(--pri-med);
-	background: oklch(0.97 0.025 80);
-	border-color: oklch(0.88 0.05 80);
+	background: oklch(97% 0.025 80deg);
+	border-color: oklch(88% 0.05 80deg);
 }
+
 .chip.pri-low {
 	color: var(--pri-low);
-	background: oklch(0.96 0.02 230);
-	border-color: oklch(0.86 0.04 230);
+	background: oklch(96% 0.02 230deg);
+	border-color: oklch(86% 0.04 230deg);
 }
 
 .chip.st-pending {
 	color: var(--st-pending);
 	background: var(--surface-2);
 }
+
 .chip.st-open {
 	color: var(--st-open);
-	background: oklch(0.97 0.015 250);
-	border-color: oklch(0.88 0.03 250);
+	background: oklch(97% 0.015 250deg);
+	border-color: oklch(88% 0.03 250deg);
 }
+
 .chip.st-prog {
 	color: var(--st-prog);
-	background: oklch(0.97 0.025 70);
-	border-color: oklch(0.88 0.05 70);
+	background: oklch(97% 0.025 70deg);
+	border-color: oklch(88% 0.05 70deg);
 }
+
 .chip.st-done {
 	color: var(--st-done);
-	background: oklch(0.96 0.03 150);
-	border-color: oklch(0.85 0.05 150);
+	background: oklch(96% 0.03 150deg);
+	border-color: oklch(85% 0.05 150deg);
 }
+
 .chip.st-closed {
 	color: var(--st-closed);
 	background: var(--surface-2);
 }
 
 .chip.tag-bug {
-	color: oklch(0.5 0.13 30);
-	background: oklch(0.97 0.025 30);
-	border-color: oklch(0.88 0.05 30);
+	color: oklch(50% 0.13 30deg);
+	background: oklch(97% 0.025 30deg);
+	border-color: oklch(88% 0.05 30deg);
 }
+
 .chip.tag-ui {
-	color: oklch(0.5 0.13 280);
-	background: oklch(0.97 0.025 280);
-	border-color: oklch(0.88 0.05 280);
+	color: oklch(50% 0.13 280deg);
+	background: oklch(97% 0.025 280deg);
+	border-color: oklch(88% 0.05 280deg);
 }
+
 .chip.tag-infra {
-	color: oklch(0.5 0.11 200);
-	background: oklch(0.97 0.025 200);
-	border-color: oklch(0.88 0.05 200);
+	color: oklch(50% 0.11 200deg);
+	background: oklch(97% 0.025 200deg);
+	border-color: oklch(88% 0.05 200deg);
 }
+
 .chip.tag-auth {
-	color: oklch(0.5 0.13 320);
-	background: oklch(0.97 0.025 320);
-	border-color: oklch(0.88 0.05 320);
+	color: oklch(50% 0.13 320deg);
+	background: oklch(97% 0.025 320deg);
+	border-color: oklch(88% 0.05 320deg);
 }
+
 .chip.tag-perf {
-	color: oklch(0.5 0.13 130);
-	background: oklch(0.97 0.025 130);
-	border-color: oklch(0.88 0.05 130);
+	color: oklch(50% 0.13 130deg);
+	background: oklch(97% 0.025 130deg);
+	border-color: oklch(88% 0.05 130deg);
 }
+
 .chip.tag-docs {
-	color: oklch(0.5 0.05 80);
+	color: oklch(50% 0.05 80deg);
 	background: var(--surface-2);
 }
 
@@ -344,12 +427,14 @@ select.input:focus {
 	gap: 2px;
 	align-items: center;
 }
+
 .diff .d {
 	width: 5px;
 	height: 12px;
 	border-radius: 1px;
 	background: var(--line-strong);
 }
+
 .diff .d.on {
 	background: var(--ink);
 }
@@ -365,9 +450,11 @@ select.input:focus {
 	z-index: 100;
 	backdrop-filter: blur(2px);
 }
+
 .backdrop.open {
 	display: flex;
 }
+
 .modal {
 	background: var(--surface);
 	border-radius: var(--r-3);
@@ -377,22 +464,27 @@ select.input:focus {
 	overflow: auto;
 	border: 1px solid var(--line);
 }
+
 .modal-head {
 	padding: 18px 22px 6px;
 }
+
 .modal-head h3 {
 	margin: 0 0 2px;
 	font-size: 18px;
 	font-weight: 600;
 }
+
 .modal-head p {
 	margin: 0;
 	color: var(--muted);
 	font-size: 13px;
 }
+
 .modal-body {
 	padding: 14px 22px 6px;
 }
+
 .modal-foot {
 	padding: 12px 22px 18px;
 	display: flex;
@@ -414,17 +506,20 @@ select.input:focus {
 		background 0.12s,
 		border-color 0.12s;
 }
+
 .dropzone:hover,
 .dropzone.drag {
 	background: var(--accent-soft);
 	border-color: var(--accent);
 	color: var(--accent-ink);
 }
+
 .dropzone .browse {
 	text-decoration: underline;
 	color: var(--ink);
 	cursor: pointer;
 }
+
 .dropzone .small {
 	display: block;
 	font-family: var(--mono);
@@ -434,6 +529,7 @@ select.input:focus {
 	margin-top: 6px;
 	color: var(--muted-2);
 }
+
 .file-chip {
 	display: inline-flex;
 	align-items: center;
@@ -446,12 +542,14 @@ select.input:focus {
 	border-radius: var(--r-1);
 	margin: 4px 4px 0 0;
 }
+
 .file-chip .x {
 	cursor: pointer;
 	color: var(--muted);
 	font-size: 14px;
 	line-height: 1;
 }
+
 .file-chip .x:hover {
 	color: var(--ink);
 }
@@ -475,6 +573,7 @@ select.input:focus {
 	pointer-events: none;
 	z-index: 200;
 }
+
 .toast.show {
 	opacity: 1;
 	transform: translateY(0);
@@ -503,15 +602,68 @@ select.input:focus {
 	letter-spacing: 0.02em;
 	border: 1px solid var(--line);
 }
+
 .avatar.lg {
 	width: 40px;
 	height: 40px;
 	font-size: 14px;
 }
+
 .avatar.sm {
 	width: 22px;
 	height: 22px;
 	font-size: 9.5px;
+}
+
+/* ------- user menu (teams + tracker topbar avatar) ------- */
+.user-switch {
+	position: relative; /* anchor for .user-dropdown */
+}
+
+.user-avatar {
+	padding: 0;
+	font: inherit;
+	cursor: pointer; /* button styled as .avatar circle */
+}
+
+.user-avatar:hover {
+	background: var(--surface-2);
+}
+
+.user-dropdown {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0; /* align panel to top-right avatar */
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--r-2);
+	box-shadow: var(--shadow-pop);
+	min-width: 140px;
+	padding: 4px;
+	display: none;
+	z-index: 20;
+}
+
+.user-dropdown.open {
+	display: block; /* toggled by user-menu.js */
+}
+
+.user-dropdown .item {
+	display: block;
+	width: 100%;
+	padding: 7px 10px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	font: inherit;
+	font-size: 13px;
+	color: var(--ink);
+	text-align: left;
+	cursor: pointer;
+}
+
+.user-dropdown .item:hover {
+	background: var(--surface-2);
 }
 
 /* gentle focus ring */
@@ -529,6 +681,7 @@ select.input:focus {
 html {
 	color-scheme: light;
 }
+
 html.dark {
 	color-scheme: dark;
 
@@ -536,17 +689,13 @@ html.dark {
 	--surface: #1c1a16;
 	--surface-2: #25221d;
 	--surface-3: #2f2c25;
-
 	--ink: #f0ece2;
 	--ink-2: #c9c4b7;
 	--muted: #8a8478;
 	--muted-2: #5a554b;
-
 	--line: #2a2722;
 	--line-strong: #3a3733;
-
-	--accent-soft: oklch(0.3 0.05 38);
-
+	--accent-soft: oklch(30% 0.05 38deg);
 	--shadow-1: 0 1px 0 #00000030, 0 1px 2px #00000040;
 	--shadow-2: 0 1px 0 #00000040, 0 4px 16px #00000050;
 	--shadow-pop: 0 1px 0 #00000040, 0 10px 40px #00000080;
@@ -558,19 +707,23 @@ html.dark .btn.primary {
 	color: #1a1a1a;
 	border-color: #f0ece2;
 }
+
 html.dark .btn.primary:hover {
-	background: #ffffff;
-	border-color: #ffffff;
+	background: #fff;
+	border-color: #fff;
 }
+
 html.dark .toast {
 	background: #f0ece2;
 	color: #1a1a1a;
 }
+
 html.dark .chip-btn.on {
 	background: #f0ece2;
 	color: #1a1a1a;
 	border-color: #f0ece2;
 }
+
 /* Login poster is a fixed-dark decorative panel — keep it dark in both modes
    (its CSS uses var(--ink) which would otherwise invert to a light surface). */
 html.dark .poster {
@@ -583,6 +736,7 @@ html.dark .poster {
 	font-size: 14px;
 	line-height: 1;
 }
+
 html.dark .theme-toggle::before {
 	content: '☀';
 }

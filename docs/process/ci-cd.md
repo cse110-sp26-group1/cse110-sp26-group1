@@ -1,0 +1,1 @@
+note: gather all ci/cd related stuff here, reformatting and rewording

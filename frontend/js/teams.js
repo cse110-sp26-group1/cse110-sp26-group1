@@ -1,11 +1,12 @@
-import { fetchTeams, fetchIssues, createTeam, acceptInvite } from './mock-api.js';
+import { fetchTeams, createTeam, requireAuth, acceptInvite, rejectInvite, fetchInvites } from './api.js';
 
-const backdrop = document.getElementById('createBackdrop');
-const teamNameEl = document.getElementById('teamName');
+import './components/team-card.js';
+
+requireAuth(); // forces the user to sign up if this page is accessed without credentials
+
+const backdrop = document.getElementById('create-backdrop');
+const teamNameEl = document.getElementById('team-name');
 const toast = document.getElementById('toast');
-
-const gridEl = document.querySelector('.grid');
-const confirmCreateBtn = document.getElementById('confirmCreate');
 
 /**
  * Opens the create-team modal and focuses the team-name input.
@@ -14,6 +15,7 @@ function openModal() {
 	backdrop.classList.add('open');
 	teamNameEl.focus();
 }
+
 /**
  * Closes the create-team modal.
  */
@@ -21,62 +23,15 @@ function closeModal() {
 	backdrop.classList.remove('open');
 }
 
-document.getElementById('createTeam').addEventListener('click', openModal);
-document.getElementById('createTeam2').addEventListener('click', (e) => {
+document.getElementById('create-team').addEventListener('click', openModal);
+document.getElementById('create-team-2').addEventListener('click', (e) => {
 	e.preventDefault();
 	openModal();
 });
-document.getElementById('cancelCreate').addEventListener('click', closeModal);
+document.getElementById('cancel-create').addEventListener('click', closeModal);
 backdrop.addEventListener('click', (e) => {
 	if (e.target === backdrop) {
 		closeModal();
-	}
-});
-
-// createTeam
-document.getElementById('confirmCreate').addEventListener('click', async () => {
-	const nameEl = document.getElementById('teamName');
-	const slugEl = document.getElementById('teamSlug');
-
-	const name = nameEl.value.trim();
-	const slug = slugEl.value.trim();
-
-	if (!name) {
-		nameEl.focus();
-		return;
-	}
-
-	const confirmBtn = document.getElementById('confirmCreate');
-	const originalText = confirmBtn.textContent;
-	confirmBtn.textContent = 'Creating...';
-	confirmBtn.disabled = true;
-
-	try {
-		const words = name.split(' ');
-		let mark = words[0].substring(0, 2).toUpperCase();
-		if (words.length > 1) {
-			mark = (words[0][0] + words[1][0]).toUpperCase();
-		}
-
-		const newTeam = await createTeam({
-			name: name,
-			slug: slug,
-			mark: mark,
-		});
-
-		showToast(`Workspace created! Redirecting...`);
-
-		closeModal();
-
-		setTimeout(() => {
-			location.href = `tracker.html?team=${encodeURIComponent(newTeam.slug)}`;
-		}, 800);
-	} catch (err) {
-		console.error(err);
-		showToast(err.message || 'Failed to create team.');
-	} finally {
-		confirmBtn.textContent = originalText;
-		confirmBtn.disabled = false;
 	}
 });
 
@@ -108,9 +63,9 @@ document.querySelectorAll('.accept-btn').forEach((btn) => {
 			e.target.closest('.invite').remove();
 
 			// Re-render the grid to show the newly unlocked team
+			// The accepted invite creates team membership server-side.
 			initTeamsPage();
-		} catch (err) {
-			console.error(err);
+		} catch {
 			showToast('Failed to accept invite.');
 			e.target.textContent = originalText;
 			e.target.disabled = false;
@@ -125,19 +80,19 @@ document.querySelectorAll('.decline-btn').forEach((btn) => {
 	});
 });
 
-document.getElementById('confirmCreate').addEventListener('click', async () => {
-	const nameEl = document.getElementById('teamName');
-	const bioEl = document.getElementById('teamBio');
+document.getElementById('confirm-create').addEventListener('click', async () => {
+	const nameEl = document.getElementById('team-name');
+	const _bioEl = document.getElementById('team-bio'); // add bio support next (STRETCH GOAL)
 
 	const name = nameEl.value.trim();
-	const bio = bioEl.value.trim();
+	//const _bio = _bioEl.value.trim();
 
 	if (!name) {
 		nameEl.focus();
 		return;
 	}
 
-	const confirmBtn = document.getElementById('confirmCreate');
+	const confirmBtn = document.getElementById('confirm-create');
 	const originalText = confirmBtn.textContent;
 	confirmBtn.textContent = 'Creating...';
 	confirmBtn.disabled = true;
@@ -150,19 +105,16 @@ document.getElementById('confirmCreate').addEventListener('click', async () => {
 		}
 
 		const newTeam = await createTeam({
-			name: name,
-			bio: bio,
-			mark: mark,
+			team_name: name,
 		});
 
 		showToast(`Workspace created! Redirecting...`);
 		closeModal();
 
 		setTimeout(() => {
-			location.href = `tracker.html?team=${encodeURIComponent(newTeam.slug)}`;
+			location.href = `tracker.html?team_id=${newTeam.team_id}`;
 		}, 800);
 	} catch (err) {
-		console.error(err);
 		showToast(err.message || 'Failed to create team.');
 	} finally {
 		confirmBtn.textContent = originalText;
@@ -171,54 +123,120 @@ document.getElementById('confirmCreate').addEventListener('click', async () => {
 });
 
 /**
- *
+ * Loads pending invites and wires accept/decline actions after rendering them.
+ */
+async function loadInvites() {
+	const section = document.getElementById('invites-section');
+	if (!section) return;
+
+	let invites;
+	try {
+		invites = await fetchInvites();
+	} catch {
+		section.hidden = true;
+		return;
+	}
+
+	if (!invites.length) {
+		section.hidden = true;
+		return;
+	}
+
+	section.hidden = false;
+
+	const list = invites
+		.map(
+			(inv) => `
+		<div class="invite" data-invite-id="${inv.id}">
+		<div class="info">
+			<div class="team-mark">${inv.team_name.substring(0, 2).toUpperCase()}</div>
+			<div>
+			<p><strong>${inv.team_name}</strong> · invited by ${inv.inviter_username}</p>
+			<p>Invited ${inv.created_at}</p>
+			</div>
+		</div>
+		<div class="actions">
+			<button class="btn sm decline-btn" data-invite-id="${inv.id}">Decline</button>
+			<button class="btn primary sm accept-btn" data-invite-id="${inv.id}">Accept</button>
+		</div>
+		</div>
+	`,
+		)
+		.join('');
+
+	// Invites are inserted after the heading so the static section shell can
+	// stay in HTML while the rows reflect the latest API state.
+	section.querySelector('h3').insertAdjacentHTML('afterend', list);
+
+	section.querySelectorAll('.accept-btn').forEach((btn) => {
+		btn.addEventListener('click', async (e) => {
+			const inviteId = Number(e.target.dataset.inviteId);
+			e.target.textContent = 'Accepting...';
+			e.target.disabled = true;
+			try {
+				await acceptInvite(inviteId);
+				showToast('Invitation accepted!');
+				e.target.closest('.invite').remove();
+				initTeamsPage();
+			} catch {
+				showToast('Failed to accept invite.');
+				e.target.textContent = 'Accept';
+				e.target.disabled = false;
+			}
+		});
+	});
+
+	section.querySelectorAll('.decline-btn').forEach((btn) => {
+		btn.addEventListener('click', async (e) => {
+			const inviteId = Number(e.target.dataset.inviteId);
+			e.target.textContent = 'Declining...';
+			e.target.disabled = true;
+			try {
+				await rejectInvite(inviteId);
+				e.target.closest('.invite').remove();
+				showToast('Invitation declined.');
+				if (!section.querySelectorAll('.invite').length) section.hidden = true;
+			} catch {
+				showToast('Failed to decline invite.');
+				e.target.textContent = 'Decline';
+				e.target.disabled = false;
+			}
+		});
+	});
+}
+
+/**
+ * Loads the user's teams and rebuilds the dashboard grid from API data.
  */
 async function initTeamsPage() {
 	try {
-		const [teams, issues] = await Promise.all([fetchTeams(), fetchIssues()]);
-
-		const grid = document.getElementById('teamGrid');
-
+		const teams = await fetchTeams();
+		const grid = document.getElementById('team-grid');
 		const createBtnHtml = grid.querySelector('.team.new').outerHTML;
 
-		const teamsHtml = teams
-			.map((team) => {
-				const teamIssues = issues.filter((i) => i.team_id === team.id);
-				const openCount = teamIssues.filter((i) => i.status === 'open').length;
-				const progCount = teamIssues.filter((i) => i.status === 'in-progress').length;
-				const doneCount = teamIssues.filter((i) => i.status === 'done' || i.status === 'closed').length;
+		const teamCards = teams.map((team) => {
+			const card = document.createElement('team-card');
+			card.setAttribute('team-id', String(team.id));
+			card.setAttribute('name', team.team_name);
 
-				return `
-                <a class="team" href="tracker.html?team=${team.slug}">
-                    <div class="team-head">
-                        <div class="team-mark" style="background: oklch(0.92 0.04 ${team.color}); color: oklch(0.4 0.12 ${team.color})">${team.mark}</div>
-                        <div>
-                            <h2>${team.name}</h2>
-                            <div class="slug">${team.slug}</div>
-                        </div>
-                    </div>
-                    <div class="stats">
-                        <div class="stat"><span class="n">${openCount}</span><span class="l">open</span></div>
-                        <div class="stat"><span class="n">${progCount}</span><span class="l">in prog</span></div>
-                        <div class="stat"><span class="n">${doneCount}</span><span class="l">done</span></div>
-                    </div>
-                    <div class="team-foot">
-                        <div class="members"><span class="avatar">AL</span></div>
-                        <span class="last-active">active recently</span>
-                    </div>
-                </a>
-            `;
-			})
-			.join('');
+			const words = team.team_name.trim().split(' ');
+			const mark = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : team.team_name.substring(0, 2).toUpperCase();
+			card.setAttribute('mark', mark);
+			card.setAttribute('color', '220');
+			card.setAttribute('role', team.role);
+			return card;
+		});
 
-		grid.innerHTML = teamsHtml + createBtnHtml;
+		grid.replaceChildren(...teamCards);
+		grid.insertAdjacentHTML('beforeend', createBtnHtml);
 
-		document.getElementById('createTeam2').addEventListener('click', (e) => {
+		document.getElementById('create-team-2').addEventListener('click', (e) => {
 			e.preventDefault();
 			openModal();
 		});
-	} catch (err) {
-		console.error('Failed to load teams:', err);
+
+		await loadInvites();
+	} catch {
 		showToast('Failed to load dashboard.');
 	}
 }

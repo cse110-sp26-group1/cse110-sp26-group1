@@ -7,7 +7,7 @@ Evaluate sprint 2 results and what tasks require urgent action
 
 ### Present: Everyone
 
-### Absent:
+### Absent: Anchita, Albert
 
 ### Time and Place:
 
@@ -23,13 +23,22 @@ May 18, 2026 | 3:30-5:30pm @ Triton Transfer Hub
 
 ### Review Notes:
 What did we get working?
-
+- frontend prototype:
+  - creating works (localstorage)
+  - no signups and invitations
 
 What needs fixing?
-
+- team communication
+  - need to make sure everyone actually understands what we're doing
+  - need more organized
+  - need more time designing/implementing
+    - make it really clear all the fields we need, how they'd be working
+- backend endpoints 
 
 How can we work together more efficiently?
-  - 
+  - everyone needs to communicate more
+  - let us know when you'll start working/when you see a message
+  - planning is very important before anyone gets started
 
 ### Upcoming tasks:
 - Entire team looks at current issues with our entire project and address all the fixes with a strict deadline of Tuesday morning

@@ -57,13 +57,13 @@ describe('Issues Endpoint Testing Suite', () => {
 	beforeEach(async () => {
 		// Clear all tables to ensure test isolation and a clean state for every run
 		await env.DB.exec(`
-			DELETE FROM agent_attempts;
-			DELETE FROM invites;
-			DELETE FROM issues;
-			DELETE FROM team_members;
-			DELETE FROM teams;
-			DELETE FROM users;
-		`);
+            DELETE FROM agent_attempts;
+            DELETE FROM invites;
+            DELETE FROM issues;
+            DELETE FROM team_members;
+            DELETE FROM teams;
+            DELETE FROM users;
+        `);
 	});
 
 	// ==========================================

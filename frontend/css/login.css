@@ -1,9 +1,19 @@
+/* login.css 
+* styles for the login and signup pages
+*/
+
+/* === body === */
+
+/* styles for the body
+* displays the login and signup pages
+*/
 body {
 	min-height: 100vh;
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 }
 
+/* centers the content in the body */
 .stage {
 	display: flex;
 	align-items: center;
@@ -11,10 +21,16 @@ body {
 	padding: 48px 40px;
 }
 
+/* content container */
 .stage .inner {
 	width: min(380px, 100%);
 }
 
+/* === brand === */
+
+/* styles for the brand
+* displays the logo and name
+*/
 .brand {
 	display: flex;
 	align-items: center;
@@ -22,37 +38,11 @@ body {
 	margin-bottom: 36px;
 }
 
-.logo {
-	width: 28px;
-	height: 28px;
-	background: var(--ink);
-	border-radius: 6px;
-	position: relative;
-	flex: 0 0 auto;
-}
+/* === name === */
 
-.logo::before,
-.logo::after {
-	content: '';
-	position: absolute;
-	background: var(--bg);
-}
-
-.logo::before {
-	top: 8px;
-	left: 6px;
-	width: 16px;
-	height: 1.5px;
-}
-
-.logo::after {
-	top: 13px;
-	left: 6px;
-	width: 11px;
-	height: 1.5px;
-	box-shadow: 0 5px 0 var(--bg);
-}
-
+/* styles for the name
+* style for logo
+*/
 .brand .name {
 	font-weight: 600;
 	letter-spacing: -0.01em;
@@ -69,6 +59,13 @@ body {
 	margin-left: auto;
 }
 
+/* === title === */
+
+/* styles for the title
+* displays the title
+*/
+
+/* heading 1 */
 h1.title {
 	margin: 0 0 6px;
 	font-size: 26px;
@@ -76,11 +73,13 @@ h1.title {
 	letter-spacing: -0.015em;
 }
 
+/* paragraph */
 p.sub {
 	margin: 0 0 28px;
 	color: var(--muted);
 }
 
+/* === tabs-seg === */
 .tabs-seg {
 	display: inline-flex;
 	background: var(--surface-2);
@@ -107,12 +106,25 @@ p.sub {
 	box-shadow: var(--shadow-1);
 }
 
+/* styles for the second row
+* displays the forgot password and help links
+*/
 .row2 {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	gap: 10px;
 }
 
+/* === help-row === */
+
+/* styles for the help row
+* styles for the help row
+* displays the forgot password and help links
+*/
+
+/* not used saved for stretch goals */
+
+/*
 .help-row {
 	display: flex;
 	justify-content: space-between;
@@ -128,13 +140,7 @@ p.sub {
 .help-row a:hover {
 	text-decoration: underline;
 }
-
-.remember-label {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	color: var(--ink-2);
-}
+*/
 
 .btn.block {
 	width: 100%;
@@ -143,6 +149,13 @@ p.sub {
 	font-size: 14px;
 }
 
+/* === or === */
+
+/* styles for form of login
+* allows socialmedia login
+*/
+
+/* not used saved for Google sign-in
 .or {
 	display: flex;
 	align-items: center;
@@ -184,14 +197,28 @@ p.sub {
 	font-weight: 700;
 	margin-right: 4px;
 }
+*/
 
+/* === legal === */
+
+/* styles for the privacy and terms
+* displays the privacy and terms
+*/
+
+/* not used saved for stretch goals
 .legal {
 	margin-top: 24px;
 	font-size: 11.5px;
 	color: var(--muted);
 	text-align: center;
 }
+*/
 
+/* === poster === */
+
+/* styles for the poster background
+* displays the content on the right side of the page
+*/
 .poster {
 	background: var(--ink);
 	color: #e9e4d8;
@@ -208,165 +235,92 @@ p.sub {
 	position: absolute;
 	inset: 0;
 	background:
-		radial-gradient(circle at 80% 10%, oklch(0.35 0.06 38) 0%, transparent 40%),
-		radial-gradient(circle at 10% 90%, oklch(0.3 0.04 220) 0%, transparent 50%);
+		radial-gradient(circle at 80% 10%, oklch(35% 0.06 38deg) 0%, transparent 40%),
+		radial-gradient(circle at 10% 90%, oklch(30% 0.04 220deg) 0%, transparent 50%);
 	opacity: 0.9;
 }
 
-.poster > * {
+.password-wrapper {
 	position: relative;
-	z-index: 1;
 }
 
-.poster .label {
-	color: oklch(0.75 0.06 38);
+.password-input {
+	padding-right: 40px;
 }
 
-.poster h2 {
-	font-size: 32px;
-	line-height: 1.15;
-	letter-spacing: -0.02em;
-	font-weight: 500;
-	margin: 12px 0 0;
-	max-width: 380px;
-}
-
-.poster h2 em {
-	font-style: normal;
-	color: oklch(0.78 0.12 38);
-}
-
-.preview-stack {
-	margin: 36px 0;
-	position: relative;
-	height: 260px;
-}
-
-.pc {
+.password-toggle {
 	position: absolute;
-	background: #211f1c;
-	border: 1px solid #2f2c28;
-	border-radius: 10px;
-	padding: 14px 16px;
-	width: 320px;
-	box-shadow: 0 20px 40px #00000050;
-}
-
-.pc h4 {
-	margin: 0 0 6px;
-	font-size: 13.5px;
-	font-weight: 600;
-	color: #f1ece0;
-}
-
-.pc .row {
+	right: 8px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	padding: 4px;
+	cursor: pointer;
+	color: var(--muted);
 	display: flex;
-	gap: 6px;
 	align-items: center;
+	justify-content: center;
+	border-radius: var(--r-1);
+	transition: color 0.12s;
+	line-height: 0;
 }
 
-.pc .id {
-	font-family: var(--mono);
-	font-size: 10.5px;
-	color: #8a8478;
-	margin-right: 6px;
+.password-toggle:hover {
+	color: var(--ink);
 }
 
-.pc .pri {
-	font-family: var(--mono);
-	font-size: 10px;
-	padding: 1px 6px;
-	border-radius: 4px;
-	font-weight: 600;
+.password-toggle:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
 }
 
-.pc .pri.high {
-	background: oklch(0.35 0.12 38);
-	color: oklch(0.85 0.12 38);
-}
-
-.pc .pri.med {
-	background: oklch(0.32 0.08 75);
-	color: oklch(0.82 0.1 75);
-}
-
-.pc .pri.low {
-	background: oklch(0.32 0.06 220);
-	color: oklch(0.8 0.08 220);
-}
-
-.pc .tag {
-	font-family: var(--mono);
-	font-size: 10px;
-	color: #b5afa1;
-	border: 1px solid #3a3733;
-	padding: 1px 6px;
-	border-radius: 4px;
-}
-
-.pc .sum {
-	font-size: 12px;
-	color: #b5afa1;
-	margin-top: 6px;
-	line-height: 1.45;
-}
-
-.pc-1 {
-	top: 0;
-	left: 0;
-	transform: rotate(-2deg);
-}
-
-.pc-2 {
-	top: 80px;
-	left: 60px;
-	transform: rotate(1deg);
-}
-
-.pc-3 {
-	top: 160px;
-	left: 120px;
-	transform: rotate(-1deg);
-}
-
-.poster footer {
-	font-size: 12px;
-	color: #8a8478;
-	border-top: 1px solid #2f2c28;
-	padding-top: 18px;
-	display: flex;
-	justify-content: space-between;
-}
-
-.poster footer .dots {
-	display: flex;
-	gap: 4px;
-	align-items: center;
-}
-
-.poster footer .dots span {
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: #3a3733;
-}
-
-.poster footer .dots span.on {
-	background: oklch(0.78 0.12 38);
-}
-
-.signup-only {
-	display: none;
-}
-
-body.mode-signup .signup-only {
+.password-toggle-icon {
 	display: block;
 }
 
-body.mode-signup .login-only {
+.password-toggle-icon-hide {
 	display: none;
 }
 
+.password-toggle[aria-pressed='true'] .password-toggle-icon-show {
+	display: none;
+}
+
+.password-toggle[aria-pressed='true'] .password-toggle-icon-hide {
+	display: block;
+}
+
+/* === auth-switch === */
+
+/* styles for the auth-switch
+* displays the auth-switch
+*/
+
+/* switch between login and signup */
+.auth-switch {
+	margin: 18px 0 0;
+	font-size: 13px;
+	color: var(--muted);
+	text-align: center;
+}
+
+.auth-switch a {
+	color: var(--accent-ink);
+	font-weight: 500;
+}
+
+.auth-switch a:hover {
+	text-decoration: underline;
+}
+
+/* === media queries === */
+
+/* styles for the media queries
+* displays the media queries
+*/
+
+/* not used saved for stretch goals
 @media (max-width: 880px) {
 	body {
 		grid-template-columns: 1fr;
@@ -376,3 +330,4 @@ body.mode-signup .login-only {
 		display: none;
 	}
 }
+*/

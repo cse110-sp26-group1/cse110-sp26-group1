@@ -5,6 +5,7 @@
 		<title>Issues - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
+			// Keep this before CSS so the saved theme is applied before first paint.
 			try {
 				if (localStorage.getItem('theme') === 'dark') {
 					document.documentElement.classList.add('dark');
@@ -25,12 +26,12 @@
 					<a href="teams.html">Teams</a>
 					<span class="sep">/</span>
 				</div>
-				<div class="team-switch" id="teamSwitch">
-					<span class="mark">SA</span>
-					<span id="teamLabel">Studio · AI Tools</span>
+				<div class="team-switch" id="team-switch">
+					<span class="mark"></span>
+					<span id="team-label">Loading...</span>
 					<span class="chev">▾</span>
 
-					<div class="team-menu" id="teamMenu">
+					<div class="team-menu" id="team-menu">
 						<div class="item active" data-slug="studio-ai">
 							<span class="mark c1">SA</span>
 							Studio · AI Tools
@@ -59,18 +60,33 @@
 				<div class="search-wrap">
 					<input
 						class="search-top"
-						id="issueSearch"
+						id="issue-search"
 						type="search"
 						placeholder="Search issues, files…"
 						autocomplete="off"
 						aria-label="Search issues"
 					/>
-					<button type="button" class="search-clear" id="issueSearchClear" aria-label="Clear search" hidden>
+					<button type="button" class="search-clear" id="issue-search-clear" aria-label="Clear search" hidden>
 						<span aria-hidden="true">×</span>
 					</button>
 				</div>
-				<button class="btn ghost icon theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme"></button>
-				<div class="avatar sm" title="Ada Lovelace">AL</div>
+				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
+				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
+				<div class="user-switch" id="user-switch">
+					<button
+						type="button"
+						class="avatar sm user-avatar"
+						id="user-avatar"
+						aria-haspopup="true"
+						aria-expanded="false"
+						title="Ada Lovelace"
+					>
+						AL
+					</button>
+					<div class="user-dropdown" id="user-dropdown" role="menu">
+						<button type="button" class="item" id="sign-out-btn" role="menuitem">Sign out</button>
+					</div>
+				</div>
 			</div>
 		</header>
 
@@ -78,52 +94,75 @@
 		<div class="app">
 			<!-- SIDEBAR -->
 			<aside class="sidebar">
+				<!-- data-group/data-val are read by tracker.js to drive filtering. -->
 				<div class="nav-section">
 					<div class="label"><span>Views</span></div>
-					<div class="nav-item active"><span class="ic sq fill"></span> All issues <span class="count">23</span></div>
-					<div class="nav-item"><span class="ic sq"></span> Assigned to me <span class="count">4</span></div>
-					<div class="nav-item"><span class="ic sq"></span> Recently updated <span class="count">12</span></div>
+					<div class="nav-item active" data-group="view" data-val="all">
+						<span class="ic sq fill"></span> All issues <span class="count" id="cnt-all">0</span>
+					</div>
 				</div>
 
 				<div class="nav-section">
 					<div class="label"><span>Status</span></div>
-					<div class="nav-item"><span class="ic"></span> Open <span class="count">14</span></div>
-					<div class="nav-item"><span class="ic fill"></span> In progress <span class="count">3</span></div>
-					<div class="nav-item"><span class="ic"></span> Done <span class="count">6</span></div>
+					<div class="nav-item" data-group="status" data-val="Open">
+						<span class="ic"></span> Open <span class="count" id="cnt-open">0</span>
+					</div>
+					<div class="nav-item" data-group="status" data-val="In Progress">
+						<span class="ic fill"></span> In progress <span class="count" id="cnt-prog">0</span>
+					</div>
+					<div class="nav-item" data-group="status" data-val="Resolved">
+						<span class="ic"></span> Done <span class="count" id="cnt-done">0</span>
+					</div>
 				</div>
 
 				<div class="nav-section">
 					<div class="label"><span>Priority</span></div>
-					<div class="nav-item pri-urgent"><span class="ic dot"></span> Urgent <span class="count">1</span></div>
-					<div class="nav-item pri-high"><span class="ic dot"></span> High <span class="count">3</span></div>
-					<div class="nav-item pri-med"><span class="ic dot"></span> Medium <span class="count">11</span></div>
-					<div class="nav-item pri-low"><span class="ic dot"></span> Low <span class="count">8</span></div>
+					<div class="nav-item pri-urgent" data-group="priority" data-val="Critical">
+						<span class="ic dot"></span> Urgent <span class="count" id="cnt-crit">0</span>
+					</div>
+					<div class="nav-item pri-high" data-group="priority" data-val="High">
+						<span class="ic dot"></span> High <span class="count" id="cnt-high">0</span>
+					</div>
+					<div class="nav-item pri-med" data-group="priority" data-val="Medium">
+						<span class="ic dot"></span> Medium <span class="count" id="cnt-med">0</span>
+					</div>
+					<div class="nav-item pri-low" data-group="priority" data-val="Low">
+						<span class="ic dot"></span> Low <span class="count" id="cnt-low">0</span>
+					</div>
 				</div>
 
 				<div class="nav-section">
 					<div class="label"><span>Tags</span></div>
-					<div class="nav-item"><span class="ic dot label-bug"></span> bug <span class="count">9</span></div>
-					<div class="nav-item"><span class="ic dot label-ui"></span> ui <span class="count">7</span></div>
-					<div class="nav-item"><span class="ic dot label-infra"></span> infra <span class="count">5</span></div>
-					<div class="nav-item"><span class="ic dot label-auth"></span> auth <span class="count">3</span></div>
-					<div class="nav-item"><span class="ic dot label-perf"></span> perf <span class="count">2</span></div>
+					<div class="nav-item" data-group="tag" data-val="bug">
+						<span class="ic dot label-bug"></span> bug <span class="count" id="cnt-bug">0</span>
+					</div>
+					<div class="nav-item" data-group="tag" data-val="ui">
+						<span class="ic dot label-ui"></span> ui <span class="count" id="cnt-ui">0</span>
+					</div>
+					<div class="nav-item" data-group="tag" data-val="infra">
+						<span class="ic dot label-infra"></span> infra <span class="count" id="cnt-infra">0</span>
+					</div>
+					<div class="nav-item" data-group="tag" data-val="auth">
+						<span class="ic dot label-auth"></span> auth <span class="count" id="cnt-auth">0</span>
+					</div>
+					<div class="nav-item" data-group="tag" data-val="perf">
+						<span class="ic dot label-perf"></span> perf <span class="count" id="cnt-perf">0</span>
+					</div>
 				</div>
 
 				<div class="nav-section">
-					<div class="label"><span>Team</span></div>
-					<div class="members">
-						<div class="avatar">AL</div>
-						<div class="avatar">JK</div>
-						<div class="avatar">MN</div>
-						<div class="avatar">BS</div>
+					<div class="label" style="display: flex; justify-content: space-between; align-items: center">
+						<span>Team</span>
+						<button class="btn ghost sm" id="open-invite-modal" style="padding: 0 6px" title="Invite user">+</button>
 					</div>
+					<div class="members"></div>
 				</div>
 
 				<div class="skill-card">
 					<div class="ic-md">.md</div>
 					<h4>skills.md</h4>
 					<p>Drop into your agent's context so it can read &amp; update issues here.</p>
-					<button class="btn" id="downloadSkills">↓ Download</button>
+					<button class="btn" id="download-skills">↓ Download</button>
 				</div>
 			</aside>
 
@@ -132,10 +171,10 @@
 				<!-- LIST -->
 				<div class="list-pane">
 					<div class="list-head">
-						<h1>All issues <span class="count" id="totalCount">23</span></h1>
+						<h1>All issues <span class="count" id="total-count">23</span></h1>
 						<div class="actions">
-							<button class="btn" id="toggleDetail" title="Toggle detail pane">⇆ Detail</button>
-							<button class="btn primary" id="newIssue">+ New issue</button>
+							<button class="btn" id="toggle-detail" title="Toggle detail pane">⇆ Detail</button>
+							<button class="btn primary" id="new-issue">+ New issue</button>
 						</div>
 					</div>
 
@@ -159,12 +198,13 @@
 						</div>
 					</div>
 
-					<div class="list" id="issueList">
+					<div class="list" id="issue-list">
 						<!-- groups + rows are JS-rendered -->
 					</div>
 				</div>
 
 				<!-- DIVIDER -->
+				<!-- tracker.js stores this split-pane width in localStorage. -->
 				<div class="divider" id="divider"></div>
 
 				<!-- DETAIL -->
@@ -175,7 +215,7 @@
 		</div>
 
 		<!-- ============ CREATE ISSUE MODAL ============ -->
-		<div class="backdrop" id="newBackdrop">
+		<div class="backdrop" id="new-backdrop">
 			<div class="modal">
 				<div class="modal-head">
 					<h3>New issue</h3>
@@ -184,25 +224,86 @@
 				<div class="modal-body">
 					<div class="field">
 						<label>Title <span class="req">*</span></label>
-						<input class="input" id="nTitle" placeholder="One short line — what's wrong?" />
+						<input class="input" id="new-title" placeholder="One short line — what's wrong?" />
+					</div>
+
+					<div style="display: flex; gap: 12px; margin-bottom: 12px">
+						<div class="field" style="flex: 1; margin-bottom: 0">
+							<label>Priority</label>
+							<select class="input" id="new-priority">
+								<option value="Medium">Medium</option>
+								<option value="Low">Low</option>
+								<option value="High">High</option>
+								<option value="Critical">Critical</option>
+							</select>
+						</div>
+						<div class="field" style="flex: 1; margin-bottom: 0">
+							<label>Category</label>
+							<select class="input" id="new-category">
+								<option value="Bug">Bug</option>
+								<option value="Feature">Feature</option>
+								<option value="Task">Task</option>
+							</select>
+						</div>
+						<div class="field" style="flex: 1; margin-bottom: 0">
+							<label>Assignee</label>
+							<select class="input" id="new-assignee">
+								<option value="">Unassigned</option>
+							</select>
+						</div>
+					</div>
+
+					<div style="display: flex; gap: 12px; margin-bottom: 12px">
+						<div class="field" style="flex: 1; margin-bottom: 0">
+							<label>Difficulty (1-3)</label>
+							<input type="number" class="input" id="new-difficulty" min="1" max="3" placeholder="e.g. 2" />
+						</div>
+						<div class="field" style="flex: 2; margin-bottom: 0">
+							<label>Tags (comma separated)</label>
+							<input type="text" class="input" id="new-tags" placeholder="ui, bug, frontend" />
+						</div>
 					</div>
 					<div class="field">
 						<label>Description <span class="req">*</span></label>
-						<textarea class="textarea" id="nDesc" placeholder="Steps to reproduce · what you expected · what actually happened"></textarea>
+						<textarea
+							class="textarea"
+							id="new-desc"
+							placeholder="Steps to reproduce · what you expected · what actually happened"
+						></textarea>
 					</div>
 					<div class="field">
 						<label>Error logs &amp; traces <span class="optional-label">(optional)</span></label>
+						<!-- File input stays hidden; dropzone clicks and drops are proxied in tracker.js. -->
 						<div class="dropzone" id="dropzone">
 							Drop files here or <span class="browse">browse</span>
-							<span class="small">.log · .txt · .json · screenshots</span>
-							<input type="file" id="fileInput" multiple hidden />
+							<span class="small">.log · .txt · .json</span>
+							<input type="file" id="file-input" accept=".log,.txt,.json,text/plain,application/json" multiple hidden />
 						</div>
-						<div class="file-list" id="fileList"></div>
+						<div class="file-list" id="file-list"></div>
 					</div>
 				</div>
 				<div class="modal-foot">
-					<button class="btn" id="cancelNew">Cancel</button>
-					<button class="btn primary" id="confirmNew">Create issue</button>
+					<button class="btn" id="cancel-new">Cancel</button>
+					<button class="btn primary" id="confirm-new">Create issue</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="backdrop" id="invite-backdrop">
+			<div class="modal" style="max-width: 400px">
+				<div class="modal-head">
+					<h3>Invite to team</h3>
+					<p>Send an invitation to a colleague.</p>
+				</div>
+				<div class="modal-body">
+					<div class="field">
+						<label>Username or Email <span class="req">*</span></label>
+						<input class="input" id="invite-input" placeholder="e.g. ada@example.com or adalovelace" />
+					</div>
+				</div>
+				<div class="modal-foot">
+					<button class="btn" id="cancel-invite">Cancel</button>
+					<button class="btn primary" id="confirm-invite">Send invite</button>
 				</div>
 			</div>
 		</div>
@@ -210,6 +311,8 @@
 		<div class="toast" id="toast"></div>
 
 		<script src="../js/theme.js"></script>
+		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
+		<script src="../js/user-menu.js"></script>
 		<script type="module" src="../js/tracker.js"></script>
 	</body>
 </html>
