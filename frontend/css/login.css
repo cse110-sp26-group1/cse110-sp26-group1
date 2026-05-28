@@ -331,3 +331,44 @@ p.sub {
 	}
 }
 */
+
+/* Task: UI Alignment - Ensure the 2-column layout for Signup (Image 2)
+   matches the mockup's compact style. */
+.row2 .field {
+	margin-bottom: 0; /* Let the row handle the bottom margin */
+}
+
+.row2 label {
+	font-size: 11px;
+	margin-bottom: 4px;
+}
+
+/* Form container refinement to match the clean white-box-on-beige look */
+.stage .inner {
+	background: var(--surface);
+	padding: 32px;
+	border-radius: var(--r-3);
+	border: 1px solid var(--line);
+	box-shadow: var(--shadow-1);
+}
+
+/* Spacing refinement for the "Welcome back" / "Create Account" titles */
+h1.title {
+	font-size: 32px;
+	margin-bottom: 12px;
+	text-align: center;
+}
+
+p.sub {
+	text-align: center;
+	font-size: 14px;
+	margin-bottom: 32px;
+}
+
+/* Centering the brand for the login/signup view */
+.brand {
+	justify-content: center;
+	border-bottom: 1px solid var(--line);
+	padding-bottom: 12px;
+	margin-bottom: 48px;
+}

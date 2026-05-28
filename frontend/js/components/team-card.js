@@ -33,7 +33,8 @@ class TeamCard extends HTMLElement {
 	 * @returns {string[]}
 	 */
 	static get observedAttributes() {
-		return ['team-id', 'name', 'mark', 'color', 'role'];
+		// Added status attributes to support issue-aware dashboard
+		return ['team-id', 'name', 'mark', 'color', 'role', 'open', 'prog', 'done', 'user-initials'];
 	}
 
 	#rendered = false;
@@ -64,10 +65,17 @@ class TeamCard extends HTMLElement {
 		const color = this.getAttribute('color') ?? '0';
 		const role = this.getAttribute('role') ?? 'Member';
 
+		// Status values
+		const openCount = this.getAttribute('open') ?? '0';
+		const progCount = this.getAttribute('prog') ?? '0';
+		const doneCount = this.getAttribute('done') ?? '0';
+		const userInitials = this.getAttribute('user-initials') ?? 'AL';
+
 		const link = this.querySelector('a.team');
 		const teamMark = this.querySelector('.team-mark');
 		const title = this.querySelector('h2');
 		const subtitleEl = this.querySelector('.slug');
+		const avatarEl = this.querySelector('.avatar');
 
 		if (link) link.href = `tracker.html?team_id=${teamId}`;
 
@@ -80,9 +88,23 @@ class TeamCard extends HTMLElement {
 		if (title) title.textContent = name;
 
 		if (subtitleEl) subtitleEl.textContent = role === 'admin' ? 'Workspace Admin' : 'Workspace Member';
+		
+		// Ensure initials match the current user
+		if (avatarEl) avatarEl.textContent = userInitials;
 
+		// Enabling stats display
 		const statsEl = this.querySelector('.stats');
-		if (statsEl) statsEl.style.display = 'none';
+		if (statsEl) {
+			statsEl.style.display = 'grid'; // Remove 'none' to show counts
+			
+			const openEl = this.querySelector('.open-count');
+			const progEl = this.querySelector('.prog-count');
+			const doneEl = this.querySelector('.done-count');
+			
+			if (openEl) openEl.textContent = openCount;
+			if (progEl) progEl.textContent = progCount;
+			if (doneEl) doneEl.textContent = doneCount;
+		}
 	}
 }
 

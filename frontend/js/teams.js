@@ -242,3 +242,39 @@ async function initTeamsPage() {
 }
 
 initTeamsPage();
+
+// ============================================================
+// Teams Dashboard Logic
+// ============================================================
+
+const sortTrigger = document.getElementById('sort-teams-trigger');
+const sortMenu = document.getElementById('sort-teams-menu');
+
+if (sortTrigger && sortMenu) {
+	// Toggle the sorting menu visibility
+	sortTrigger.addEventListener('click', (e) => {
+		e.stopPropagation();
+		sortMenu.classList.toggle('open');
+	});
+
+	// Close menu when clicking outside
+	document.addEventListener('click', () => sortMenu.classList.remove('open'));
+
+	// Handle filled circle update when a sort is selected
+	sortMenu.querySelectorAll('.sort-item').forEach((item) => {
+		item.addEventListener('click', () => {
+			// Remove active state (and filled circle) from all items
+			sortMenu.querySelectorAll('.sort-item').forEach(el => el.classList.remove('active'));
+			
+			// Add active state to selected item
+			item.classList.add('active');
+			
+			// Update the trigger button text to reflect current sort view
+			const sortName = item.textContent.trim();
+			sortTrigger.textContent = `Sort: ${sortName.toLowerCase()} ▾`;
+			
+			sortMenu.classList.remove('open');
+			showToast(`Sorting teams by ${sortName.toLowerCase()}`);
+		});
+	});
+}

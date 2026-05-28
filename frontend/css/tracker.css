@@ -988,3 +988,85 @@ body {
 		width: 180px;
 	}
 }
+
+/* Status sort - Filled circle indicator when active */
+.nav-item.active .ic {
+	background: currentcolor; /* Fills the circle with the item's color */
+	opacity: 1;
+}
+
+/* Tags dropdown/shrink option (+N more chip) */
+.issue-row .labels .chip.tag-more {
+	background: var(--surface-2);
+	border: 1px dashed var(--line-strong);
+	color: var(--muted);
+	cursor: pointer;
+	transition: background 0.1s;
+}
+
+.issue-row .labels .chip.tag-more:hover {
+	background: var(--line-strong);
+	color: var(--ink);
+}
+
+/* Details Page Metadata Grid */
+.detail-meta-grid {
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	gap: 16px;
+	padding: 12px 32px;
+	background: var(--surface-2);
+	border-bottom: 1px solid var(--line);
+}
+
+.detail-meta-grid .meta-label {
+	display: block;
+	margin-bottom: 4px;
+	font-family: var(--mono);
+	font-size: 9px;
+	text-transform: uppercase;
+	color: var(--muted);
+	letter-spacing: 0.05em;
+}
+
+/* Visibility toggles (Edit Issue Mode) */
+.view-state.hidden,
+.edit-state.hidden {
+	display: none !important;
+}
+
+/* Advanced Filter / Clear All link in sidebar */
+.sidebar-footer {
+	margin-top: 12px;
+	padding: 0 6px;
+}
+
+.sidebar-link {
+	font-size: 12px;
+	color: var(--accent-ink);
+	text-decoration: underline;
+	cursor: pointer;
+	background: none;
+	border: none;
+	padding: 0;
+}
+
+.sidebar-link:hover {
+	color: var(--accent);
+}
+
+/* AI Highlight*/
+/* Styles for the "Summary" and "Hypothesis" AI sections */
+.ai-content-block {
+	border: 1px solid var(--line);
+	border-radius: var(--r-3);
+	padding: 16px;
+	margin-bottom: 24px;
+	position: relative;
+}
+
+.ai-content-block h4 {
+	margin: 0 0 8px;
+	font-size: 14px;
+	font-weight: 600;
+}

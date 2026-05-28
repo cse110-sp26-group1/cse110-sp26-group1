@@ -740,3 +740,103 @@ html.dark .poster {
 html.dark .theme-toggle::before {
 	content: '☀';
 }
+
+/* Status sort - Sidebar "Filled Circle" Indicator */
+.filter-item {
+	display: flex;
+	align-items: center;
+	padding: 4px 10px;
+	cursor: pointer;
+	border-radius: var(--r-1);
+	color: var(--ink-2);
+	font-size: 13px;
+}
+.filter-item:hover { background: var(--surface-2); }
+
+/* The circle indicator */
+.filter-item .indicator {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	border: 1.5px solid var(--line-strong);
+	margin-right: 12px;
+	flex-shrink: 0;
+}
+
+/* Filled circle logic for active sort/filter */
+.filter-item.active { background: var(--surface-3); font-weight: 500; }
+.filter-item.active .indicator { 
+	background: currentColor; 
+	border-color: transparent; 
+}
+
+/* Details Page Metadata Grid & Edit Toggle */
+.issue-details-header {
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--line);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.details-meta-grid {
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	gap: 8px;
+	padding: 12px 20px;
+	background: var(--surface-2);
+	border-bottom: 1px solid var(--line);
+}
+
+.meta-col .label-sm {
+	display: block;
+	margin-bottom: 4px;
+	font-family: var(--mono);
+	font-size: 9px;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* Visibility toggles (Edit mode) */
+.view-mode.hidden,
+.edit-mode.hidden {
+	display: none !important;
+}
+
+/* List of Tags & Shrink (+N more) UI */
+.tag-container {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+
+/* Specific "shrink" styling for the more button */
+.chip.tag-more {
+	border-style: dashed;
+	background: var(--surface-3);
+	color: var(--muted);
+	cursor: pointer;
+}
+.chip.tag-more:hover {
+	background: var(--line-strong);
+	color: var(--ink);
+}
+
+/* Sort UI & Clear Filters */
+.list-controls {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 0;
+}
+
+.clear-filters-btn {
+	background: none;
+	border: none;
+	color: var(--accent-ink);
+	font-size: 11px;
+	text-decoration: underline;
+	cursor: pointer;
+	padding: 0;
+}
