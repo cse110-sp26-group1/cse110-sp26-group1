@@ -137,15 +137,6 @@ document.querySelectorAll('.sidebar .filter-item[data-group]').forEach((item) =>
 	});
 });
 
-// Clear all filters
-document.getElementById('clear-all-btn')?.addEventListener('click', () => {
-	state.tag = 'all';
-	state.status = 'all';
-	state.priority = 'all';
-	document.querySelectorAll('.sidebar .filter-item').forEach((el) => el.classList.remove('active'));
-	renderList();
-});
-
 /**
  * Filters, sorts, groups, and re-renders the issue list.
  */

@@ -27,9 +27,14 @@
 				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
 				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
 				<div class="user-switch" id="user-switch">
-					<button type="button" class="avatar user-avatar" id="user-avatar" aria-haspopup="true" aria-expanded="false" title="Ada Lovelace">
-						AL
-					</button>
+					<button
+						type="button"
+						class="avatar user-avatar"
+						id="user-avatar"
+						aria-haspopup="true"
+						aria-expanded="false"
+						title="Account"
+					></button>
 					<div class="user-dropdown" id="user-dropdown" role="menu">
 						<button type="button" class="item" id="sign-out-btn" role="menuitem">Sign out</button>
 					</div>
@@ -106,7 +111,7 @@
 
 		<script src="../js/theme.js"></script>
 		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
-		<script src="../js/user-menu.js"></script>
+		<script type="module" src="../js/user-menu.js"></script>
 		<script type="module" src="../js/teams.js"></script>
 	</body>
 </html>
