@@ -19,16 +19,16 @@ export const DEFAULT_VIEWS = [
 	{
 		id: 'all',
 		name: 'All Issues',
-		filters: { status: 'all', priority: 'all', tag: 'all' }
+		filters: { status: 'all', priority: 'all', tag: 'all' },
 	},
 	{
 		id: 'urgent',
 		name: 'Urgent Action',
-		filters: { status: 'Open', priority: 'Critical', tag: 'all' }
+		filters: { status: 'Open', priority: 'Critical', tag: 'all' },
 	},
 	{
 		id: 'ui-bugs',
 		name: 'UI Bugs',
-		filters: { status: 'all', priority: 'all', tag: 'ui' }
-	}
+		filters: { status: 'all', priority: 'all', tag: 'ui' },
+	},
 ];

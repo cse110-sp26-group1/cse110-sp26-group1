@@ -88,7 +88,7 @@ class TeamCard extends HTMLElement {
 		if (title) title.textContent = name;
 
 		if (subtitleEl) subtitleEl.textContent = role === 'admin' ? 'Workspace Admin' : 'Workspace Member';
-		
+
 		// Ensure initials match the current user
 		if (avatarEl) avatarEl.textContent = userInitials;
 
@@ -96,11 +96,11 @@ class TeamCard extends HTMLElement {
 		const statsEl = this.querySelector('.stats');
 		if (statsEl) {
 			statsEl.style.display = 'grid'; // Remove 'none' to show counts
-			
+
 			const openEl = this.querySelector('.open-count');
 			const progEl = this.querySelector('.prog-count');
 			const doneEl = this.querySelector('.done-count');
-			
+
 			if (openEl) openEl.textContent = openCount;
 			if (progEl) progEl.textContent = progCount;
 			if (doneEl) doneEl.textContent = doneCount;
