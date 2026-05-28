@@ -9,6 +9,7 @@ Albert:
 - used ai to help verify if keeping it a seperate file is better or to just intergrate it into login/sigup.
 - still hand checked to verify everything and handwrote all of the comments for toggle password.
 Amberly:
+- fix linting 
 
 
 Amormio:
