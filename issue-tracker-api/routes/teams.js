@@ -1,4 +1,5 @@
 import { requireAuth } from '../src/lib/auth.js';
+import { createInvite, resolveInvitedUserId } from '../src/lib/invites.js';
 import { requireTeamAdmin, requireTeamMember } from '../src/lib/teams.js';
 
 /**
@@ -13,6 +14,7 @@ import { requireTeamAdmin, requireTeamMember } from '../src/lib/teams.js';
  * GET    /teams/:teamId/members
  * DELETE /teams/:teamId/members/:userId
  * DELETE /teams/:teamId/leave
+ * POST   /teams/:teamId/invite
  *
  * @param {Request} request - Incoming Worker request.
  * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
@@ -382,6 +384,24 @@ export async function handleTeams(request, env) {
 			success: true,
 			message: 'Left team and deleted empty team',
 		});
+	}
+
+	// POST /teams/:teamId/invite
+	// Creates a pending invite for a user (by id, username, or email). Requires admin.
+	if (method === 'POST' && teamId && subresource === 'invite') {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		const parsedTeamId = Number(teamId);
+		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
+			return Response.json({ error: 'Invalid team ID format. Must be a positive integer.' }, { status: 400 });
+		}
+
+		const body = await request.json();
+		const resolved = await resolveInvitedUserId(env, body);
+		if (resolved.error) return resolved.error;
+
+		return createInvite(env, auth.userId, parsedTeamId, resolved.invitedUserId);
 	}
 
 	return Response.json({ error: 'Not Found' }, { status: 404 });
