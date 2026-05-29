@@ -29,6 +29,16 @@ async function createTestTeam(teamName) {
 }
 
 /**
+ * Adds a user as a member of a team.
+ * Required for requireTeamMember checks to pass.
+ * @param {number} userId - The id of the user to add.
+ * @param {number} teamId - The id of the team to add the user to.
+ */
+async function addTeamMember(userId, teamId) {
+	await env.DB.prepare('INSERT INTO team_members (user_id, team_id) VALUES (?, ?)').bind(userId, teamId).run();
+}
+
+/**
  * Creates a test issue directly in the DB and returns its id.
  * Used to seed data for GET and PATCH tests without going through the endpoint.
  * @param {number} teamId - The id of the team the issue belongs to.
@@ -88,6 +98,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('200: returns correct issue by id with all fields (Integration Style)', async () => {
 				const userId = await createTestUser('agent_user', 'agent@ucsd.edu');
 				const teamId = await createTestTeam('Agent Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Null pointer exception');
 				const token = await createTestSession(userId);
 
@@ -106,6 +117,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('200: response includes all expected issue fields (Unit Style)', async () => {
 				const userId = await createTestUser('field_user', 'fields@ucsd.edu');
 				const teamId = await createTestTeam('Field Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Field Check Issue');
 				const token = await createTestSession(userId);
 
@@ -151,6 +163,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('200: array fields (tags, stack_trace, affected_files) are parsed as arrays', async () => {
 				const userId = await createTestUser('array_user', 'array@ucsd.edu');
 				const teamId = await createTestTeam('Array Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Array Field Issue');
 				const token = await createTestSession(userId);
 
@@ -213,6 +226,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('201: creates an issue with only required fields (Integration Style)', async () => {
 				const userId = await createTestUser('post_user', 'post@ucsd.edu');
 				const teamId = await createTestTeam('Post Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch('http://localhost/agents', {
@@ -229,6 +243,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('201: creates an issue with all fields populated (Unit Style)', async () => {
 				const userId = await createTestUser('full_user', 'full@ucsd.edu');
 				const teamId = await createTestTeam('Full Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				const req = new Request('http://localhost/agents', {
@@ -273,6 +288,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('201: issue created by agent appears in the issues table with correct created_by', async () => {
 				const userId = await createTestUser('verify_user', 'verify@ucsd.edu');
 				const teamId = await createTestTeam('Verify Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				await SELF.fetch('http://localhost/agents', {
@@ -290,6 +306,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('201: defaults status, priority, category when not provided', async () => {
 				const userId = await createTestUser('default_user', 'default@ucsd.edu');
 				const teamId = await createTestTeam('Default Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				await SELF.fetch('http://localhost/agents', {
@@ -337,6 +354,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects missing title', async () => {
 				const userId = await createTestUser('notitle_user', 'notitle@ucsd.edu');
 				const teamId = await createTestTeam('No Title Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch('http://localhost/agents', {
@@ -383,6 +401,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects empty string title', async () => {
 				const userId = await createTestUser('emptytitle_user', 'emptytitle@ucsd.edu');
 				const teamId = await createTestTeam('Empty Title Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch('http://localhost/agents', {
@@ -399,6 +418,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects invalid status enum value', async () => {
 				const userId = await createTestUser('badstatus_user', 'badstatus@ucsd.edu');
 				const teamId = await createTestTeam('Bad Status Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch('http://localhost/agents', {
@@ -415,6 +435,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects invalid priority enum value', async () => {
 				const userId = await createTestUser('badpriority_user', 'badpriority@ucsd.edu');
 				const teamId = await createTestTeam('Bad Priority Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch('http://localhost/agents', {
@@ -431,6 +452,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects invalid category enum value', async () => {
 				const userId = await createTestUser('badcat_user', 'badcat@ucsd.edu');
 				const teamId = await createTestTeam('Bad Category Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch('http://localhost/agents', {
@@ -447,6 +469,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects non-integer token_usage', async () => {
 				const userId = await createTestUser('badtoken_user', 'badtoken@ucsd.edu');
 				const teamId = await createTestTeam('Bad Token Team');
+				await addTeamMember(userId, teamId);
 				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch('http://localhost/agents', {
@@ -500,6 +523,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('200: agent updates status of an existing issue (Integration Style)', async () => {
 				const userId = await createTestUser('patch_user', 'patch@ucsd.edu');
 				const teamId = await createTestTeam('Patch Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Issue to patch');
 				const token = await createTestSession(userId);
 
@@ -517,6 +541,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('200: agent updates multiple allowed fields at once (Unit Style)', async () => {
 				const userId = await createTestUser('multi_patch_user', 'multipatch@ucsd.edu');
 				const teamId = await createTestTeam('Multi Patch Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Multi patch issue');
 				const token = await createTestSession(userId);
 
@@ -544,6 +569,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('200: updated_at is refreshed after a patch', async () => {
 				const userId = await createTestUser('timestamp_user', 'timestamp@ucsd.edu');
 				const teamId = await createTestTeam('Timestamp Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Timestamp issue');
 				const token = await createTestSession(userId);
 
@@ -568,6 +594,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects a blocked field — description', async () => {
 				const userId = await createTestUser('block_desc_user', 'blockdesc@ucsd.edu');
 				const teamId = await createTestTeam('Block Desc Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Block desc issue');
 				const token = await createTestSession(userId);
 
@@ -585,6 +612,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects a blocked field — assigned_to', async () => {
 				const userId = await createTestUser('block_assign_user', 'blockassign@ucsd.edu');
 				const teamId = await createTestTeam('Block Assign Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Block assign issue');
 				const token = await createTestSession(userId);
 
@@ -602,6 +630,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects a blocked field — team_id', async () => {
 				const userId = await createTestUser('block_team_user', 'blockteam@ucsd.edu');
 				const teamId = await createTestTeam('Block Team Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Block team issue');
 				const token = await createTestSession(userId);
 
@@ -619,6 +648,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects a mix of valid and blocked fields', async () => {
 				const userId = await createTestUser('mix_user', 'mix@ucsd.edu');
 				const teamId = await createTestTeam('Mix Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Mix field issue');
 				const token = await createTestSession(userId);
 
@@ -636,6 +666,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects empty body', async () => {
 				const userId = await createTestUser('empty_patch_user', 'emptypatch@ucsd.edu');
 				const teamId = await createTestTeam('Empty Patch Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Empty patch issue');
 				const token = await createTestSession(userId);
 
@@ -653,6 +684,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects invalid status enum on patch', async () => {
 				const userId = await createTestUser('badstatus_patch_user', 'badstatuspatch@ucsd.edu');
 				const teamId = await createTestTeam('Bad Status Patch Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Bad status patch');
 				const token = await createTestSession(userId);
 
@@ -670,6 +702,7 @@ describe('Agent Endpoint Testing Suite', () => {
 			it('400: rejects array body', async () => {
 				const userId = await createTestUser('array_patch_user', 'arraypatch@ucsd.edu');
 				const teamId = await createTestTeam('Array Patch Team');
+				await addTeamMember(userId, teamId);
 				const issueId = await createTestIssue(teamId, userId, 'Array patch issue');
 				const token = await createTestSession(userId);
 

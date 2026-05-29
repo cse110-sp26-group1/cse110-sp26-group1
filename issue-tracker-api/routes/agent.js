@@ -1,4 +1,5 @@
 import { requireAuth } from '../src/lib/auth.js';
+import { requireTeamMember } from '../src/lib/teams.js';
 
 /** @type {string[]} Valid issue status values. */
 const ISSUE_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
@@ -70,6 +71,9 @@ export async function handleAgents(request, env) {
 			return Response.json({ error: 'Issue not found' }, { status: 404 });
 		}
 
+		const membership = await requireTeamMember(env, auth.userId, issue.team_id);
+		if (membership.error) return membership.error;
+
 		// Parse JSON array fields back into arrays for the agent
 		const formatted = {
 			...issue,
@@ -121,6 +125,9 @@ export async function handleAgents(request, env) {
 		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
 			return Response.json({ error: 'Invalid team_id. Must be a positive integer.' }, { status: 400 });
 		}
+
+		const membership = await requireTeamMember(env, auth.userId, parsedTeamId);
+		if (membership.error) return membership.error;
 
 		// --- Enum validation for optional fields ---
 
@@ -194,6 +201,15 @@ export async function handleAgents(request, env) {
 	if (method === 'PATCH' && issueId) {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
+
+		const issue = await env.DB.prepare('SELECT team_id FROM issues WHERE id = ?').bind(Number(issueId)).first();
+
+		if (!issue) {
+			return Response.json({ error: 'Issue not found' }, { status: 404 });
+		}
+
+		const membership = await requireTeamMember(env, auth.userId, issue.team_id);
+		if (membership.error) return membership.error;
 
 		const body = await request.json().catch(() => null);
 
