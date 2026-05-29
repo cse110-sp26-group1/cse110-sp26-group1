@@ -153,13 +153,14 @@ describe('Invites Endpoint Testing Suite', () => {
 				expect(data.status).toBe('pending');
 			});
 
-			it('200: allows inviter to view the invite', async () => {
+			it('200: allows admin inviter to view the invite', async () => {
 				const inviterId = await createTestUser('alex', 'alex@test.com');
 				const inviteeId = await createTestUser('jamie', 'jamie@test.com');
 				const token = 'inviter-token';
 
 				await createTestSession(inviterId, token, 24);
 
+				// Team creator is automatically an admin
 				const teamId = await createTestTeam('Backend Team', inviterId);
 				const inviteId = await createTestInvite(teamId, inviterId, inviteeId, 'pending');
 
