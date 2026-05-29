@@ -45,7 +45,7 @@ async function createTestIssue(teamId, createdBy, title = 'Sample Agent Issue') 
 
 /**
  * Creates a test session for a user and returns the session token.
- * Used to provide Authorization headers for POST /agents tests.
+ * Used to provide Authorization headers for authenticated requests.
  * @param {number} userId - The id of the user to create a session for.
  * @returns {Promise<string>} The session token.
  */
@@ -89,8 +89,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('agent_user', 'agent@ucsd.edu');
 				const teamId = await createTestTeam('Agent Team');
 				const issueId = await createTestIssue(teamId, userId, 'Null pointer exception');
+				const token = await createTestSession(userId);
 
-				const res = await SELF.fetch(`http://localhost/agents/${issueId}`);
+				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
 
 				expect(res.status).toBe(200);
 				const data = await res.json();
@@ -104,8 +107,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('field_user', 'fields@ucsd.edu');
 				const teamId = await createTestTeam('Field Team');
 				const issueId = await createTestIssue(teamId, userId, 'Field Check Issue');
+				const token = await createTestSession(userId);
 
-				const req = new Request(`http://localhost/agents/${issueId}`);
+				const req = new Request(`http://localhost/agents/${issueId}`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
 				const ctx = createExecutionContext();
 				const res = await worker.fetch(req, env, ctx);
 				await waitOnExecutionContext(ctx);
@@ -146,8 +152,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('array_user', 'array@ucsd.edu');
 				const teamId = await createTestTeam('Array Team');
 				const issueId = await createTestIssue(teamId, userId, 'Array Field Issue');
+				const token = await createTestSession(userId);
 
-				const res = await SELF.fetch(`http://localhost/agents/${issueId}`);
+				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
 				const data = await res.json();
 
 				expect(Array.isArray(data.tags)).toBe(true);
@@ -158,7 +167,12 @@ describe('Agent Endpoint Testing Suite', () => {
 
 		describe('Failure Cases', () => {
 			it('404: returns 404 for an issue id that does not exist', async () => {
-				const res = await SELF.fetch('http://localhost/agents/99999');
+				const userId = await createTestUser('notfound_user', 'notfound@ucsd.edu');
+				const token = await createTestSession(userId);
+
+				const res = await SELF.fetch('http://localhost/agents/99999', {
+					headers: { Authorization: `Bearer ${token}` },
+				});
 
 				expect(res.status).toBe(404);
 				const data = await res.json();
@@ -303,7 +317,7 @@ describe('Agent Endpoint Testing Suite', () => {
 
 				expect(res.status).toBe(401);
 				const data = await res.json();
-				expect(data.error).toContain('No session provided');
+				expect(data.error).toContain('Unauthorized');
 			});
 
 			it('401: rejects request with an invalid session token', async () => {
@@ -317,7 +331,7 @@ describe('Agent Endpoint Testing Suite', () => {
 
 				expect(res.status).toBe(401);
 				const data = await res.json();
-				expect(data.error).toContain('Invalid or expired session');
+				expect(data.error).toContain('Invalid session');
 			});
 
 			it('400: rejects missing title', async () => {
@@ -487,10 +501,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('patch_user', 'patch@ucsd.edu');
 				const teamId = await createTestTeam('Patch Team');
 				const issueId = await createTestIssue(teamId, userId, 'Issue to patch');
+				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({ status: 'In Progress' }),
 				});
 
@@ -503,10 +518,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('multi_patch_user', 'multipatch@ucsd.edu');
 				const teamId = await createTestTeam('Multi Patch Team');
 				const issueId = await createTestIssue(teamId, userId, 'Multi patch issue');
+				const token = await createTestSession(userId);
 
 				const req = new Request(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({
 						status: 'Resolved',
 						resolution_notes: 'Fixed the null check',
@@ -529,12 +545,16 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('timestamp_user', 'timestamp@ucsd.edu');
 				const teamId = await createTestTeam('Timestamp Team');
 				const issueId = await createTestIssue(teamId, userId, 'Timestamp issue');
+				const token = await createTestSession(userId);
 
 				const before = await env.DB.prepare('SELECT updated_at FROM issues WHERE id = ?').bind(issueId).first();
 
+				// Wait 1 second so the updated_at timestamp is guaranteed to differ
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+
 				await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({ status: 'In Progress' }),
 				});
 
@@ -549,10 +569,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('block_desc_user', 'blockdesc@ucsd.edu');
 				const teamId = await createTestTeam('Block Desc Team');
 				const issueId = await createTestIssue(teamId, userId, 'Block desc issue');
+				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({ description: 'agent trying to overwrite' }),
 				});
 
@@ -565,10 +586,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('block_assign_user', 'blockassign@ucsd.edu');
 				const teamId = await createTestTeam('Block Assign Team');
 				const issueId = await createTestIssue(teamId, userId, 'Block assign issue');
+				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({ assigned_to: userId }),
 				});
 
@@ -581,10 +603,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('block_team_user', 'blockteam@ucsd.edu');
 				const teamId = await createTestTeam('Block Team Team');
 				const issueId = await createTestIssue(teamId, userId, 'Block team issue');
+				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({ team_id: 999 }),
 				});
 
@@ -597,10 +620,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('mix_user', 'mix@ucsd.edu');
 				const teamId = await createTestTeam('Mix Team');
 				const issueId = await createTestIssue(teamId, userId, 'Mix field issue');
+				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({ status: 'Resolved', description: 'blocked' }),
 				});
 
@@ -613,10 +637,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('empty_patch_user', 'emptypatch@ucsd.edu');
 				const teamId = await createTestTeam('Empty Patch Team');
 				const issueId = await createTestIssue(teamId, userId, 'Empty patch issue');
+				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({}),
 				});
 
@@ -629,10 +654,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('badstatus_patch_user', 'badstatuspatch@ucsd.edu');
 				const teamId = await createTestTeam('Bad Status Patch Team');
 				const issueId = await createTestIssue(teamId, userId, 'Bad status patch');
+				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({ status: 'SuperCritical' }),
 				});
 
@@ -645,10 +671,11 @@ describe('Agent Endpoint Testing Suite', () => {
 				const userId = await createTestUser('array_patch_user', 'arraypatch@ucsd.edu');
 				const teamId = await createTestTeam('Array Patch Team');
 				const issueId = await createTestIssue(teamId, userId, 'Array patch issue');
+				const token = await createTestSession(userId);
 
 				const res = await SELF.fetch(`http://localhost/agents/${issueId}`, {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify([{ status: 'Resolved' }]),
 				});
 
@@ -670,9 +697,12 @@ describe('Agent Endpoint Testing Suite', () => {
 			});
 
 			it('404: returns 404 when patching a non-existent issue', async () => {
+				const userId = await createTestUser('notfound_patch_user', 'notfoundpatch@ucsd.edu');
+				const token = await createTestSession(userId);
+
 				const res = await SELF.fetch('http://localhost/agents/99999', {
 					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 					body: JSON.stringify({ status: 'Resolved' }),
 				});
 

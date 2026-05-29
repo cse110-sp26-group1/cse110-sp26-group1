@@ -1,3 +1,5 @@
+import { requireAuth } from '../src/lib/auth.js';
+
 /** @type {string[]} Valid issue status values. */
 const ISSUE_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 
@@ -32,8 +34,9 @@ const JSON_ARRAY_FIELDS = ['tags', 'stack_trace', 'affected_files'];
  * @returns {Promise<Response>}
  *   200 — issue returned (GET), issue updated (PATCH)
  *   201 — issue created (POST)
+ *   204 — issue deleted (DELETE)
  *   400 — invalid id, invalid JSON, missing/invalid required fields, or blocked fields
- *   401 — missing or invalid session token (POST only)
+ *   401 — missing or invalid session token
  *   404 — issue not found, or route not matched
  */
 export async function handleAgents(request, env) {
@@ -58,6 +61,9 @@ export async function handleAgents(request, env) {
 	// stored JSON strings back into arrays.
 	// -----------------------------------------------------------------------
 	if (method === 'GET' && issueId) {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
 		const issue = await env.DB.prepare('SELECT * FROM issues WHERE id = ?').bind(Number(issueId)).first();
 
 		if (!issue) {
@@ -72,7 +78,7 @@ export async function handleAgents(request, env) {
 			affected_files: JSON.parse(issue.affected_files || '[]'),
 		};
 
-		return Response.json(formatted);
+		return Response.json(formatted, { status: 200 });
 	}
 
 	// -----------------------------------------------------------------------
@@ -83,22 +89,11 @@ export async function handleAgents(request, env) {
 	// fields itself with full structured context.
 	// -----------------------------------------------------------------------
 	if (method === 'POST' && !issueId) {
-		// gets created_by from session token
-		const header = request.headers.get('Authorization');
-		if (!header?.startsWith('Bearer ')) {
-			return Response.json({ error: 'No session provided' }, { status: 401 });
-		}
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
 
-		const token = header.slice(7);
-		const session = await env.DB.prepare('SELECT user_id FROM sessions WHERE token = ? AND expires_at > datetime("now")')
-			.bind(token)
-			.first();
-
-		if (!session) {
-			return Response.json({ error: 'Invalid or expired session' }, { status: 401 });
-		}
-
-		const parsedCreatedBy = session.user_id;
+		// gets created_by from the authenticated session via requireAuth
+		const parsedCreatedBy = auth.userId;
 
 		const body = await request.json().catch(() => null);
 
@@ -197,6 +192,9 @@ export async function handleAgents(request, env) {
 	// human input (description, assigned_to). updated_at is always refreshed.
 	// -----------------------------------------------------------------------
 	if (method === 'PATCH' && issueId) {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
 		const body = await request.json().catch(() => null);
 
 		if (body === null) {
