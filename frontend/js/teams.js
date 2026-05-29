@@ -1,4 +1,5 @@
 import { fetchTeams, createTeam, requireAuth, acceptInvite, rejectInvite, fetchInvites } from './api.js';
+import { getUserInitials } from './user-profile.js';
 
 import './components/team-card.js';
 
@@ -216,6 +217,7 @@ async function initTeamsPage() {
 			card.setAttribute('mark', mark);
 			card.setAttribute('color', '220');
 			card.setAttribute('role', team.role);
+			card.setAttribute('user-initials', getUserInitials());
 			return card;
 		});
 

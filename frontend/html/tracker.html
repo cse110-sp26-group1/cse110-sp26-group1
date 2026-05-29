@@ -79,10 +79,8 @@
 						id="user-avatar"
 						aria-haspopup="true"
 						aria-expanded="false"
-						title="Ada Lovelace"
-					>
-						AL
-					</button>
+						title="Account"
+					></button>
 					<div class="user-dropdown" id="user-dropdown" role="menu">
 						<button type="button" class="item" id="sign-out-btn" role="menuitem">Sign out</button>
 					</div>
@@ -143,10 +141,6 @@
 					<div class="filter-item" data-group="tag" data-val="perf">
 						<span class="indicator label-perf"></span> perf <span class="count" id="cnt-perf">0</span>
 					</div>
-					<!-- Added Advanced Filter link to reset sorts/filters -->
-					<div class="sidebar-footer">
-						<button class="clear-filters-btn" id="clear-all-btn">Advanced Filter</button>
-					</div>
 				</div>
 
 				<div class="nav-section">
@@ -174,7 +168,7 @@
 						<h1>All issues <span class="count" id="total-count">0</span></h1>
 						<div class="actions">
 							<!-- Detail toggle button -->
-							<button class="btn" id="toggle-detail" title="Toggle detail pane">← Details</button>
+							<button class="btn" id="toggle-detail" title="Toggle detail pane">⇌ Details</button>
 							<button class="btn primary" id="new-issue">+ New issue</button>
 						</div>
 					</div>
@@ -302,7 +296,7 @@
 		<div class="toast" id="toast"></div>
 
 		<script src="../js/theme.js"></script>
-		<script src="../js/user-menu.js"></script>
+		<script type="module" src="../js/user-menu.js"></script>
 		<script type="module" src="../js/tracker.js"></script>
 	</body>
 </html>

@@ -1,4 +1,5 @@
 import { login, requireNoAuth } from './api.js';
+import { saveStoredUser, userFromApiProfile } from './user-profile.js';
 import { initPasswordToggles } from './view-password.js';
 
 requireNoAuth();
@@ -27,9 +28,10 @@ async function handleLoginSubmit(e) {
 	}
 
 	try {
-		const { token, expires_at } = await login(email, password);
+		const { token, expires_at, user } = await login(email, password);
 		localStorage.setItem('allegro_token', token);
 		localStorage.setItem('allegro_token_expires', expires_at);
+		if (user) saveStoredUser(userFromApiProfile(user));
 		location.href = 'teams.html';
 	} catch (err) {
 		emailEl.setCustomValidity(err.message ?? 'Invalid credentials');

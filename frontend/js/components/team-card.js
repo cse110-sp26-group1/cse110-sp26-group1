@@ -1,3 +1,5 @@
+import { getUserInitials } from '../user-profile.js';
+
 const templateUrl = new URL('../../html/components/team-card.html', import.meta.url);
 
 let teamCardTemplate;
@@ -69,7 +71,7 @@ class TeamCard extends HTMLElement {
 		const openCount = this.getAttribute('open') ?? '0';
 		const progCount = this.getAttribute('prog') ?? '0';
 		const doneCount = this.getAttribute('done') ?? '0';
-		const userInitials = this.getAttribute('user-initials') ?? 'AL';
+		const userInitials = this.getAttribute('user-initials') ?? getUserInitials();
 
 		const link = this.querySelector('a.team');
 		const teamMark = this.querySelector('.team-mark');
