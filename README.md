@@ -2,7 +2,7 @@
 Team-based issue tracker for developers who want AI-assisted issue creation
 without giving up complete control of the workflow to agents. Humans manage issues in the web UI and can use their agents to work on and update those issues through our CLI tool.
 
-
+_note to self: once user guide is up make sure it's all caps to appear on the main page of repo_
 ## Documentation
 
 | Guide | Description |
