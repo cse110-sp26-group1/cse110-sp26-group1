@@ -1,4 +1,5 @@
 import { requireAuth } from '../src/lib/auth.js';
+import { createInvite, resolveInvitedUserId } from '../src/lib/invites.js';
 import { requireTeamAdmin } from '../src/lib/teams.js';
 
 /**
@@ -19,7 +20,6 @@ import { requireTeamAdmin } from '../src/lib/teams.js';
  * PATCH  /invites/:id/accept
  * PATCH  /invites/:id/reject
  * DELETE /invites/:id
- * POST   /teams/:teamId/invite
  *
  * @param {Request} request - Incoming HTTP request.
  * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
@@ -104,32 +104,19 @@ export async function handleInvites(request, env) {
 	}
 
 	// POST /invites
+	// Creates an invite using team_id and invited_user_id from the body.
+	// The inviter is always auth.userId, so users cannot spoof who sent it.
+	// This is the generic route for when the frontend is not already scoped to
+	// a specific team page, currently unused
 	if (url.pathname === '/invites' && method === 'POST') {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
 
 		const body = await request.json();
+		const resolved = await resolveInvitedUserId(env, body);
+		if (resolved.error) return resolved.error;
 
-		// Resolve invited_user_id from username or email if not provided directly
-		let invitedUserId = body.invited_user_id;
-
-		if (!invitedUserId) {
-			if (!body.username && !body.email) {
-				return Response.json({ error: 'invited_user_id, username, or email is required' }, { status: 400 });
-			}
-
-			const lookup = body.username
-				? await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(body.username.trim()).first()
-				: await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(body.email.trim().toLowerCase()).first();
-
-			if (!lookup) {
-				return Response.json({ error: 'User not found' }, { status: 404 });
-			}
-
-			invitedUserId = lookup.id;
-		}
-
-		return createInvite(env, auth.userId, body.team_id, invitedUserId);
+		return createInvite(env, auth.userId, body.team_id, resolved.invitedUserId);
 	}
 
 	// PATCH /invites/:id/accept
@@ -281,169 +268,7 @@ export async function handleInvites(request, env) {
 		});
 	}
 
-	// POST /teams/:teamId/invite
-	if (url.pathname.startsWith('/teams/') && url.pathname.endsWith('/invite') && method === 'POST') {
-		const auth = await requireAuth(request, env);
-		if (auth.error) return auth.error;
-
-		const teamId = pathParts[2];
-		const body = await request.json();
-
-		let invitedUserId = body.invited_user_id;
-
-		if (!invitedUserId) {
-			if (!body.username && !body.email) {
-				return Response.json({ error: 'invited_user_id, username, or email is required' }, { status: 400 });
-			}
-
-			const lookup = body.username
-				? await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(body.username.trim()).first()
-				: await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(body.email.trim().toLowerCase()).first();
-
-			if (!lookup) {
-				return Response.json({ error: 'User not found' }, { status: 404 });
-			}
-
-			invitedUserId = lookup.id;
-		}
-
-		return createInvite(env, auth.userId, teamId, invitedUserId);
-	}
-
 	return Response.json({ error: 'Not Found' }, { status: 404 });
-}
-
-/**
- * Creates or reactivates an invite.
- *
- * This helper is shared by POST /invites and POST /teams/:teamId/invite
- * so both routes use the same validation and DB behavior.
- *
- * There are two main cases here:
- * 1. no matching invite history exists -> create a brand-new invite row
- * 2. an old invite row already exists for the same inviter/user/team ->
- *    reuse that row by setting it back to pending
- *
- * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
- * @param {number} inviterUserId - Logged-in user sending the invite.
- * @param {number|string} teamId - Team ID.
- * @param {number|string} invitedUserId - User ID being invited.
- * @returns {Promise<Response>} JSON response.
- */
-async function createInvite(env, inviterUserId, teamId, invitedUserId) {
-	// Validate IDs before doing DB work.
-	if (!teamId || !invitedUserId || !Number.isInteger(Number(teamId)) || !Number.isInteger(Number(invitedUserId))) {
-		return Response.json({ error: 'Invalid team_id or invited_user_id' }, { status: 400 });
-	}
-
-	// Users cannot invite themselves.
-	if (Number(invitedUserId) === Number(inviterUserId)) {
-		return Response.json({ error: 'Cannot invite yourself' }, { status: 400 });
-	}
-
-	// Only team admins can invite users.
-	const adminCheck = await requireTeamAdmin(env, inviterUserId, Number(teamId));
-	if (adminCheck.error) return adminCheck.error;
-
-	// Do not invite users who are already members.
-	const existingMember = await env.DB.prepare(
-		`
-            SELECT *
-            FROM team_members
-            WHERE team_id = ? AND user_id = ?
-        `,
-	)
-		.bind(teamId, invitedUserId)
-		.first();
-
-	if (existingMember) {
-		return Response.json({ error: 'User already in team' }, { status: 409 });
-	}
-
-	// Block duplicate live invites for the same user in the same team.
-	// This prevents multiple pending invites from existing at once for one
-	// team/user pair, even if different admins try to invite the same user.
-	const existingInvite = await env.DB.prepare(
-		`
-            SELECT *
-            FROM invites
-            WHERE team_id = ?
-            AND invited_user_id = ?
-            AND status = 'pending'
-        `,
-	)
-		.bind(teamId, invitedUserId)
-		.first();
-
-	if (existingInvite) {
-		return Response.json({ error: 'Pending invite already exists' }, { status: 409 });
-	}
-
-	// Look for an older invite row from this same inviter to this same user/team.
-	// This handles the "re-invite" case:
-	// if the user previously declined, we reuse the row instead of INSERTing a new
-	// one and violating UNIQUE(team_id, inviter_user_id, invited_user_id).
-	const priorInvite = await env.DB.prepare(
-		`
-            SELECT *
-            FROM invites
-            WHERE team_id = ?
-            AND inviter_user_id = ?
-            AND invited_user_id = ?
-        `,
-	)
-		.bind(teamId, inviterUserId, invitedUserId)
-		.first();
-
-	const now = new Date().toISOString();
-
-	if (priorInvite) {
-		// Reuse the old row by marking it pending again and refreshing created_at.
-		// In plain terms: "this invite existed before, so resend it instead of
-		// creating a duplicate row."
-		const result = await env.DB.prepare(
-			`
-                UPDATE invites
-                SET status = 'pending', created_at = ?
-                WHERE id = ?
-            `,
-		)
-			.bind(now, priorInvite.id)
-			.run();
-
-		return Response.json(
-			{
-				success: result.success,
-				invite_id: priorInvite.id,
-				message: 'Invite resent',
-			},
-			{ status: 200 },
-		);
-	}
-
-	// No matching history row exists, so create a fresh pending invite.
-	const result = await env.DB.prepare(
-		`
-            INSERT INTO invites (
-                team_id,
-                inviter_user_id,
-                invited_user_id,
-                status,
-                created_at
-            )
-            VALUES (?, ?, ?, ?, ?)
-        `,
-	)
-		.bind(teamId, inviterUserId, invitedUserId, 'pending', now)
-		.run();
-
-	return Response.json(
-		{
-			success: true,
-			invite_id: result.meta.last_row_id,
-		},
-		{ status: 201 },
-	);
 }
 
 /**
