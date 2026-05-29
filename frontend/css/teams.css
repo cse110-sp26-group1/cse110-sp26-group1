@@ -337,10 +337,6 @@ team-card {
 	color: var(--ink-2);
 }
 
-.sort-item:hover {
-	background: var(--surface-2);
-}
-
 /* The circle indicator to be used in the "Sort: recent" dropdown */
 .sort-item .circle {
 	width: 10px;
