@@ -1,4 +1,4 @@
-# The Opera House: Spring 3 Meeting
+# The Opera House: Sprint 3 Meeting
 
 ### Meeting Type: Discussion Meeting
 

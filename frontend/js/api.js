@@ -6,6 +6,7 @@ const API_BASE = 'https://issue-tracker-api.amorbuks25.workers.dev';
  *
  * Ensures that an 'allegro_token' exists in local storage. If the token
  * is missing, the user is immediately redirected to login.html.
+ * This is a lightweight frontend gate; backend routes still enforce auth.
  */
 export function requireAuth() {
 	if (!localStorage.getItem('allegro_token')) {
@@ -18,6 +19,7 @@ export function requireAuth() {
  *
  * Ensures that an 'allegro_token' exists in local storage. If the token
  * is missing, the user is immediately redirected to login.html.
+ * Used by auth pages so signed-in users do not loop back to login/signup.
  */
 export function requireNoAuth() {
 	if (localStorage.getItem('allegro_token')) {
@@ -57,6 +59,7 @@ export async function request(endpoint, options = {}) {
 
 		if (!response.ok) {
 			// Try to parse server error messages if available
+			// Workers may return plain-text or empty errors, so JSON parsing stays optional.
 			let errorMessage = `API Error: ${response.status} ${response.statusText}`;
 			try {
 				const errorData = await response.json();
@@ -79,8 +82,8 @@ export async function request(endpoint, options = {}) {
 
 /**
  * POST /api/auth/login
- * @param {string} email
- * @param {string} password
+ * @param {string} email Email address entered on the login form.
+ * @param {string} password Plaintext password submitted over HTTPS.
  * @returns {Promise<{ token: string, user: object }>}
  */
 export async function login(email, password) {
@@ -94,7 +97,7 @@ export async function login(email, password) {
  * POST /auth/register
  * Returns { success: true } on 201. (As of 05/20 does not return a token)
  *
- * @param {{ username: string, first_name: string, last_name: string, email: string, password: string }} data
+ * @param {{ username: string, first_name: string, last_name: string, email: string, password: string }} data Registration form payload.
  * @returns {Promise<{ success: boolean }>}
  */
 export async function createAccount(data) {
@@ -115,7 +118,7 @@ export async function fetchTeams() {
 
 /**
  * GET /teams/:teamId
- * @param {number} teamId
+ * @param {number} teamId Team id from route or dashboard card.
  * @returns {Promise<{ id: number, team_name: string, role: string, created_at: string }>}
  */
 export async function fetchTeam(teamId) {
@@ -125,7 +128,7 @@ export async function fetchTeam(teamId) {
 /**
  * POST /teams
  * Creates a new team. The authenticated user becomes its first admin.
- * @param {{ team_name: string }} data
+ * @param {{ team_name: string }} data New team fields.
  * @returns {Promise<{ success: boolean, team_id: number }>}
  */
 export async function createTeam(data) {
@@ -138,8 +141,8 @@ export async function createTeam(data) {
 /**
  * PATCH /teams/:teamId
  * Renames a team. Requires admin role.
- * @param {number} teamId
- * @param {{ team_name: string }} data
+ * @param {number} teamId Team to rename.
+ * @param {{ team_name: string }} data Updated team fields.
  * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function updateTeam(teamId, data) {
@@ -152,7 +155,7 @@ export async function updateTeam(teamId, data) {
 /**
  * DELETE /teams/:teamId
  * Deletes a team entirely. Requires admin role.
- * @param {number} teamId
+ * @param {number} teamId Team to delete.
  * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function deleteTeam(teamId) {
@@ -162,7 +165,7 @@ export async function deleteTeam(teamId) {
 /**
  * GET /teams/:teamId/members
  * Returns members with their role. Requires team membership.
- * @param {number} teamId
+ * @param {number} teamId Team whose members should be listed.
  * @returns {Promise<Array<{ id: number, username: string, email: string, role: string }>>}
  */
 export async function fetchTeamMembers(teamId) {
@@ -173,8 +176,8 @@ export async function fetchTeamMembers(teamId) {
  * DELETE /teams/:teamId/members/:userId
  * Removes a member from the team. Requires admin role.
  * Cannot be used to remove yourself — use leaveTeam() instead.
- * @param {number} teamId
- * @param {number} userId
+ * @param {number} teamId Team containing the member.
+ * @param {number} userId Member to remove.
  * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function removeTeamMember(teamId, userId) {
@@ -186,7 +189,7 @@ export async function removeTeamMember(teamId, userId) {
  * Lets the authenticated user leave a team.
  * Admins cannot leave if other members still exist (409).
  * If the admin is the last member, the team is deleted automatically.
- * @param {number} teamId
+ * @param {number} teamId Team the current user is leaving.
  * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function leaveTeam(teamId) {
@@ -209,7 +212,7 @@ export async function fetchInvites() {
  * GET /invites/:id
  * Returns a single invite with team and inviter details.
  * Accessible by the invited user, the inviter, or a team admin.
- * @param {number} inviteId
+ * @param {number} inviteId Invite to fetch.
  * @returns {Promise<object>}
  */
 export async function fetchInvite(inviteId) {
@@ -220,7 +223,7 @@ export async function fetchInvite(inviteId) {
  * POST /invites
  * Creates an invite from the authenticated user to another user.
  * The authenticated user must be a team admin.
- * @param {{ team_id: number, invited_user_id?: number, username?: string, email?: string }} data
+ * @param {{ team_id: number, invited_user_id?: number, username?: string, email?: string }} data Invite target and team.
  * @returns {Promise<{ success: boolean, invite_id: number }>}
  */
 export async function createInvite(data) {
@@ -234,8 +237,8 @@ export async function createInvite(data) {
  * POST /teams/:teamId/invite
  * Alternate invite route for use within a team context (e.g. team settings page).
  * teamId comes from the URL. Body requires one of: invited_user_id, username, or email.
- * @param {number} teamId
- * @param {{ invited_user_id?: number, username?: string, email?: string }} data
+ * @param {number} teamId Team issuing the invite.
+ * @param {{ invited_user_id?: number, username?: string, email?: string }} data Invite recipient identifier.
  * @returns {Promise<{ success: boolean, invite_id: number }>}
  */
 export async function inviteToTeam(teamId, data) {
@@ -249,7 +252,7 @@ export async function inviteToTeam(teamId, data) {
  * PATCH /invites/:id/accept
  * Accepts a pending invite. Only the invited user can call this.
  * Adds the user to team_members and marks the invite accepted in one batch.
- * @param {number} inviteId
+ * @param {number} inviteId Pending invite to accept.
  * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function acceptInvite(inviteId) {
@@ -259,7 +262,7 @@ export async function acceptInvite(inviteId) {
 /**
  * PATCH /invites/:id/reject
  * Declines a pending invite. Only the invited user can call this.
- * @param {number} inviteId
+ * @param {number} inviteId Pending invite to reject.
  * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function rejectInvite(inviteId) {
@@ -270,7 +273,7 @@ export async function rejectInvite(inviteId) {
  * DELETE /invites/:id
  * Cancels/deletes an invite.
  * Accessible by the invited user, the inviter, or a team admin.
- * @param {number} inviteId
+ * @param {number} inviteId Invite to delete.
  * @returns {Promise<{ success: boolean }>}
  */
 export async function deleteInvite(inviteId) {
@@ -281,7 +284,7 @@ export async function deleteInvite(inviteId) {
  * GET /issues?team_id=X
  * Supports optional query params: status, priority, assigned_to, category,
  * difficulty, sort_by, order.
- * @param {number} teamId
+ * @param {number} teamId Team whose issues should be fetched.
  * @param {Record<string, string>} [filters] - Optional filter/sort params
  * @returns {Promise<Array>}
  */
@@ -292,7 +295,7 @@ export async function fetchIssues(teamId, filters = {}) {
 
 /**
  * GET /issues/:id
- * @param {number} id
+ * @param {number} id Issue id to fetch.
  * @returns {Promise<object>}
  */
 export async function fetchIssue(id) {
@@ -305,8 +308,8 @@ export async function fetchIssue(id) {
  * attaching .log or .txt files — the backend reads their text content
  * and appends it to the description automatically.
  * Required fields: title, team_id, description.
- * @param {FormData|object} data
- * @returns {Promise<{ success: boolean, id: number, enriched: object }>}
+ * @param {FormData|object} data Issue payload, with FormData used for attachments.
+ * @returns {Promise<{ success: boolean }>}
  */
 export async function createIssue(data) {
 	const isFormData = data instanceof FormData;
@@ -323,8 +326,8 @@ export async function createIssue(data) {
  * tags, assigned_to, hypothesis, steps_to_reproduce, expected_behavior,
  * actual_behavior, missing_information, attempt_notes, resolution_notes,
  * affected_files.
- * @param {number} id
- * @param {object} updates
+ * @param {number} id Issue id to update.
+ * @param {object} updates Patch fields accepted by the issue endpoint.
  * @returns {Promise<{ success: boolean }>}
  */
 export async function updateIssue(id, updates) {
@@ -336,7 +339,7 @@ export async function updateIssue(id, updates) {
 
 /**
  * DELETE /issues/:id
- * @param {number} id
+ * @param {number} id Issue id to delete.
  * @returns {Promise<{ success: boolean }>}
  */
 export async function deleteIssue(id) {

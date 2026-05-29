@@ -1,6 +1,6 @@
 import { PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './constants.js';
 
-import { fetchIssues, fetchIssue, createIssue, updateIssue, deleteIssue } from './api.js';
+import { fetchIssues, createIssue, updateIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
@@ -14,6 +14,7 @@ const state = {
 	query: '',
 	selected: null,
 	detailOpen: true,
+	isEditing: false, // Track if we are in edit mode
 	teams: [],
 	currentTeamId: null,
 	teamMembers: [],
@@ -21,21 +22,21 @@ const state = {
 
 let ISSUES = [];
 
-const inviteBackdrop = document.getElementById('inviteBackdrop');
-const confirmInviteBtn = document.getElementById('confirmInvite');
-const inviteInput = document.getElementById('inviteInput');
-const openInviteModalBtn = document.getElementById('openInviteModal');
+const inviteBackdrop = document.getElementById('invite-backdrop');
+const confirmInviteBtn = document.getElementById('confirm-invite');
+const inviteInput = document.getElementById('invite-input');
+const openInviteModalBtn = document.getElementById('open-invite-modal');
 
-const listEl = document.getElementById('issueList');
-const totalCountEl = document.getElementById('totalCount');
+const listEl = document.getElementById('issue-list');
+const totalCountEl = document.getElementById('total-count');
 
 const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-const fileList = document.getElementById('fileList');
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
 
 // helpers for invite listeners below
 /**
- *
+ * Opens the invite modal only after a team has been resolved from the URL.
  */
 function openInvite() {
 	if (!state.currentTeamId) {
@@ -47,7 +48,7 @@ function openInvite() {
 }
 
 /**
- *
+ * Closes the invite modal and clears the draft recipient.
  */
 function closeInvite() {
 	inviteBackdrop.classList.remove('open');
@@ -56,7 +57,7 @@ function closeInvite() {
 
 if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
 
-document.getElementById('cancelInvite').addEventListener('click', closeInvite);
+document.getElementById('cancel-invite').addEventListener('click', closeInvite);
 
 inviteBackdrop.addEventListener('click', (e) => {
 	if (e.target === inviteBackdrop) closeInvite();
@@ -89,25 +90,8 @@ confirmInviteBtn.addEventListener('click', async () => {
 });
 
 /**
- *
- */
-function applyTeamFromUrl() {
-	const qs = new URLSearchParams(location.search);
-	const slug = qs.get('team');
-
-	// Look up from our fetched state instead of the static object
-	const t = state.teams.find((team) => team.slug === slug);
-	if (!t) return;
-
-	document.getElementById('teamLabel').textContent = t.name;
-	const mark = document.querySelector('.team-switch > .mark');
-	mark.textContent = t.mark;
-	mark.style.background = `oklch(0.92 0.04 ${t.color})`;
-	mark.style.color = `oklch(0.4 0.12 ${t.color})`;
-}
-
-/**
  * Calculates issue counts and updates the sidebar UI
+ * Reuses the fetched issue list so counts match the active team and filters.
  */
 function syncSidebar() {
 	if (!ISSUES) return;
@@ -133,28 +117,28 @@ function syncSidebar() {
 	});
 }
 
-document.querySelectorAll('.sidebar .nav-item[data-group]').forEach((item) => {
+document.querySelectorAll('.sidebar .filter-item[data-group]').forEach((item) => {
 	item.addEventListener('click', () => {
-		document.querySelectorAll('.sidebar .nav-item').forEach((el) => el.classList.remove('active'));
-		item.classList.add('active');
-
 		const group = item.dataset.group;
 		const val = item.dataset.val;
 
-		state.tag = 'all';
-		state.status = 'all';
-		state.priority = 'all';
-
-		if (group === 'tag') state.tag = val;
-		if (group === 'status') state.status = val;
-		if (group === 'priority') state.priority = val;
+		// Toggle logic, if clicking the active one, reset to 'all'
+		if (state[group] === val) {
+			state[group] = 'all';
+			item.classList.remove('active');
+		} else {
+			// Remove active from sibling items in the same group
+			document.querySelectorAll(`.sidebar .filter-item[data-group="${group}"]`).forEach((el) => el.classList.remove('active'));
+			state[group] = val;
+			item.classList.add('active');
+		}
 
 		renderList();
 	});
 });
 
 /**
- *
+ * Filters, sorts, groups, and re-renders the issue list.
  */
 function renderList() {
 	syncSidebar();
@@ -187,6 +171,7 @@ function renderList() {
 
 	let groups;
 	if (state.sort === 'priority') {
+		// Priority groups stay in product order even when some buckets are empty.
 		const buckets = { Critical: [], High: [], Medium: [], Low: [] };
 		items.forEach((i) => buckets[i.priority]?.push(i));
 		groups = [
@@ -221,6 +206,8 @@ function renderList() {
 			state.selected = Number(el.dataset.id);
 			renderList();
 			renderDetail();
+			// Selection should reveal the pane; otherwise a row click can look
+			// ignored after the user has collapsed issue details.
 			if (!state.detailOpen) toggleDetail();
 		});
 	});
@@ -228,9 +215,10 @@ function renderList() {
 
 /**
  * Creates team menu
+ * Renders the team switcher from API-backed team membership.
  */
 function renderTeamMenu() {
-	const teamMenu = document.getElementById('teamMenu');
+	const teamMenu = document.getElementById('team-menu');
 
 	const currentId = Number(new URLSearchParams(location.search).get('team_id'));
 
@@ -274,6 +262,7 @@ function renderTeamMenu() {
  */
 /**
  * Renders the team members avatars in the sidebar based on real API data
+ * Falls back to username/email when profile names are not present.
  */
 function renderTeamMembers() {
 	const membersContainer = document.querySelector('.sidebar .members');
@@ -289,6 +278,7 @@ function renderTeamMembers() {
 			let initials = '??';
 
 			// safe check since API was not updated during tests
+			// Older API fixtures may not have profile names yet.
 			if (member.first_name && member.last_name) {
 				initials = (member.first_name.charAt(0) + member.last_name.charAt(0)).toUpperCase();
 			} else {
@@ -313,6 +303,16 @@ function renderTeamMembers() {
 function rowHtml(i) {
 	const isSel = state.selected === i.id;
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
+
+	// Tag Shrink Logic
+	const maxTags = 2;
+	const visibleTags = i.tags.slice(0, maxTags);
+	const moreCount = i.tags.length - maxTags;
+
+	const tagsHtml =
+		visibleTags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('') +
+		(moreCount > 0 ? `<span class="chip tag-more">+${moreCount}</span>` : '');
+
 	return `
 	<div class="issue-row ${isSel ? 'selected' : ''}" data-id="${i.id}">
 		<span class="pri-mark ${i.priority.toLowerCase()}" title="${PRI_NAME[i.priority]}">${PRI_LABEL[i.priority]}</span>
@@ -320,7 +320,7 @@ function rowHtml(i) {
 			<span>${i.title}</span>
 			<span class="sub">${i.summary || ''}</span>
 		</div>
-		<div class="labels">${i.tags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}</div>
+		<div class="labels">${tagsHtml}</div>
 		<span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
 		<span class="updated">${i.updated_at}</span>
 	</div>`;
@@ -332,7 +332,7 @@ function rowHtml(i) {
 const detailEl = document.getElementById('detail');
 
 /**
- *
+ * Renders the currently selected issue, including derived assignee display.
  */
 function renderDetail() {
 	const i = ISSUES.find((x) => x.id === state.selected);
@@ -344,74 +344,96 @@ function renderDetail() {
             </div>`;
 		return;
 	}
-	const diffPips = Array.from({ length: 3 }, (_, k) => `<span class="d ${k < i.difficulty ? 'on' : ''}"></span>`).join('');
+
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
 
-	// FIX: temp thing for later loading
-	const processingBanner = i.tags.includes('ai-processing') ? '<span class="processing">AI is enriching this issue…</span>' : '';
+	// Implementation of View vs Edit Mode
+	if (!state.isEditing) {
+		// --- VIEW MODE ---
+		detailEl.innerHTML = `
+			<div class="issue-details-header">
+				<h1 class="h-2" style="margin:0">${i.title}</h1>
+				<button class="btn sm edit-issue-btn" title="Edit Issue">✎</button>
+			</div>
+			
+			<div class="details-meta-grid">
+				<div class="meta-col">
+					<span class="label-sm">STATUS</span>
+					<span class="chip st-${statusKey} sm">${i.status}</span>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">PRIORITY</span>
+					<span class="chip sm"><span class="dot" style="background:var(--pri-${i.priority.toLowerCase()})"></span>${i.priority}</span>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">DIFFICULTY</span>
+					<div class="diff">${Array.from({ length: 3 }, (_, k) => `<span class="d ${k < i.difficulty ? 'on' : ''}"></span>`).join('')}</div>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">LABELS</span>
+					<div class="tag-container">
+						${i.tags.map((t) => `<span class="chip sm">${t}</span>`).join('')}
+					</div>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">ASSIGNEE</span>
+					<div class="avatar sm">AT</div>
+				</div>
+			</div>
 
-	let assigneeHtml = `<span class="avatar sm" style="background: transparent; border: 1px dashed #888; color: #888;">--</span><span style="font-size:13px; color: #888;">Unassigned</span>`;
+			<div class="detail-body">
+				<div class="ai-content-block">
+					<span class="label-sm">Summary</span>
+					<p style="margin-top:8px">${i.summary || 'AI is generating a summary...'}</p>
+				</div>
+				<div class="ai-content-block" style="margin-top:24px">
+					<span class="label-sm">Hypothesis</span>
+					<p style="margin-top:8px">${i.description || 'No description provided.'}</p>
+				</div>
+			</div>`;
+	} else {
+		// --- EDIT MODE (Edit Issue UI) ---
+		detailEl.innerHTML = `
+			<div class="issue-details-header">
+				<input class="input h-2" id="edit-title" value="${i.title}" style="width: 70%">
+				<div class="actions">
+					<button class="btn sm" id="cancel-edit">Cancel</button>
+					<button class="btn sm primary" id="save-edit">Save</button>
+				</div>
+			</div>
+			
+			<div class="details-meta-grid">
+				<div class="meta-col">
+					<span class="label-sm">STATUS</span>
+					<select class="input sm" id="edit-status">
+						<option ${i.status === 'Open' ? 'selected' : ''}>Open</option>
+						<option ${i.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+						<option ${i.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+					</select>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">PRIORITY</span>
+					<select class="input sm" id="edit-priority">
+						<option ${i.priority === 'Critical' ? 'selected' : ''}>Critical</option>
+						<option ${i.priority === 'High' ? 'selected' : ''}>High</option>
+						<option ${i.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+						<option ${i.priority === 'Low' ? 'selected' : ''}>Low</option>
+					</select>
+				</div>
+			</div>
 
-	if (i.assigned_to && state.teamMembers) {
-		const member = state.teamMembers.find((m) => m.id === i.assigned_to);
-		if (member) {
-			const initials =
-				(member.first_name?.charAt(0) || member.username?.charAt(0) || '?').toUpperCase() +
-				(member.last_name?.charAt(0) || '').toUpperCase();
-			const name = member.first_name && member.last_name ? `${member.first_name} ${member.last_name}` : member.username;
-			assigneeHtml = `<span class="avatar sm">${initials}</span><span style="font-size:13px;">${name}</span>`;
-		}
+			<div class="detail-body">
+				<span class="label-sm">Description</span>
+				<textarea class="textarea" id="edit-desc" style="margin-top:8px">${i.description}</textarea>
+			</div>`;
 	}
-
-	detailEl.innerHTML = `
-        <div class="detail-head">
-            ${processingBanner}
-            <div class="actions">
-                <button class="btn sm">Copy link</button>
-                <button class="btn sm edit-issue-btn">Edit</button>
-                <button class="btn sm primary mark-done-btn">Mark done</button>
-            </div>
-        </div>
-        <div class="detail-body">
-            <h1 class="issue-title">${i.title}</h1>
-            <div class="meta-strip">
-                <div class="cell">
-                    <span class="label">Status</span>
-                    <span class="chip st-${statusKey}">${STATUS_NAME[i.status] || i.status}</span>
-                </div>
-                <div class="cell">
-                    <span class="label">Priority</span>
-                    <span class="chip pri-${i.priority}"><span class="dot"></span>${PRI_NAME[i.priority] || i.priority}</span>
-                </div>
-                <div class="cell">
-                    <span class="label">Difficulty</span>
-                    <span class="diff">${diffPips}</span>
-                </div>
-                <div class="cell" style="flex:1; min-width:160px;">
-                    <span class="label">Labels</span>
-                    <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                    	${i.tags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}
-                    </div>
-                </div>
-                
-                <div class="cell">
-                    <span class="label">Assignee</span>
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        ${assigneeHtml}
-                    </div>
-                </div>
-
-            </div>
-            ${i.summary ? `<div class="summary-block"><span class="label">Summary</span><p>${i.summary}</p></div>` : ''}
-            <div class="description">${i.description || '<p class="muted">No description.</p>'}</div>
-            </div>`;
 }
 
 // ============================================================
 // CONTROLS — search, sort, tag
 // ============================================================
-const searchInput = document.getElementById('issueSearch');
-const searchClearBtn = document.getElementById('issueSearchClear');
+const searchInput = document.getElementById('issue-search');
+const searchClearBtn = document.getElementById('issue-search-clear');
 
 /**
  * Show or hide the search clear control based on input value.
@@ -479,6 +501,8 @@ window.addEventListener('mousemove', (e) => {
 	if (!dragging) return;
 	const rect = content.getBoundingClientRect();
 	let left = e.clientX - rect.left;
+	// Clamp the divider so both panes remain usable before persisting the grid
+	// template as the user's preferred layout.
 	left = Math.max(340, Math.min(rect.width - 380, left));
 	content.style.gridTemplateColumns = `${left}px 6px 1fr`;
 });
@@ -488,8 +512,8 @@ if (savedWidth) content.style.gridTemplateColumns = savedWidth;
 // ============================================================
 // TEAM MENU
 // ============================================================
-const teamSwitch = document.getElementById('teamSwitch');
-const teamMenu = document.getElementById('teamMenu');
+const teamSwitch = document.getElementById('team-switch');
+const teamMenu = document.getElementById('team-menu');
 teamSwitch.addEventListener('click', (e) => {
 	e.stopPropagation();
 	teamMenu.classList.toggle('open');
@@ -501,28 +525,28 @@ teamMenu.addEventListener('click', (e) => e.stopPropagation());
 // DETAIL TOGGLE
 // ============================================================
 /**
- *
+ * Collapses or restores the detail pane.
  */
 function toggleDetail() {
 	state.detailOpen = !state.detailOpen;
 	content.classList.toggle('collapsed-detail', !state.detailOpen);
 }
-document.getElementById('toggleDetail').addEventListener('click', toggleDetail);
+document.getElementById('toggle-detail').addEventListener('click', toggleDetail);
 
 // ============================================================
 // NEW ISSUE MODAL
 // ============================================================
-const newBackdrop = document.getElementById('newBackdrop');
-const confirmNewBtn = document.getElementById('confirmNew');
+const newBackdrop = document.getElementById('new-backdrop');
+const confirmNewBtn = document.getElementById('confirm-new');
 let pendingFiles = [];
 
 /**
- *
+ * Opens the new issue modal and refreshes assignee options from team members.
  */
 function openNew() {
 	newBackdrop.classList.add('open');
 
-	const assigneeSelect = document.getElementById('nAssignee');
+	const assigneeSelect = document.getElementById('new-assignee');
 	if (assigneeSelect && state.teamMembers) {
 		const options = state.teamMembers
 			.map((m) => {
@@ -533,27 +557,27 @@ function openNew() {
 		assigneeSelect.innerHTML = `<option value="">Unassigned</option>${options}`;
 	}
 
-	setTimeout(() => document.getElementById('nTitle').focus(), 30);
+	setTimeout(() => document.getElementById('new-title').focus(), 30);
 }
 
 /**
- *
+ * Closes the new issue modal and discards unsent draft state.
  */
 function closeNew() {
 	newBackdrop.classList.remove('open');
 	resetForm();
 }
 /**
- *
+ * Clears fields that only exist in the client-side issue draft.
  */
 function resetForm() {
-	document.getElementById('nTitle').value = '';
-	document.getElementById('nDesc').value = '';
-	document.getElementById('fileList').innerHTML = '';
+	document.getElementById('new-title').value = '';
+	document.getElementById('new-desc').value = '';
+	document.getElementById('file-list').innerHTML = '';
 	pendingFiles = [];
 }
-document.getElementById('newIssue').addEventListener('click', openNew);
-document.getElementById('cancelNew').addEventListener('click', closeNew);
+document.getElementById('new-issue').addEventListener('click', openNew);
+document.getElementById('cancel-new').addEventListener('click', closeNew);
 newBackdrop.addEventListener('click', (e) => {
 	if (e.target === newBackdrop) closeNew();
 });
@@ -593,6 +617,8 @@ function addFiles(files) {
 
 	Array.from(files).forEach((f) => {
 		// Check by MIME type or by file extension (for .log files which often lack a MIME type)
+		// Many .log files arrive without a useful MIME type, so extension is a
+		// deliberate fallback rather than a duplicate validation path.
 		const isAllowed = allowedTypes.includes(f.type) || allowedExtensions.some((ext) => f.name.toLowerCase().endsWith(ext));
 
 		if (isAllowed) {
@@ -607,7 +633,7 @@ function addFiles(files) {
 }
 
 /**
- *
+ * Re-renders attachment chips so each remove button matches pendingFiles.
  */
 function renderFiles() {
 	fileList.innerHTML = pendingFiles
@@ -628,8 +654,8 @@ function renderFiles() {
 }
 
 confirmNewBtn.addEventListener('click', async () => {
-	const titleEl = document.getElementById('nTitle');
-	const descEl = document.getElementById('nDesc');
+	const titleEl = document.getElementById('new-title');
+	const descEl = document.getElementById('new-desc');
 	const title = titleEl.value.trim();
 	const desc = descEl.value.trim();
 
@@ -647,11 +673,11 @@ confirmNewBtn.addEventListener('click', async () => {
 	formData.append('description', desc);
 	if (state.currentTeamId) formData.append('team_id', state.currentTeamId);
 
-	const priority = document.getElementById('nPriority')?.value;
-	const category = document.getElementById('nCategory')?.value;
-	const assignee = document.getElementById('nAssignee')?.value;
-	const difficulty = document.getElementById('nDifficulty')?.value;
-	const tags = document.getElementById('nTags')?.value;
+	const priority = document.getElementById('new-priority')?.value;
+	const category = document.getElementById('new-category')?.value;
+	const assignee = document.getElementById('new-assignee')?.value;
+	const difficulty = document.getElementById('new-difficulty')?.value;
+	const tags = document.getElementById('new-tags')?.value;
 
 	if (priority) formData.append('priority', priority);
 	if (category) formData.append('category', category);
@@ -711,7 +737,7 @@ function showToast(msg) {
 	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
-document.getElementById('downloadSkills').addEventListener('click', () => {
+document.getElementById('download-skills').addEventListener('click', () => {
 	const blob = new Blob([SKILLS_MD], { type: 'text/markdown' });
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
@@ -720,6 +746,7 @@ document.getElementById('downloadSkills').addEventListener('click', () => {
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
+	// Object URLs hold browser resources until explicitly released.
 	URL.revokeObjectURL(url);
 	showToast('skills.md downloaded');
 });
@@ -742,12 +769,30 @@ document.addEventListener('keydown', (e) => {
 		e.preventDefault();
 		const rows = Array.from(listEl.querySelectorAll('.issue-row'));
 		const idx = rows.findIndex((r) => Number(r.dataset.id) === state.selected);
+		// Navigate through the rendered rows so active filters and groups define
+		// the keyboard order.
 		const next = e.key === 'j' ? Math.min(rows.length - 1, idx + 1) : Math.max(0, idx - 1);
 		if (rows[next]) rows[next].click();
 	}
 });
 
 detailEl.addEventListener('click', async (e) => {
+	//Toggle Edit Mode
+	if (e.target.matches('.edit-issue-btn')) {
+		state.isEditing = true;
+		renderDetail();
+	}
+	if (e.target.matches('#cancel-edit')) {
+		state.isEditing = false;
+		renderDetail();
+	}
+	// Fix close details blank page
+	// If your "Back" or "Details" toggle clears selection, ensure it re-renders
+	if (e.target.id === 'toggle-detail') {
+		state.selected = null; // Clear selection to avoid "stuck" highlights
+		renderList();
+		renderDetail();
+	}
 	if (e.target.matches('.mark-done-btn')) {
 		const btn = e.target;
 		btn.textContent = 'Saving...';
@@ -785,6 +830,8 @@ detailEl.addEventListener('click', async (e) => {
 			resolved: 'Resolved',
 			closed: 'Closed',
 		};
+		// Prompt input accepts user-friendly aliases but the API stores the
+		// canonical status labels used elsewhere in this file.
 		const normalisedStatus = statusMap[newStatus.trim().toLowerCase()] ?? newStatus.trim();
 
 		const updates = {
@@ -816,7 +863,7 @@ detailEl.addEventListener('click', async (e) => {
 // ============================================================
 
 /**
- *
+ * Loads team context, then fetches issues and members for the active team.
  */
 async function initTracker() {
 	const qs = new URLSearchParams(location.search);
@@ -832,7 +879,7 @@ async function initTracker() {
 		const currentTeam = teams.find((t) => t.id === teamId);
 
 		if (currentTeam) {
-			document.getElementById('teamLabel').textContent = currentTeam.team_name;
+			document.getElementById('team-label').textContent = currentTeam.team_name;
 			const markEl = document.querySelector('.team-switch > .mark');
 			const words = currentTeam.team_name.trim().split(' ');
 			markEl.textContent =
@@ -842,6 +889,8 @@ async function initTracker() {
 		state.currentTeamId = currentTeam ? currentTeam.id : null;
 
 		if (state.currentTeamId) {
+			// Members are optional for rendering; issues are not. Keep the page
+			// usable if the member endpoint is unavailable.
 			const [fetchedIssues, fetchedMembers] = await Promise.all([
 				fetchIssues(state.currentTeamId),
 				fetchTeamMembers(state.currentTeamId).catch(() => []),
