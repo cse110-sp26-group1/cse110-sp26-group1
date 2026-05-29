@@ -3,28 +3,45 @@ const API_BASE = 'https://issue-tracker-api.amorbuks25.workers.dev';
 
 /**
  * Checks if the user is authenticated and redirects to the login page if not.
+ * Preserves the current URL as a `?redirect=` param so login can send the user back to the page they were trying to reach.
  *
- * Ensures that an 'allegro_token' exists in local storage. If the token
- * is missing, the user is immediately redirected to login.html.
  * This is a lightweight frontend gate; backend routes still enforce auth.
  */
 export function requireAuth() {
 	if (!localStorage.getItem('allegro_token')) {
-		location.replace('login.html');
+		location.replace('login.html?redirect=' + encodeURIComponent(location.href));
 	}
 }
 
 /**
- * Checks if the user is authenticated and redirects to the team if so.
- *
- * Ensures that an 'allegro_token' exists in local storage. If the token
- * is missing, the user is immediately redirected to login.html.
- * Used by auth pages so signed-in users do not loop back to login/signup.
+ * Checks if the user is authenticated and redirects away from auth pages.
+ * Respects a `?redirect=` param so users who land on login.html via a shared
+ * link and are already signed in get sent to their intended destination.
  */
 export function requireNoAuth() {
 	if (localStorage.getItem('allegro_token')) {
-		location.replace('teams.html');
+		location.replace(getPostAuthRedirect());
 	}
+}
+
+/**
+ * Returns the URL to redirect to after a successful sign-in or sign-up.
+ * Reads the `?redirect=` query param set by requireAuth() and validates it
+ * is same-origin to prevent open-redirect attacks.
+ * Falls back to teams.html when no valid redirect is present.
+ *
+ * @returns {string} Destination URL.
+ */
+export function getPostAuthRedirect() {
+	const param = new URLSearchParams(location.search).get('redirect');
+	if (param) {
+		try {
+			if (new URL(param).origin === location.origin) return param;
+		} catch {
+			/* invalid URL — fall through to default */
+		}
+	}
+	return 'teams.html';
 }
 
 /**
@@ -64,6 +81,7 @@ export async function request(endpoint, options = {}) {
 			try {
 				const errorData = await response.json();
 				if (errorData.message) errorMessage = errorData.message;
+				else if (errorData.error) errorMessage = errorData.error;
 			} catch {
 				/* ignore JSON parse error on non-JSON error responses */
 			}

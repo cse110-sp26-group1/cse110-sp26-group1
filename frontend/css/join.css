@@ -1,0 +1,14 @@
+/* join.css — styles specific to the pending-invitations page */
+
+.join-state {
+	text-align: center;
+	padding: 56px 24px;
+	color: var(--muted);
+	font-size: 14px;
+}
+
+.join-empty-icon {
+	font-size: 36px;
+	margin-bottom: 12px;
+	opacity: 0.4;
+}

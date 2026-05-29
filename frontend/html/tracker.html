@@ -245,8 +245,15 @@
 							<input type="number" class="input" id="new-difficulty" min="1" max="3" placeholder="e.g. 2" />
 						</div>
 						<div class="field" style="flex: 2; margin-bottom: 0">
-							<label>Tags (comma separated)</label>
-							<input type="text" class="input" id="new-tags" placeholder="ui, bug, frontend" />
+							<label>Tags</label>
+							<div class="tag-picker" id="tag-picker">
+								<button type="button" class="tag-opt tag-bug" data-tag="bug">bug</button>
+								<button type="button" class="tag-opt tag-ui" data-tag="ui">ui</button>
+								<button type="button" class="tag-opt tag-infra" data-tag="infra">infra</button>
+								<button type="button" class="tag-opt tag-auth" data-tag="auth">auth</button>
+								<button type="button" class="tag-opt tag-perf" data-tag="perf">perf</button>
+							</div>
+							<div class="hint">Pick from your team's label set.</div>
 						</div>
 					</div>
 					<div class="field">
@@ -284,6 +291,19 @@
 					<div class="field">
 						<label>Username or Email <span class="req">*</span></label>
 						<input class="input" id="invite-input" placeholder="e.g. ada@example.com or adalovelace" />
+					</div>
+					<div class="field" style="margin-bottom: 0">
+						<label>Or share a join link</label>
+						<div style="display: flex; gap: 8px">
+							<input
+								class="input"
+								id="invite-link-display"
+								readonly
+								style="font-size: 12px; color: var(--muted); background: var(--surface-2); cursor: default"
+							/>
+							<button class="btn sm" id="copy-invite-link" style="flex-shrink: 0; white-space: nowrap">Copy link</button>
+						</div>
+						<div class="hint">Share this link with colleagues so they can find their pending invitation.</div>
 					</div>
 				</div>
 				<div class="modal-foot">

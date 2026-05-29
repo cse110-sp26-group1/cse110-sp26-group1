@@ -25,6 +25,8 @@ let ISSUES = [];
 const inviteBackdrop = document.getElementById('invite-backdrop');
 const confirmInviteBtn = document.getElementById('confirm-invite');
 const inviteInput = document.getElementById('invite-input');
+const inviteLinkDisplay = document.getElementById('invite-link-display');
+const copyInviteLinkBtn = document.getElementById('copy-invite-link');
 const openInviteModalBtn = document.getElementById('open-invite-modal');
 
 const listEl = document.getElementById('issue-list');
@@ -37,6 +39,7 @@ const fileList = document.getElementById('file-list');
 // helpers for invite listeners below
 /**
  * Opens the invite modal only after a team has been resolved from the URL.
+ * Also populates the copyable join link for the current team.
  */
 function openInvite() {
 	if (!state.currentTeamId) {
@@ -44,6 +47,11 @@ function openInvite() {
 		return;
 	}
 	inviteBackdrop.classList.add('open');
+
+	if (inviteLinkDisplay) {
+		inviteLinkDisplay.value = new URL(`join.html?team_id=${state.currentTeamId}`, window.location.href).href;
+	}
+
 	setTimeout(() => inviteInput.focus(), 30);
 }
 
@@ -53,6 +61,23 @@ function openInvite() {
 function closeInvite() {
 	inviteBackdrop.classList.remove('open');
 	inviteInput.value = '';
+}
+
+if (copyInviteLinkBtn) {
+	copyInviteLinkBtn.addEventListener('click', async () => {
+		const url = inviteLinkDisplay?.value;
+		if (!url) return;
+		try {
+			await navigator.clipboard.writeText(url);
+			const original = copyInviteLinkBtn.textContent;
+			copyInviteLinkBtn.textContent = 'Copied!';
+			setTimeout(() => {
+				copyInviteLinkBtn.textContent = original;
+			}, 1500);
+		} catch {
+			showToast('Could not copy link — try selecting it manually.');
+		}
+	});
 }
 
 if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
@@ -574,10 +599,16 @@ function resetForm() {
 	document.getElementById('new-title').value = '';
 	document.getElementById('new-desc').value = '';
 	document.getElementById('file-list').innerHTML = '';
+	document.querySelectorAll('#tag-picker .tag-opt').forEach((btn) => btn.classList.remove('selected'));
 	pendingFiles = [];
 }
 document.getElementById('new-issue').addEventListener('click', openNew);
 document.getElementById('cancel-new').addEventListener('click', closeNew);
+
+document.getElementById('tag-picker').addEventListener('click', (e) => {
+	const btn = e.target.closest('.tag-opt');
+	if (btn) btn.classList.toggle('selected');
+});
 newBackdrop.addEventListener('click', (e) => {
 	if (e.target === newBackdrop) closeNew();
 });
@@ -677,13 +708,15 @@ confirmNewBtn.addEventListener('click', async () => {
 	const category = document.getElementById('new-category')?.value;
 	const assignee = document.getElementById('new-assignee')?.value;
 	const difficulty = document.getElementById('new-difficulty')?.value;
-	const tags = document.getElementById('new-tags')?.value;
+	const selectedTags = Array.from(document.querySelectorAll('#tag-picker .tag-opt.selected'))
+		.map((btn) => btn.dataset.tag)
+		.join(',');
 
 	if (priority) formData.append('priority', priority);
 	if (category) formData.append('category', category);
 	if (assignee) formData.append('assigned_to', assignee);
 	if (difficulty) formData.append('difficulty', difficulty);
-	if (tags) formData.append('tags', tags);
+	if (selectedTags) formData.append('tags', selectedTags);
 
 	pendingFiles.forEach((f) => formData.append('attachments', f));
 
@@ -859,6 +892,39 @@ detailEl.addEventListener('click', async (e) => {
 });
 
 // ============================================================
+// TEAM NOT FOUND
+// ============================================================
+
+/**
+ * Replaces the content pane with a 404-style error when the requested team
+ * does not exist or the user no longer has access to it.
+ * @param teamId
+ */
+function renderTeamNotFound(teamId) {
+	const contentEl = document.getElementById('content');
+	contentEl.classList.add('is-error');
+	contentEl.innerHTML = `
+		<div class="team-error">
+			<div class="glyph">⊘</div>
+			<h2>Team not found</h2>
+			<p>The team <code>#${teamId}</code> doesn't exist, or you no longer have access to it. Check the link, or pick a team you belong to.</p>
+			<div class="te-actions">
+				<a class="btn primary" href="teams.html">← Back to teams</a>
+				<button class="btn" id="retry-team">Retry</button>
+			</div>
+			<div><span class="te-status"><span class="code">404</span> GET /teams/${teamId}</span></div>
+		</div>`;
+
+	const teamSwitchEl = document.getElementById('team-switch');
+	if (teamSwitchEl) {
+		teamSwitchEl.style.opacity = '0.5';
+		teamSwitchEl.style.pointerEvents = 'none';
+	}
+
+	document.getElementById('retry-team').addEventListener('click', () => location.reload());
+}
+
+// ============================================================
 // INIT
 // ============================================================
 
@@ -877,6 +943,11 @@ async function initTracker() {
 		renderTeamMenu();
 
 		const currentTeam = teams.find((t) => t.id === teamId);
+
+		if (teamId && !currentTeam) {
+			renderTeamNotFound(teamId);
+			return;
+		}
 
 		if (currentTeam) {
 			document.getElementById('team-label').textContent = currentTeam.team_name;
