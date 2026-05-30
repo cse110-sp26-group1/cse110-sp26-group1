@@ -333,13 +333,15 @@ export async function handleIssues(request, env) {
 
 		// Point 2 Change: Mid-flight workspace membership validation when an assignment is requested during initialization
 		//Checks valid assigned member for new issue
+		// Validate assigned_to field if provided (automatically handles both JSON and Multipart via body.assigned_to)
 		let assignedTo = null;
-		if (body.assigned_to !== undefined && body.assigned_to !== null) {
+		if (body.assigned_to !== undefined && body.assigned_to !== null && body.assigned_to !== '') {
 			assignedTo = Number(body.assigned_to);
-			if (!Number.isInteger(assignedTo) || assignedTo <= 0) {
+			if (Number.isNaN(assignedTo) || !Number.isInteger(assignedTo) || assignedTo <= 0) {
 				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
 			}
 
+			// Core verification: Lock down assignment to workspace group boundaries
 			const assigneeMembership = await requireTeamMember(env, assignedTo, parsedTeamId);
 			if (assigneeMembership.error) {
 				return Response.json({ error: 'Invalid assignment. Assignee must be an established member of the team.' }, { status: 400 });
@@ -560,15 +562,15 @@ export async function handleIssues(request, env) {
 		}
 
 		let assignedTo = null;
-		if (body.assigned_to !== undefined) {
+		if (body.assigned_to !== undefined && body.assigned_to !== null && body.assigned_to !== '') {
 			assignedTo = Number(body.assigned_to);
-			if (!Number.isInteger(assignedTo) || assignedTo <= 0) {
+			if (Number.isNaN(assignedTo) || !Number.isInteger(assignedTo) || assignedTo <= 0) {
 				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
 			}
 
 			// Point 2 Change: Mid-flight workspace membership validation when an assignment update is requested
-			//Checks if issue is assigned to member of same team before allowing assignment update; if not, returns a 400 error indicating invalid assignment. This ensures that issues cannot be assigned to users who are not part of the issue's team, maintaining data integrity and proper access control.
-			//Checks valid assigned member for issue update
+			// Checks if issue is assigned to member of same team before allowing assignment update; if not, returns a 400 error indicating invalid assignment. This ensures that issues cannot be assigned to users who are not part of the issue's team, maintaining data integrity and proper access control.
+			// Checks valid assigned member for issue update
 			const assigneeMembership = await requireTeamMember(env, assignedTo, issue.team_id);
 			if (assigneeMembership.error) {
 				return Response.json({ error: 'Invalid assignment. Assignee must be an established member of the team.' }, { status: 400 });
