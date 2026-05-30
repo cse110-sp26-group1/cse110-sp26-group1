@@ -12,6 +12,7 @@ const args = process.argv.slice(2);
 const command = args[0];
 const validStatuses = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
+const validCategories = ['Bug', 'Feature', 'Task'];
 
 /**
  * Parsed CLI flags in key=value format.
@@ -38,8 +39,9 @@ function printUsage() {
 	console.error('  allegro logout');
 	console.error('  allegro list_teams');
 	console.error('  allegro list_issues --team_id=<team_id> [--status=xxx] [--priority=xxx] [--assigned_to=xxx]');
+	console.error('  allegro create_issue --team_id=<team_id> --title=<title> [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]');
 	console.error('  allegro get_issue <id>');
-	console.error('  allegro update_issue <id> --status=xxx --priority=xxx [--assigned_to=xxx]');
+	console.error('  allegro update_issue <id> [--title=<title>] [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]');
 	console.error('  allegro resolve_issue <id>');
 }
 
@@ -62,6 +64,25 @@ function buildQueryString(queryFlags) {
 
 	const queryString = params.toString();
 	return queryString ? `?${queryString}` : '';
+}
+
+/**
+ * Parses a CLI flag value as a JSON array and exits on malformed input.
+ *
+ * @param {Record<string, string>} sourceFlags - Parsed CLI flags.
+ * @param {string} key - Flag name to parse.
+ * @returns {unknown[] | undefined} Parsed array value, or undefined when the flag is absent.
+ */
+function parseArrayFlag(sourceFlags, key) {
+	if (!sourceFlags[key]) return undefined;
+	try {
+		const parsed = JSON.parse(sourceFlags[key]);
+		if (!Array.isArray(parsed)) throw new Error();
+		return parsed;
+	} catch {
+		console.error(`Invalid ${key}. Must be a JSON array, e.g. --${key}='["a","b"]'`);
+		process.exit(1);
+	}
 }
 
 /**
@@ -288,13 +309,62 @@ if (command === 'login') {
 		process.exit(1);
 	}
 	console.log(JSON.stringify(formatIssueList(data, Boolean(flags.status)), null, 2));
+	} else if (command === 'create_issue') {
+		if (!flags.team_id || !flags.title) {
+			console.error('Usage: allegro create_issue --team_id=<team_id> --title=<title> [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]');
+			process.exit(1);
+		}
+
+	if (flags.status && !validStatuses.includes(flags.status)) {
+		console.error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+		process.exit(1);
+	}
+
+	if (flags.priority && !validPriorities.includes(flags.priority)) {
+		console.error(`Invalid priority. Must be one of: ${validPriorities.join(', ')}`);
+		process.exit(1);
+	}
+
+	if (flags.category && !validCategories.includes(flags.category)) {
+		console.error(`Invalid category. Must be one of: ${validCategories.join(', ')}`);
+		process.exit(1);
+	}
+
+	const body = {
+		team_id: Number(flags.team_id),
+		title: flags.title,
+		...(flags.summary && { summary: flags.summary }),
+		...(flags.status && { status: flags.status }),
+		...(flags.priority && { priority: flags.priority }),
+		...(flags.category && { category: flags.category }),
+		...(flags.difficulty && { difficulty: flags.difficulty }),
+		...(flags.tags && { tags: parseArrayFlag(flags, 'tags') }),
+		...(flags.entry_point && { entry_point: flags.entry_point }),
+		...(flags.error_type && { error_type: flags.error_type }),
+		...(flags.error_message && { error_message: flags.error_message }),
+		...(flags.stack_trace && { stack_trace: parseArrayFlag(flags, 'stack_trace') }),
+		...(flags.affected_files && { affected_files: parseArrayFlag(flags, 'affected_files') }),
+		...(flags.expected_behavior && { expected_behavior: flags.expected_behavior }),
+		...(flags.actual_behavior && { actual_behavior: flags.actual_behavior }),
+		...(flags.missing_information && { missing_information: flags.missing_information }),
+		...(flags.steps_to_reproduce && { steps_to_reproduce: flags.steps_to_reproduce }),
+		...(flags.hypothesis && { hypothesis: flags.hypothesis }),
+		...(flags.resolution_notes && { resolution_notes: flags.resolution_notes }),
+	};
+
+	const { ok, data } = await request('POST', '/agents', body);
+	if (!ok) {
+		console.error('Error:', data);
+		process.exit(1);
+	}
+	console.log('Issue created successfully!');
 } else if (command === 'get_issue') {
 	if (!id) {
 		console.error('Usage: allegro get_issue <id>');
 		process.exit(1);
 	}
 
-	const { ok, data } = await request('GET', `/issues/${id}`);
+	const { ok, data } = await request('GET', `/agents/${id}`);
 	if (!ok) {
 		console.error('Error:', data);
 		process.exit(1);
@@ -302,12 +372,31 @@ if (command === 'login') {
 	console.log(JSON.stringify(data, null, 2));
 } else if (command === 'update_issue') {
 	if (!id) {
-		console.error('Usage: allegro update_issue <id> --status=<status> --priority=<priority>');
+		console.error('Usage: allegro update_issue <id> [--title=<title>] [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]');
 		process.exit(1);
 	}
 
-	if (!flags.status && !flags.priority && !flags.assigned_to) {
-		console.error('Provide at least one field to update: --status, --priority, or --assigned_to');
+	if (
+		!flags.title &&
+		!flags.summary &&
+		!flags.status &&
+		!flags.priority &&
+		!flags.category &&
+		!flags.difficulty &&
+		!flags.tags &&
+		!flags.entry_point &&
+		!flags.error_type &&
+		!flags.error_message &&
+		!flags.stack_trace &&
+		!flags.affected_files &&
+		!flags.expected_behavior &&
+		!flags.actual_behavior &&
+		!flags.missing_information &&
+		!flags.steps_to_reproduce &&
+		!flags.hypothesis &&
+		!flags.resolution_notes
+	) {
+		console.error('Provide at least one agent-updatable field.');
 		process.exit(1);
 	}
 
@@ -321,10 +410,30 @@ if (command === 'login') {
 		process.exit(1);
 	}
 
-	const { ok, data } = await request('PATCH', `/issues/${id}`, {
+	if (flags.category && !validCategories.includes(flags.category)) {
+		console.error(`Invalid category. Must be one of: ${validCategories.join(', ')}`);
+		process.exit(1);
+	}
+
+	const { ok, data } = await request('PATCH', `/agents/${id}`, {
+		...(flags.title && { title: flags.title }),
+		...(flags.summary && { summary: flags.summary }),
 		...(flags.status && { status: flags.status }),
 		...(flags.priority && { priority: flags.priority }),
-		...(flags.assigned_to && { assigned_to: flags.assigned_to }),
+		...(flags.category && { category: flags.category }),
+		...(flags.difficulty && { difficulty: flags.difficulty }),
+		...(flags.tags && { tags: parseArrayFlag(flags, 'tags') }),
+		...(flags.entry_point && { entry_point: flags.entry_point }),
+		...(flags.error_type && { error_type: flags.error_type }),
+		...(flags.error_message && { error_message: flags.error_message }),
+		...(flags.stack_trace && { stack_trace: parseArrayFlag(flags, 'stack_trace') }),
+		...(flags.affected_files && { affected_files: parseArrayFlag(flags, 'affected_files') }),
+		...(flags.expected_behavior && { expected_behavior: flags.expected_behavior }),
+		...(flags.actual_behavior && { actual_behavior: flags.actual_behavior }),
+		...(flags.missing_information && { missing_information: flags.missing_information }),
+		...(flags.steps_to_reproduce && { steps_to_reproduce: flags.steps_to_reproduce }),
+		...(flags.hypothesis && { hypothesis: flags.hypothesis }),
+		...(flags.resolution_notes && { resolution_notes: flags.resolution_notes }),
 	});
 	if (!ok) {
 		console.error('Error:', data);
@@ -337,7 +446,7 @@ if (command === 'login') {
 		process.exit(1);
 	}
 
-	const { ok, data } = await request('PATCH', `/issues/${id}`, {
+	const { ok, data } = await request('PATCH', `/agents/${id}`, {
 		status: 'Resolved',
 	});
 	if (!ok) {
