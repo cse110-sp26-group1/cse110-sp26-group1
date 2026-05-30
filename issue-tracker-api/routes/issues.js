@@ -175,6 +175,9 @@ export async function handleIssues(request, env) {
 
 		const categoryParam = url.searchParams.get('category');
 		if (categoryParam !== null) {
+			if (!ALLOWED_CATEGORIES.includes(categoryParam)) {
+				return Response.json({ error: 'Invalid category format. Must be one of: Bug, Feature, Task.' }, { status: 400 });
+			}
 			query += ' AND category = ?';
 			bindings.push(categoryParam);
 		}

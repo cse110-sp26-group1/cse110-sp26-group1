@@ -480,6 +480,23 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(data.error).toBe('Invalid assigned_to format. Must be a positive integer.');
 			});
 
+			it('400: Rejects request if category query parameter format is invalid (Integration Style)', async () => {
+				const userId = await createTestUser('category_get_user', 'category_get@ucsd.edu');
+				const teamId = await createTestTeam('Category Get Team');
+				const token = 'category-get-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}&category=InvalidCategoryValue`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid category format. Must be one of: Bug, Feature, Task.');
+			});
+
 			it('400: Rejects request if difficulty query parameter format is invalid (Integration Style)', async () => {
 				const userId = await createTestUser('difficulty_get_user', 'diff_get@ucsd.edu');
 				const teamId = await createTestTeam('Difficulty Get Team');
