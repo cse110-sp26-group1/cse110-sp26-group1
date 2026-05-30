@@ -412,8 +412,10 @@ function applyEnrichedFields(issue, enriched) {
  * @param {string | string[] | null | undefined} value - Steps field from the issue record.
  * @returns {string}
  */
+const STEPS_UNAVAILABLE_HTML = '<p class="issue-section-body">Not available yet</p>';
+
 function formatStepsToReproduce(value) {
-	if (value === null || value === undefined || value === '') return 'Not available yet';
+	if (value === null || value === undefined || value === '') return STEPS_UNAVAILABLE_HTML;
 
 	let steps = value;
 	if (typeof value === 'string') {
@@ -428,12 +430,12 @@ function formatStepsToReproduce(value) {
 
 	if (Array.isArray(steps)) {
 		const items = steps.map((s) => String(s).trim()).filter(Boolean);
-		if (items.length === 0) return 'Not available yet';
+		if (items.length === 0) return STEPS_UNAVAILABLE_HTML;
 		return `<ol class="issue-section-body issue-steps">${items.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`;
 	}
 
 	const text = String(steps).trim();
-	return text ? `<p class="issue-section-body">${escapeHtml(text)}</p>` : 'Not available yet';
+	return text ? `<p class="issue-section-body">${escapeHtml(text)}</p>` : STEPS_UNAVAILABLE_HTML;
 }
 
 /**
