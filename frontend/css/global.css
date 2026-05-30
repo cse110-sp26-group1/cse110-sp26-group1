@@ -392,25 +392,13 @@ select.input:focus-visible {
 	border-color: oklch(88% 0.05 30deg);
 }
 
-.chip.tag-ui {
+.chip.tag-feature {
 	color: oklch(50% 0.13 280deg);
 	background: oklch(97% 0.025 280deg);
 	border-color: oklch(88% 0.05 280deg);
 }
 
-.chip.tag-infra {
-	color: oklch(50% 0.11 200deg);
-	background: oklch(97% 0.025 200deg);
-	border-color: oklch(88% 0.05 200deg);
-}
-
-.chip.tag-auth {
-	color: oklch(50% 0.13 320deg);
-	background: oklch(97% 0.025 320deg);
-	border-color: oklch(88% 0.05 320deg);
-}
-
-.chip.tag-perf {
+.chip.tag-task {
 	color: oklch(50% 0.13 130deg);
 	background: oklch(97% 0.025 130deg);
 	border-color: oklch(88% 0.05 130deg);

@@ -443,23 +443,16 @@ body {
 	background: currentcolor;
 }
 
-.nav-item .ic.label-bug {
+.nav-item .ic.label-bug,
+.filter-item .indicator.label-bug {
 	color: oklch(50% 0.13 30deg);
 }
 
-.nav-item .ic.label-ui {
+.filter-item .indicator.label-feature {
 	color: oklch(50% 0.13 280deg);
 }
 
-.nav-item .ic.label-infra {
-	color: oklch(50% 0.11 200deg);
-}
-
-.nav-item .ic.label-auth {
-	color: oklch(50% 0.13 320deg);
-}
-
-.nav-item .ic.label-perf {
+.filter-item .indicator.label-task {
 	color: oklch(50% 0.13 130deg);
 }
 
@@ -491,6 +484,17 @@ body {
 
 .sidebar .members .avatar:first-child {
 	margin-left: 0;
+}
+
+.team-section .team-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0 6px 6px;
+}
+
+.team-section .invite-btn {
+	flex-shrink: 0;
 }
 
 .skill-card {
@@ -701,7 +705,7 @@ body {
 
 .issue-row {
 	display: grid;
-	grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+	grid-template-columns: minmax(0, 1fr) auto auto auto;
 	align-items: center;
 	gap: 12px;
 	padding: 10px 18px;
@@ -717,43 +721,6 @@ body {
 .issue-row.selected {
 	background: var(--accent-soft);
 	box-shadow: inset 2px 0 0 var(--accent);
-}
-
-.issue-row .pri-mark {
-	width: 18px;
-	height: 18px;
-	border-radius: 4px;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	font-family: var(--mono);
-	font-size: 9px;
-	font-weight: 700;
-	letter-spacing: 0;
-}
-
-.pri-mark.urgent {
-	background: oklch(95% 0.05 25deg);
-	color: var(--pri-urgent);
-	border: 1px solid oklch(85% 0.06 25deg);
-}
-
-.pri-mark.high {
-	background: oklch(95% 0.045 38deg);
-	color: var(--pri-high);
-	border: 1px solid oklch(85% 0.06 38deg);
-}
-
-.pri-mark.med {
-	background: oklch(96% 0.04 80deg);
-	color: var(--pri-med);
-	border: 1px solid oklch(86% 0.06 80deg);
-}
-
-.pri-mark.low {
-	background: oklch(95% 0.03 230deg);
-	color: var(--pri-low);
-	border: 1px solid oklch(85% 0.05 230deg);
 }
 
 .issue-row .id {

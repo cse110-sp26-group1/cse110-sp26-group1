@@ -1,16 +1,15 @@
-import { PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './constants.js';
+import { PRI_ORDER, STATUS_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP } from './constants.js';
 
 import { fetchIssues, createIssue, updateIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
 
-// STATE
+// Sidebar filters: status + tag only (priority is sortable, not filterable here).
 const state = {
 	sort: 'priority',
 	tag: 'all',
 	status: 'all',
-	priority: 'all',
 	query: '',
 	selected: null,
 	detailOpen: true,
@@ -105,14 +104,11 @@ function syncSidebar() {
 
 	safeSet('cnt-open', ISSUES.filter((i) => i.status === 'Open').length);
 	safeSet('cnt-prog', ISSUES.filter((i) => i.status === 'In Progress').length);
-	safeSet('cnt-done', ISSUES.filter((i) => ['Resolved', 'Closed'].includes(i.status)).length);
+	safeSet('cnt-resolved', ISSUES.filter((i) => i.status === 'Resolved').length);
+	safeSet('cnt-closed', ISSUES.filter((i) => i.status === 'Closed').length);
 
-	safeSet('cnt-crit', ISSUES.filter((i) => i.priority === 'Critical').length);
-	safeSet('cnt-high', ISSUES.filter((i) => i.priority === 'High').length);
-	safeSet('cnt-med', ISSUES.filter((i) => i.priority === 'Medium').length);
-	safeSet('cnt-low', ISSUES.filter((i) => i.priority === 'Low').length);
-
-	['bug', 'ui', 'infra', 'auth', 'perf'].forEach((t) => {
+	// Tag counts drive sidebar filter badges (cnt-bug, cnt-feature, cnt-task).
+	TAGS.forEach((t) => {
 		safeSet(`cnt-${t}`, ISSUES.filter((i) => (i.tags || []).includes(t)).length);
 	});
 }
@@ -149,22 +145,14 @@ function renderList() {
 		items = items.filter((i) => (i.tags || []).includes(state.tag));
 	}
 	if (state.status !== 'all') {
-		if (state.status === 'Resolved') {
-			items = items.filter((i) => ['Resolved', 'Closed'].includes(i.status));
-		} else {
-			items = items.filter((i) => i.status === state.status);
-		}
-	}
-	if (state.priority !== 'all') {
-		items = items.filter((i) => i.priority === state.priority);
+		// Each status filter maps to a single backend status value.
+		items = items.filter((i) => i.status === state.status);
 	}
 
 	if (state.sort === 'priority') {
 		items.sort((a, b) => PRI_ORDER[a.priority] - PRI_ORDER[b.priority] || STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
 	} else if (state.sort === 'updated') {
 		items.sort((a, b) => ISSUES.indexOf(a) - ISSUES.indexOf(b));
-	} else if (state.sort === 'difficulty') {
-		items.sort((a, b) => b.difficulty - a.difficulty);
 	}
 
 	totalCountEl.textContent = items.length;
@@ -180,14 +168,6 @@ function renderList() {
 			{ label: 'Medium', rows: buckets.Medium },
 			{ label: 'Low', rows: buckets.Low },
 		].filter((g) => g.rows.length);
-	} else if (state.sort === 'difficulty') {
-		const map = {};
-		items.forEach((i) => {
-			const k = `Difficulty ${i.difficulty}`;
-			if (!map[k]) map[k] = [];
-			map[k].push(i);
-		});
-		groups = Object.entries(map).map(([label, rows]) => ({ label, rows }));
 	} else {
 		groups = [{ label: 'Most recent', rows: items }];
 	}
@@ -297,8 +277,8 @@ function renderTeamMembers() {
 }
 
 // === Date Formatting === //
-/** 
- * @param {string | null | undefined} value
+/**
+ * @param {string | null | undefined} value - Raw timestamp from the API.
  * @returns {Date | null}
  */
 function parseIssueTimestamp(value) {
@@ -309,7 +289,7 @@ function parseIssueTimestamp(value) {
 }
 
 /**
- * @param {string | null | undefined} value
+ * @param {string | null | undefined} value - Raw timestamp from the API.
  * @returns {string}
  */
 function formatIssueDate(value) {
@@ -328,7 +308,7 @@ function formatIssueDate(value) {
 }
 
 /**
- * @param {string | null | undefined} value
+ * @param {string | null | undefined} value - Raw timestamp from the API.
  * @returns {string}
  */
 function formatIssueDateTime(value) {
@@ -349,25 +329,21 @@ function formatIssueDateTime(value) {
 
 /**
  * Escape user/LLM text before inserting into detail pane HTML.
- * @param {string} text
+ * @param {string} text - Raw text to escape.
  * @returns {string}
  */
 function escapeHtml(text) {
-	return String(text)
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;');
+	return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /**
  * Plain-text section body with fallback when LLM/user field is empty.
- * @param {string | null | undefined} value
- * @param {string} [fallback='Not available yet']
+ * @param {string | null | undefined} value - Field value from the issue record.
+ * @param {string} [fallback='Not available yet'] - Text shown when value is empty.
  * @returns {string}
  */
 function formatIssueText(value, fallback = 'Not available yet') {
-	if (value == null) return fallback;
+	if (value === null || value === undefined) return fallback;
 	const text = (typeof value === 'string' ? value : String(value)).trim();
 	if (!text || text.toLowerCase() === 'null') return fallback;
 	return escapeHtml(text);
@@ -375,8 +351,8 @@ function formatIssueText(value, fallback = 'Not available yet') {
 
 /**
  * Merges LLM-enriched fields from POST /issues into an in-memory issue record.
- * @param {object} issue
- * @param {object} enriched
+ * @param {object} issue - Existing in-memory issue record.
+ * @param {object} enriched - LLM fields returned by the API.
  * @returns {object}
  */
 function applyEnrichedFields(issue, enriched) {
@@ -390,11 +366,11 @@ function applyEnrichedFields(issue, enriched) {
 
 /**
  * Render steps_to_reproduce — API may store plain text or a JSON array string.
- * @param {string | string[] | null | undefined} value
+ * @param {string | string[] | null | undefined} value - Steps field from the issue record.
  * @returns {string}
  */
 function formatStepsToReproduce(value) {
-	if (value == null || value === '') return 'Not available yet';
+	if (value === null || value === undefined || value === '') return 'Not available yet';
 
 	let steps = value;
 	if (typeof value === 'string') {
@@ -418,6 +394,19 @@ function formatStepsToReproduce(value) {
 }
 
 /**
+ * Resolve the primary tag for an issue from tags or legacy category.
+ * @param {object} issue - Issue record from the API.
+ * @returns {string}
+ */
+function getIssueTag(issue) {
+	const tag = (issue.tags || []).find((t) => TAGS.includes(t));
+	if (tag) return tag;
+	const cat = issue.category?.toLowerCase();
+	if (TAGS.includes(cat)) return cat;
+	return 'bug';
+}
+
+/**
  * Build HTML for a single issue row in the list.
  * @param {object} i - Issue record.
  * @returns {string} HTML string for the row.
@@ -428,8 +417,8 @@ function rowHtml(i) {
 
 	// Tag Shrink Logic
 	const maxTags = 2;
-	const visibleTags = i.tags.slice(0, maxTags);
-	const moreCount = i.tags.length - maxTags;
+	const visibleTags = (i.tags || []).slice(0, maxTags);
+	const moreCount = (i.tags || []).length - maxTags;
 
 	const tagsHtml =
 		visibleTags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('') +
@@ -437,7 +426,6 @@ function rowHtml(i) {
 
 	return `
 	<div class="issue-row ${isSel ? 'selected' : ''}" data-id="${i.id}">
-		<span class="pri-mark ${i.priority.toLowerCase()}" title="${PRI_NAME[i.priority]}">${PRI_LABEL[i.priority]}</span>
 		<div class="title">
 			<span>${i.title}</span>
 			<span class="sub">${i.summary || ''}</span>
@@ -489,13 +477,9 @@ function renderDetail() {
 					<span class="chip sm"><span class="dot" style="background:var(--pri-${i.priority.toLowerCase()})"></span>${i.priority}</span>
 				</div>
 				<div class="meta-col">
-					<span class="label-sm">DIFFICULTY</span>
-					<div class="diff">${Array.from({ length: 3 }, (_, k) => `<span class="d ${k < i.difficulty ? 'on' : ''}"></span>`).join('')}</div>
-				</div>
-				<div class="meta-col">
 					<span class="label-sm">LABELS</span>
 					<div class="tag-container">
-						${i.tags.map((t) => `<span class="chip sm">${t}</span>`).join('')}
+						${(i.tags || []).map((t) => `<span class="chip sm tag-${t}">${t}</span>`).join('')}
 					</div>
 				</div>
 				<div class="meta-col">
@@ -550,6 +534,12 @@ function renderDetail() {
 						<option ${i.priority === 'High' ? 'selected' : ''}>High</option>
 						<option ${i.priority === 'Medium' ? 'selected' : ''}>Medium</option>
 						<option ${i.priority === 'Low' ? 'selected' : ''}>Low</option>
+					</select>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">TAG</span>
+					<select class="input sm" id="edit-tag">
+						${TAGS.map((t) => `<option value="${t}" ${getIssueTag(i) === t ? 'selected' : ''}>${t}</option>`).join('')}
 					</select>
 				</div>
 			</div>
@@ -806,16 +796,15 @@ confirmNewBtn.addEventListener('click', async () => {
 	if (state.currentTeamId) formData.append('team_id', state.currentTeamId);
 
 	const priority = document.getElementById('new-priority')?.value;
-	const category = document.getElementById('new-category')?.value;
+	const tag = document.getElementById('new-tag')?.value;
 	const assignee = document.getElementById('new-assignee')?.value;
-	const difficulty = document.getElementById('new-difficulty')?.value;
-	const tags = document.getElementById('new-tags')?.value;
 
 	if (priority) formData.append('priority', priority);
-	if (category) formData.append('category', category);
+	if (tag) {
+		formData.append('tags', tag);
+		formData.append('category', TAG_MAP[tag]);
+	}
 	if (assignee) formData.append('assigned_to', assignee);
-	if (difficulty) formData.append('difficulty', difficulty);
-	if (tags) formData.append('tags', tags);
 
 	pendingFiles.forEach((f) => formData.append('attachments', f));
 
@@ -938,6 +927,7 @@ detailEl.addEventListener('click', async (e) => {
 		const title = document.getElementById('edit-title')?.value.trim();
 		const status = document.getElementById('edit-status')?.value;
 		const priority = document.getElementById('edit-priority')?.value;
+		const tag = document.getElementById('edit-tag')?.value;
 		const description = document.getElementById('edit-desc')?.value.trim();
 
 		if (!title || !description) {
@@ -945,7 +935,7 @@ detailEl.addEventListener('click', async (e) => {
 			return;
 		}
 
-		const updates = { title, status, priority, description };
+		const updates = { title, status, priority, description, tags: [tag], category: TAG_MAP[tag] };
 
 		saveBtn.textContent = 'Saving...';
 		saveBtn.disabled = true;
