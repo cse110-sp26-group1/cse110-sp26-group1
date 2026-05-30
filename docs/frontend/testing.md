@@ -9,9 +9,7 @@ From your repo root:
 ```bash
 cd issue-tracker-api
 npm install
-cd ..
-npx wrangler d1 execute issue-tracker-db --local --file=issue-tracker-api/schema.sql --config issue-tracker-api/
-cd issue-tracker-api
+npx wrangler d1 execute issue-tracker-db --local --file=./schema.sql
 npm run dev
 ```
 
