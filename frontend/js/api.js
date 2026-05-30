@@ -1,7 +1,6 @@
 // api.js
 const API_BASE = 'https://issue-tracker-api.amorbuks25.workers.dev';
-//TESTING LOCALLY
-//const API_BASE = 'http://localhost:8787';
+
 /**
  * Checks if the user is authenticated and redirects to the login page if not.
  * Preserves the current URL as a `?redirect=` param so login can send the user back to the page they were trying to reach.

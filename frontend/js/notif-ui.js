@@ -12,21 +12,12 @@ const viewAllBtn = document.getElementById('notif-view-all');
 // Tracks the active filter tab so re-renders after mark-all respect the current view
 let activeFilter = 'all';
 
-/** Closes the user profile dropdown when another topbar menu opens. */
-function closeUserMenu() {
-	const userDropdown = document.getElementById('user-dropdown');
-	const userAvatar = document.getElementById('user-avatar');
-
-	userDropdown?.classList.remove('open');
-	userAvatar?.setAttribute('aria-expanded', 'false');
-}
-
 /**
  * Opens the dropdown and renders the current notification list.
  * Also applies the .active outline to the inbox button (see tracker.css .notif-btn.active).
  */
 function openDropdown() {
-	closeUserMenu();
+	document.dispatchEvent(new CustomEvent('topbar:open', { detail: 'notif' }));
 	notifDropdown.hidden = false;
 	notifBtn.classList.add('active');
 	renderNotificationDropdown(activeFilter);
@@ -38,22 +29,29 @@ function closeDropdown() {
 	notifBtn.classList.remove('active');
 }
 
-// Toggle on inbox button click; stopPropagation prevents the document handler below from immediately closing it
-notifBtn?.addEventListener('click', (e) => {
-	e.stopPropagation();
-	if (notifDropdown.hidden) {
-		openDropdown();
-	} else {
-		closeDropdown();
-	}
-});
+if (notifBtn && notifDropdown) {
+	// Toggle on inbox button click; stopPropagation prevents the document handler below from immediately closing it
+	notifBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		if (notifDropdown.hidden) {
+			openDropdown();
+		} else {
+			closeDropdown();
+		}
+	});
 
-// Close the dropdown when the user clicks anywhere outside the notif-wrap container
-document.addEventListener('click', (e) => {
-	if (!notifDropdown.hidden && !e.target.closest('#notif-wrap')) {
-		closeDropdown();
-	}
-});
+	// Close this dropdown when another topbar module announces it is opening.
+	document.addEventListener('topbar:open', (e) => {
+		if (e.detail !== 'notif') closeDropdown();
+	});
+
+	// Close the dropdown when the user clicks anywhere outside the notif-wrap container
+	document.addEventListener('click', (e) => {
+		if (!notifDropdown.hidden && !e.target.closest('#notif-wrap')) {
+			closeDropdown();
+		}
+	});
+}
 
 // "Mark all read" — updates storage, refreshes badge and list in-place
 markAllBtn?.addEventListener('click', () => {
