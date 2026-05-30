@@ -185,10 +185,14 @@ body {
 	color: var(--muted);
 }
 
-/* detail */
+/* --- detail --- */
+
+/* flex column so metadata bar shrink-wraps
+* only .detail-body grows 
+*/
 .detail {
-	display: grid;
-	grid-template-rows: auto 1fr;
+	display: flex;
+	flex-direction: column;
 	min-height: 0;
 	background: var(--surface);
 	border-left: 1px solid var(--line);
@@ -214,7 +218,12 @@ body {
 	gap: 4px;
 }
 
+/* formats the main content area */
+
+/* takes remaining pane height; min-height:0 enables overflow scroll */
 .detail-body {
+	flex: 1;
+	min-height: 0;
 	overflow-y: auto;
 	padding: 24px 32px 60px;
 }
@@ -936,9 +945,9 @@ body {
 /* empty detail */
 .detail-empty {
 	display: flex;
+	flex: 1;
 	align-items: center;
 	justify-content: center;
-	height: 100%;
 	color: var(--muted);
 	font-size: 13px;
 	flex-direction: column;
@@ -987,4 +996,67 @@ body {
 	.search-top {
 		width: 180px;
 	}
+}
+
+/* Status sort - Filled circle indicator when active */
+.nav-item.active .ic {
+	background: currentcolor; /* Fills the circle with the item's color */
+	opacity: 1;
+}
+
+/* Tags dropdown/shrink option (+N more chip) */
+.issue-row .labels .chip.tag-more {
+	background: var(--surface-2);
+	border: 1px dashed var(--line-strong);
+	color: var(--muted);
+	cursor: pointer;
+	transition: background 0.1s;
+}
+
+.issue-row .labels .chip.tag-more:hover {
+	background: var(--line-strong);
+	color: var(--ink);
+}
+
+/* Details Page Metadata Grid */
+.detail-meta-grid {
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	gap: 16px;
+	padding: 12px 32px;
+	background: var(--surface-2);
+	border-bottom: 1px solid var(--line);
+}
+
+.detail-meta-grid .meta-label {
+	display: block;
+	margin-bottom: 4px;
+	font-family: var(--mono);
+	font-size: 9px;
+	text-transform: uppercase;
+	color: var(--muted);
+	letter-spacing: 0.05em;
+}
+
+/* Visibility toggles (Edit Issue Mode) */
+.view-state.hidden,
+.edit-state.hidden {
+	display: none !important;
+}
+
+/* AI Highlight */
+
+/* Styles for the "Summary" and "Hypothesis" AI sections */
+.ai-content-block {
+	border: 1px solid var(--line);
+	border-radius: var(--r-3);
+	padding: 16px;
+	margin-bottom: 24px;
+	position: relative;
+}
+
+.ai-content-block h4 {
+	margin: 0 0 8px;
+	font-size: 14px;
+	font-weight: 600;
 }

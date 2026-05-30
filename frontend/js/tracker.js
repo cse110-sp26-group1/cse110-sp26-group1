@@ -1,6 +1,6 @@
 import { PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './constants.js';
 
-import { fetchIssues, fetchIssue, createIssue, updateIssue, deleteIssue } from './api.js';
+import { fetchIssues, createIssue, updateIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
@@ -14,6 +14,7 @@ const state = {
 	query: '',
 	selected: null,
 	detailOpen: true,
+	isEditing: false, // Track if we are in edit mode
 	teams: [],
 	currentTeamId: null,
 	teamMembers: [],
@@ -89,25 +90,6 @@ confirmInviteBtn.addEventListener('click', async () => {
 });
 
 /**
- * Applies the team selected by URL slug after teams are fetched.
- */
-function applyTeamFromUrl() {
-	const qs = new URLSearchParams(location.search);
-	const slug = qs.get('team');
-
-	// Look up from our fetched state instead of the static object
-	// The page can only render teams returned by the API for this user.
-	const t = state.teams.find((team) => team.slug === slug);
-	if (!t) return;
-
-	document.getElementById('team-label').textContent = t.name;
-	const mark = document.querySelector('.team-switch > .mark');
-	mark.textContent = t.mark;
-	mark.style.background = `oklch(0.92 0.04 ${t.color})`;
-	mark.style.color = `oklch(0.4 0.12 ${t.color})`;
-}
-
-/**
  * Calculates issue counts and updates the sidebar UI
  * Reuses the fetched issue list so counts match the active team and filters.
  */
@@ -135,21 +117,21 @@ function syncSidebar() {
 	});
 }
 
-document.querySelectorAll('.sidebar .nav-item[data-group]').forEach((item) => {
+document.querySelectorAll('.sidebar .filter-item[data-group]').forEach((item) => {
 	item.addEventListener('click', () => {
-		document.querySelectorAll('.sidebar .nav-item').forEach((el) => el.classList.remove('active'));
-		item.classList.add('active');
-
 		const group = item.dataset.group;
 		const val = item.dataset.val;
 
-		state.tag = 'all';
-		state.status = 'all';
-		state.priority = 'all';
-
-		if (group === 'tag') state.tag = val;
-		if (group === 'status') state.status = val;
-		if (group === 'priority') state.priority = val;
+		// Toggle logic, if clicking the active one, reset to 'all'
+		if (state[group] === val) {
+			state[group] = 'all';
+			item.classList.remove('active');
+		} else {
+			// Remove active from sibling items in the same group
+			document.querySelectorAll(`.sidebar .filter-item[data-group="${group}"]`).forEach((el) => el.classList.remove('active'));
+			state[group] = val;
+			item.classList.add('active');
+		}
 
 		renderList();
 	});
@@ -321,6 +303,16 @@ function renderTeamMembers() {
 function rowHtml(i) {
 	const isSel = state.selected === i.id;
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
+
+	// Tag Shrink Logic
+	const maxTags = 2;
+	const visibleTags = i.tags.slice(0, maxTags);
+	const moreCount = i.tags.length - maxTags;
+
+	const tagsHtml =
+		visibleTags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('') +
+		(moreCount > 0 ? `<span class="chip tag-more">+${moreCount}</span>` : '');
+
 	return `
 	<div class="issue-row ${isSel ? 'selected' : ''}" data-id="${i.id}">
 		<span class="pri-mark ${i.priority.toLowerCase()}" title="${PRI_NAME[i.priority]}">${PRI_LABEL[i.priority]}</span>
@@ -328,7 +320,7 @@ function rowHtml(i) {
 			<span>${i.title}</span>
 			<span class="sub">${i.summary || ''}</span>
 		</div>
-		<div class="labels">${i.tags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}</div>
+		<div class="labels">${tagsHtml}</div>
 		<span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
 		<span class="updated">${i.updated_at}</span>
 	</div>`;
@@ -352,69 +344,89 @@ function renderDetail() {
             </div>`;
 		return;
 	}
-	const diffPips = Array.from({ length: 3 }, (_, k) => `<span class="d ${k < i.difficulty ? 'on' : ''}"></span>`).join('');
+
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
 
-	// FIX: temp thing for later loading
-	// The backend flags issues being enriched by tagging them instead of
-	// introducing a separate transient status.
-	const processingBanner = i.tags.includes('ai-processing') ? '<span class="processing">AI is enriching this issue…</span>' : '';
+	// Implementation of View vs Edit Mode
+	if (!state.isEditing) {
+		// --- VIEW MODE ---
+		detailEl.innerHTML = `
+			<div class="issue-details-header">
+				<h1 class="h-2" style="margin:0">${i.title}</h1>
+				<button class="btn sm edit-issue-btn" title="Edit Issue">✎</button>
+			</div>
+			
+			<div class="details-meta-grid">
+				<div class="meta-col">
+					<span class="label-sm">STATUS</span>
+					<span class="chip st-${statusKey} sm">${i.status}</span>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">PRIORITY</span>
+					<span class="chip sm"><span class="dot" style="background:var(--pri-${i.priority.toLowerCase()})"></span>${i.priority}</span>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">DIFFICULTY</span>
+					<div class="diff">${Array.from({ length: 3 }, (_, k) => `<span class="d ${k < i.difficulty ? 'on' : ''}"></span>`).join('')}</div>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">LABELS</span>
+					<div class="tag-container">
+						${i.tags.map((t) => `<span class="chip sm">${t}</span>`).join('')}
+					</div>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">ASSIGNEE</span>
+					<div class="avatar sm">AT</div>
+				</div>
+			</div>
 
-	let assigneeHtml = `<span class="avatar sm" style="background: transparent; border: 1px dashed #888; color: #888;">--</span><span style="font-size:13px; color: #888;">Unassigned</span>`;
+			<div class="detail-body">
+				<div class="ai-content-block">
+					<span class="label-sm">Summary</span>
+					<p style="margin-top:8px">${i.summary || 'AI is generating a summary...'}</p>
+				</div>
+				<div class="ai-content-block" style="margin-top:24px">
+					<span class="label-sm">Hypothesis</span>
+					<p style="margin-top:8px">${i.description || 'No description provided.'}</p>
+				</div>
+			</div>`;
+	} else {
+		// --- EDIT MODE (Edit Issue UI) ---
+		detailEl.innerHTML = `
+			<div class="issue-details-header">
+				<input class="input h-2" id="edit-title" value="${i.title}" style="width: 70%">
+				<div class="actions">
+					<button class="btn sm" id="cancel-edit">Cancel</button>
+					<button class="btn sm primary" id="save-edit">Save</button>
+				</div>
+			</div>
+			
+			<div class="details-meta-grid">
+				<div class="meta-col">
+					<span class="label-sm">STATUS</span>
+					<select class="input sm" id="edit-status">
+						<option ${i.status === 'Open' ? 'selected' : ''}>Open</option>
+						<option ${i.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+						<option ${i.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+					</select>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">PRIORITY</span>
+					<select class="input sm" id="edit-priority">
+						<option ${i.priority === 'Critical' ? 'selected' : ''}>Critical</option>
+						<option ${i.priority === 'High' ? 'selected' : ''}>High</option>
+						<option ${i.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+						<option ${i.priority === 'Low' ? 'selected' : ''}>Low</option>
+					</select>
+				</div>
+			</div>
 
-	if (i.assigned_to && state.teamMembers) {
-		const member = state.teamMembers.find((m) => m.id === i.assigned_to);
-		if (member) {
-			const initials =
-				(member.first_name?.charAt(0) || member.username?.charAt(0) || '?').toUpperCase() +
-				(member.last_name?.charAt(0) || '').toUpperCase();
-			const name = member.first_name && member.last_name ? `${member.first_name} ${member.last_name}` : member.username;
-			assigneeHtml = `<span class="avatar sm">${initials}</span><span style="font-size:13px;">${name}</span>`;
-		}
+			<div class="detail-body">
+				<span class="label-sm">Description</span>
+				<textarea class="textarea" id="edit-desc" style="margin-top:8px">${i.description}</textarea>
+			</div>`;
 	}
-
-	detailEl.innerHTML = `
-        <div class="detail-head">
-            ${processingBanner}
-            <div class="actions">
-                <button class="btn sm">Copy link</button>
-                <button class="btn sm edit-issue-btn">Edit</button>
-                <button class="btn sm primary mark-done-btn">Mark done</button>
-            </div>
-        </div>
-        <div class="detail-body">
-            <h1 class="issue-title">${i.title}</h1>
-            <div class="meta-strip">
-                <div class="cell">
-                    <span class="label">Status</span>
-                    <span class="chip st-${statusKey}">${STATUS_NAME[i.status] || i.status}</span>
-                </div>
-                <div class="cell">
-                    <span class="label">Priority</span>
-                    <span class="chip pri-${i.priority}"><span class="dot"></span>${PRI_NAME[i.priority] || i.priority}</span>
-                </div>
-                <div class="cell">
-                    <span class="label">Difficulty</span>
-                    <span class="diff">${diffPips}</span>
-                </div>
-                <div class="cell" style="flex:1; min-width:160px;">
-                    <span class="label">Labels</span>
-                    <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                    	${i.tags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('')}
-                    </div>
-                </div>
-                
-                <div class="cell">
-                    <span class="label">Assignee</span>
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        ${assigneeHtml}
-                    </div>
-                </div>
-
-            </div>
-            ${i.summary ? `<div class="summary-block"><span class="label">Summary</span><p>${i.summary}</p></div>` : ''}
-            <div class="description">${i.description || '<p class="muted">No description.</p>'}</div>
-            </div>`;
 }
 
 // ============================================================
@@ -765,6 +777,22 @@ document.addEventListener('keydown', (e) => {
 });
 
 detailEl.addEventListener('click', async (e) => {
+	//Toggle Edit Mode
+	if (e.target.matches('.edit-issue-btn')) {
+		state.isEditing = true;
+		renderDetail();
+	}
+	if (e.target.matches('#cancel-edit')) {
+		state.isEditing = false;
+		renderDetail();
+	}
+	// Fix close details blank page
+	// If your "Back" or "Details" toggle clears selection, ensure it re-renders
+	if (e.target.id === 'toggle-detail') {
+		state.selected = null; // Clear selection to avoid "stuck" highlights
+		renderList();
+		renderDetail();
+	}
 	if (e.target.matches('.mark-done-btn')) {
 		const btn = e.target;
 		btn.textContent = 'Saving...';

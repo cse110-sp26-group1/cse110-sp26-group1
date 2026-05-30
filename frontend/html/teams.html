@@ -27,9 +27,14 @@
 				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
 				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
 				<div class="user-switch" id="user-switch">
-					<button type="button" class="avatar user-avatar" id="user-avatar" aria-haspopup="true" aria-expanded="false" title="Ada Lovelace">
-						AL
-					</button>
+					<button
+						type="button"
+						class="avatar user-avatar"
+						id="user-avatar"
+						aria-haspopup="true"
+						aria-expanded="false"
+						title="Account"
+					></button>
 					<div class="user-dropdown" id="user-dropdown" role="menu">
 						<button type="button" class="item" id="sign-out-btn" role="menuitem">Sign out</button>
 					</div>
@@ -41,7 +46,6 @@
 			<div class="hero">
 				<div>
 					<h1>Your teams</h1>
-					<p>Each team is its own workspace. Pick one to open its issue tracker.</p>
 				</div>
 				<div class="hero-actions">
 					<!--Commenting out until implemented-->
@@ -52,7 +56,16 @@
 
 			<div class="search-row">
 				<input class="input" placeholder="Search teams…" />
-				<button class="btn">Sort: recent ▾</button>
+
+				<!-- Unified Sorting Dropdown UI -->
+				<div style="position: relative">
+					<button class="btn" id="sort-teams-trigger">Sort: recent ▾</button>
+					<div class="user-dropdown" id="sort-teams-menu" style="min-width: 160px; right: 0">
+						<div class="sort-item active"><span class="circle"></span> Recent</div>
+						<div class="sort-item"><span class="circle"></span> Alphabetical</div>
+						<div class="sort-item"><span class="circle"></span> Activity</div>
+					</div>
+				</div>
 			</div>
 
 			<div class="grid" id="team-grid">
@@ -97,7 +110,7 @@
 
 		<script src="../js/theme.js"></script>
 		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
-		<script src="../js/user-menu.js"></script>
+		<script type="module" src="../js/user-menu.js"></script>
 		<script type="module" src="../js/teams.js"></script>
 	</body>
 </html>

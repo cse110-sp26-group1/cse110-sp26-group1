@@ -1,4 +1,5 @@
 import { createAccount, login, requireNoAuth } from './api.js';
+import { saveStoredUser, userFromApiProfile } from './user-profile.js';
 import { initPasswordToggles } from './view-password.js';
 
 requireNoAuth();
@@ -55,19 +56,16 @@ async function handleSignupSubmit(e) {
 		// fix once the endpoint is fixed
 		// Until then, a second login call keeps the signup flow consistent
 		// with normal session storage on the login page.
-		const { token, expires_at } = await login(email, password);
+		const { token, expires_at, user } = await login(email, password);
 
 		localStorage.setItem('allegro_token', token);
 		localStorage.setItem('allegro_token_expires', expires_at);
 
-		localStorage.setItem(
-			'allegro_user',
-			JSON.stringify({
-				initials: (first_name[0] + last_name[0]).toUpperCase(),
-				name: `${first_name} ${last_name}`,
-				username,
-			}),
-		);
+		if (user) {
+			saveStoredUser(userFromApiProfile(user));
+		} else {
+			saveStoredUser({ first_name, last_name, username, email });
+		}
 
 		location.href = 'teams.html';
 	} catch (err) {
