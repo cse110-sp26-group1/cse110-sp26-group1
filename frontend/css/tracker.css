@@ -791,7 +791,6 @@ body {
 .issue-row .updated {
 	font-size: 11.5px;
 	color: var(--muted);
-	font-family: var(--mono);
 	text-align: center;
 }
 
@@ -1059,4 +1058,17 @@ body {
 	margin: 0 0 8px;
 	font-size: 14px;
 	font-weight: 600;
+}
+
+/* Detail pane section bodies — preserve line breaks from Description / LLM text */
+.issue-section-body {
+	white-space: pre-wrap;
+	line-height: 1.55;
+	margin: 8px 0 0;
+	font-size: 14px;
+}
+
+/* Ordered list when steps_to_reproduce is stored as a JSON array */
+.issue-steps {
+	padding-left: 1.25rem;
 }

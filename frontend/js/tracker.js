@@ -204,6 +204,7 @@ function renderList() {
 	listEl.querySelectorAll('.issue-row').forEach((el) => {
 		el.addEventListener('click', () => {
 			state.selected = Number(el.dataset.id);
+			state.isEditing = false;
 			renderList();
 			renderDetail();
 			// Selection should reveal the pane; otherwise a row click can look
@@ -295,6 +296,127 @@ function renderTeamMembers() {
 	membersContainer.innerHTML = membersHtml;
 }
 
+// === Date Formatting === //
+/** 
+ * @param {string | null | undefined} value
+ * @returns {Date | null}
+ */
+function parseIssueTimestamp(value) {
+	if (!value) return null;
+	const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+	const date = new Date(normalized);
+	return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * @param {string | null | undefined} value
+ * @returns {string}
+ */
+function formatIssueDate(value) {
+	const date = parseIssueTimestamp(value);
+	if (!date) return value || '—';
+
+	const now = new Date();
+	const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	const dayDiff = Math.round((startOfToday - startOfDate) / 86400000);
+
+	if (dayDiff === 0) return 'Today';
+	if (dayDiff === 1) return 'Yesterday';
+
+	return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+}
+
+/**
+ * @param {string | null | undefined} value
+ * @returns {string}
+ */
+function formatIssueDateTime(value) {
+	const date = parseIssueTimestamp(value);
+	if (!date) return value || '';
+
+	return new Intl.DateTimeFormat(undefined, {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit',
+	}).format(date);
+}
+
+// === Issue detail display (view pane) === //
+// Summary, Hypothesis, and Steps come from LLM enrichment; Details is the user's create-form description.
+
+/**
+ * Escape user/LLM text before inserting into detail pane HTML.
+ * @param {string} text
+ * @returns {string}
+ */
+function escapeHtml(text) {
+	return String(text)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
+/**
+ * Plain-text section body with fallback when LLM/user field is empty.
+ * @param {string | null | undefined} value
+ * @param {string} [fallback='Not available yet']
+ * @returns {string}
+ */
+function formatIssueText(value, fallback = 'Not available yet') {
+	if (value == null) return fallback;
+	const text = (typeof value === 'string' ? value : String(value)).trim();
+	if (!text || text.toLowerCase() === 'null') return fallback;
+	return escapeHtml(text);
+}
+
+/**
+ * Merges LLM-enriched fields from POST /issues into an in-memory issue record.
+ * @param {object} issue
+ * @param {object} enriched
+ * @returns {object}
+ */
+function applyEnrichedFields(issue, enriched) {
+	return {
+		...issue,
+		summary: enriched.summary ?? issue.summary,
+		hypothesis: enriched.hypothesis ?? issue.hypothesis,
+		steps_to_reproduce: enriched.steps_to_reproduce ?? issue.steps_to_reproduce,
+	};
+}
+
+/**
+ * Render steps_to_reproduce — API may store plain text or a JSON array string.
+ * @param {string | string[] | null | undefined} value
+ * @returns {string}
+ */
+function formatStepsToReproduce(value) {
+	if (value == null || value === '') return 'Not available yet';
+
+	let steps = value;
+	if (typeof value === 'string') {
+		try {
+			const parsed = JSON.parse(value);
+			if (Array.isArray(parsed)) steps = parsed;
+		} catch {
+			// Not JSON — treat as a single plain-text block from the LLM
+			return `<p class="issue-section-body">${escapeHtml(value.trim())}</p>`;
+		}
+	}
+
+	if (Array.isArray(steps)) {
+		const items = steps.map((s) => String(s).trim()).filter(Boolean);
+		if (items.length === 0) return 'Not available yet';
+		return `<ol class="issue-section-body issue-steps">${items.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`;
+	}
+
+	const text = String(steps).trim();
+	return text ? `<p class="issue-section-body">${escapeHtml(text)}</p>` : 'Not available yet';
+}
+
 /**
  * Build HTML for a single issue row in the list.
  * @param {object} i - Issue record.
@@ -322,7 +444,7 @@ function rowHtml(i) {
 		</div>
 		<div class="labels">${tagsHtml}</div>
 		<span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
-		<span class="updated">${i.updated_at}</span>
+		<span class="updated" title="${formatIssueDateTime(i.updated_at)}">${formatIssueDate(i.updated_at)}</span>
 	</div>`;
 }
 
@@ -350,10 +472,11 @@ function renderDetail() {
 	// Implementation of View vs Edit Mode
 	if (!state.isEditing) {
 		// --- VIEW MODE ---
+		// Sections: Summary / Steps / Hypothesis (LLM) + Details (user description on create)
 		detailEl.innerHTML = `
 			<div class="issue-details-header">
 				<h1 class="h-2" style="margin:0">${i.title}</h1>
-				<button class="btn sm edit-issue-btn" title="Edit Issue">✎</button>
+				<button type="button" class="btn sm edit-issue-btn" title="Edit Issue">✎</button>
 			</div>
 			
 			<div class="details-meta-grid">
@@ -384,21 +507,29 @@ function renderDetail() {
 			<div class="detail-body">
 				<div class="ai-content-block">
 					<span class="label-sm">Summary</span>
-					<p style="margin-top:8px">${i.summary || 'AI is generating a summary...'}</p>
+					<p class="issue-section-body">${formatIssueText(i.summary)}</p>
+				</div>
+				<div class="ai-content-block" style="margin-top:24px">
+					<span class="label-sm">Steps to reproduce</span>
+					${formatStepsToReproduce(i.steps_to_reproduce)}
 				</div>
 				<div class="ai-content-block" style="margin-top:24px">
 					<span class="label-sm">Hypothesis</span>
-					<p style="margin-top:8px">${i.description || 'No description provided.'}</p>
+					<p class="issue-section-body">${formatIssueText(i.hypothesis)}</p>
+				</div>
+				<div class="ai-content-block" style="margin-top:24px">
+					<span class="label-sm">Details</span>
+					<p class="issue-section-body">${formatIssueText(i.description, 'No description provided.')}</p>
 				</div>
 			</div>`;
 	} else {
-		// --- EDIT MODE (Edit Issue UI) ---
+		// --- EDIT MODE — human fields only; LLM sections stay read-only in view mode ---
 		detailEl.innerHTML = `
 			<div class="issue-details-header">
 				<input class="input h-2" id="edit-title" value="${i.title}" style="width: 70%">
 				<div class="actions">
-					<button class="btn sm" id="cancel-edit">Cancel</button>
-					<button class="btn sm primary" id="save-edit">Save</button>
+					<button type="button" class="btn sm" id="cancel-edit">Cancel</button>
+					<button type="button" class="btn sm primary" id="save-edit">Save</button>
 				</div>
 			</div>
 			
@@ -409,6 +540,7 @@ function renderDetail() {
 						<option ${i.status === 'Open' ? 'selected' : ''}>Open</option>
 						<option ${i.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
 						<option ${i.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+						<option ${i.status === 'Closed' ? 'selected' : ''}>Closed</option>
 					</select>
 				</div>
 				<div class="meta-col">
@@ -423,8 +555,8 @@ function renderDetail() {
 			</div>
 
 			<div class="detail-body">
-				<span class="label-sm">Description</span>
-				<textarea class="textarea" id="edit-desc" style="margin-top:8px">${i.description}</textarea>
+				<span class="label-sm">Details</span>
+				<textarea class="textarea" id="edit-desc" style="margin-top:8px">${i.description || ''}</textarea>
 			</div>`;
 	}
 }
@@ -698,6 +830,13 @@ confirmNewBtn.addEventListener('click', async () => {
 
 		ISSUES = await fetchIssues(state.currentTeamId);
 
+		if (response?.id && response.enriched) {
+			const idx = ISSUES.findIndex((issue) => issue.id === response.id);
+			if (idx !== -1) {
+				ISSUES[idx] = applyEnrichedFields(ISSUES[idx], response.enriched);
+			}
+		}
+
 		if (response.id) {
 			state.selected = response.id;
 		} else {
@@ -777,15 +916,61 @@ document.addEventListener('keydown', (e) => {
 });
 
 detailEl.addEventListener('click', async (e) => {
-	//Toggle Edit Mode
-	if (e.target.matches('.edit-issue-btn')) {
+	const editBtn = e.target.closest('.edit-issue-btn');
+	if (editBtn) {
 		state.isEditing = true;
 		renderDetail();
+		return;
 	}
-	if (e.target.matches('#cancel-edit')) {
+
+	const cancelBtn = e.target.closest('#cancel-edit');
+	if (cancelBtn) {
 		state.isEditing = false;
 		renderDetail();
+		return;
 	}
+
+	const saveBtn = e.target.closest('#save-edit');
+	if (saveBtn) {
+		const currentIssue = ISSUES.find((issue) => issue.id === state.selected);
+		if (!currentIssue) return;
+
+		const title = document.getElementById('edit-title')?.value.trim();
+		const status = document.getElementById('edit-status')?.value;
+		const priority = document.getElementById('edit-priority')?.value;
+		const description = document.getElementById('edit-desc')?.value.trim();
+
+		if (!title || !description) {
+			showToast('Title and details are required');
+			return;
+		}
+
+		const updates = { title, status, priority, description };
+
+		saveBtn.textContent = 'Saving...';
+		saveBtn.disabled = true;
+		try {
+			await updateIssue(state.selected, updates);
+
+			if (state.currentTeamId) {
+				ISSUES = await fetchIssues(state.currentTeamId);
+			} else {
+				const index = ISSUES.findIndex((issue) => issue.id === state.selected);
+				if (index !== -1) ISSUES[index] = { ...ISSUES[index], ...updates };
+			}
+
+			state.isEditing = false;
+			renderList();
+			renderDetail();
+			showToast('Issue updated');
+		} catch {
+			showToast('Failed to save edits');
+			saveBtn.textContent = 'Save';
+			saveBtn.disabled = false;
+		}
+		return;
+	}
+
 	// Fix close details blank page
 	// If your "Back" or "Details" toggle clears selection, ensure it re-renders
 	if (e.target.id === 'toggle-detail') {
@@ -810,50 +995,6 @@ detailEl.addEventListener('click', async (e) => {
 			btn.textContent = 'Mark done';
 			btn.disabled = false;
 			showToast('Failed to update status');
-		}
-	}
-	if (e.target.matches('.edit-issue-btn')) {
-		const btn = e.target;
-		const currentIssue = ISSUES.find((i) => i.id === state.selected);
-		if (!currentIssue) return;
-
-		const newTitle = prompt('Edit Title:', currentIssue.title);
-		if (newTitle === null) return;
-		const newStatus = prompt('Edit Status (Open, In Progress, Resolved, Closed):', currentIssue.status);
-		if (newStatus === null) return;
-
-		const statusMap = {
-			open: 'Open',
-			'in-progress': 'In Progress',
-			'in progress': 'In Progress',
-			done: 'Resolved',
-			resolved: 'Resolved',
-			closed: 'Closed',
-		};
-		// Prompt input accepts user-friendly aliases but the API stores the
-		// canonical status labels used elsewhere in this file.
-		const normalisedStatus = statusMap[newStatus.trim().toLowerCase()] ?? newStatus.trim();
-
-		const updates = {
-			title: newTitle.trim() || currentIssue.title,
-			status: normalisedStatus || currentIssue.status,
-		};
-
-		btn.textContent = 'Saving...';
-		btn.disabled = true;
-		try {
-			await updateIssue(state.selected, updates);
-
-			const index = ISSUES.findIndex((i) => i.id === state.selected);
-			if (index !== -1) ISSUES[index] = { ...ISSUES[index], ...updates };
-
-			renderList();
-			renderDetail();
-			showToast('Issue updated');
-		} catch {
-			showToast('Failed to save edits');
-			btn.textContent = 'Edit';
-			btn.disabled = false;
 		}
 	}
 });
