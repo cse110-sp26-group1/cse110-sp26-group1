@@ -39,9 +39,13 @@ function printUsage() {
 	console.error('  allegro logout');
 	console.error('  allegro list_teams');
 	console.error('  allegro list_issues --team_id=<team_id> [--status=xxx] [--priority=xxx] [--assigned_to=xxx]');
-	console.error('  allegro create_issue --team_id=<team_id> --title=<title> [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]');
+	console.error(
+		'  allegro create_issue --team_id=<team_id> --title=<title> [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]',
+	);
 	console.error('  allegro get_issue <id>');
-	console.error('  allegro update_issue <id> [--title=<title>] [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]');
+	console.error(
+		'  allegro update_issue <id> [--title=<title>] [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]',
+	);
 	console.error('  allegro resolve_issue <id>');
 }
 
@@ -309,11 +313,13 @@ if (command === 'login') {
 		process.exit(1);
 	}
 	console.log(JSON.stringify(formatIssueList(data, Boolean(flags.status)), null, 2));
-	} else if (command === 'create_issue') {
-		if (!flags.team_id || !flags.title) {
-			console.error('Usage: allegro create_issue --team_id=<team_id> --title=<title> [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]');
-			process.exit(1);
-		}
+} else if (command === 'create_issue') {
+	if (!flags.team_id || !flags.title) {
+		console.error(
+			'Usage: allegro create_issue --team_id=<team_id> --title=<title> [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]',
+		);
+		process.exit(1);
+	}
 
 	if (flags.status && !validStatuses.includes(flags.status)) {
 		console.error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
@@ -372,7 +378,9 @@ if (command === 'login') {
 	console.log(JSON.stringify(data, null, 2));
 } else if (command === 'update_issue') {
 	if (!id) {
-		console.error('Usage: allegro update_issue <id> [--title=<title>] [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]');
+		console.error(
+			'Usage: allegro update_issue <id> [--title=<title>] [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]',
+		);
 		process.exit(1);
 	}
 
