@@ -414,6 +414,10 @@ function applyEnrichedFields(issue, enriched) {
  */
 const STEPS_UNAVAILABLE_HTML = '<p class="issue-section-body">Not available yet</p>';
 
+/**
+ *
+ * @param value
+ */
 function formatStepsToReproduce(value) {
 	if (value === null || value === undefined || value === '') return STEPS_UNAVAILABLE_HTML;
 

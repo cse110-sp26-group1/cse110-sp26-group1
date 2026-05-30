@@ -18,7 +18,7 @@ const ALLOWED_TAGS = [
 	'enhancement',
 	'research',
 ];
-const ALLOWED_DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Unknown'];	
+const ALLOWED_DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Unknown'];
 
 /**
  * @param {unknown} tags
