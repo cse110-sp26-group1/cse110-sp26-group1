@@ -443,35 +443,6 @@ body {
 	background: currentcolor;
 }
 
-.nav-item .ic.label-bug,
-.filter-item .indicator.label-bug {
-	color: oklch(50% 0.13 30deg);
-}
-
-.filter-item .indicator.label-feature {
-	color: oklch(50% 0.13 280deg);
-}
-
-.filter-item .indicator.label-task {
-	color: oklch(50% 0.13 130deg);
-}
-
-.filter-item .indicator.label-ui {
-	color: oklch(50% 0.13 250deg);
-}
-
-.filter-item .indicator.label-infra {
-	color: oklch(50% 0.1 60deg);
-}
-
-.filter-item .indicator.label-auth {
-	color: oklch(50% 0.13 320deg);
-}
-
-.filter-item .indicator.label-perf {
-	color: oklch(50% 0.13 200deg);
-}
-
 .nav-item.pri-urgent {
 	color: var(--pri-urgent);
 }
