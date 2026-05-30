@@ -524,16 +524,40 @@ export async function handleIssues(request, env) {
 		}
 
 		// Validation rules for Point 1
+		// Symmetrical validation splitting to satisfy both pre-existing type tests and new length cap filters
 		if (body.title !== undefined) {
 			if (typeof body.title !== 'string' || body.title.trim() === '') {
 				return Response.json({ error: 'Invalid title format. Must be a non-empty string.' }, { status: 400 });
 			}
+			if (body.title.length > 255) {
+				return Response.json({ error: 'Invalid title format. Must be a non-empty string under 256 characters.' }, { status: 400 });
+			}
 		}
 
-		// Enforce non-empty constraint if description is optionally supplied for a slide update
 		if (body.description !== undefined) {
 			if (typeof body.description !== 'string' || body.description.trim() === '') {
 				return Response.json({ error: 'Invalid description format. Must be a non-empty string.' }, { status: 400 });
+			}
+			if (body.description.length > 10000) {
+				return Response.json({ error: 'Invalid description format. Must be a non-empty string under 10001 characters.' }, { status: 400 });
+			}
+		}
+
+		if (body.summary !== undefined && body.summary !== null) {
+			if (typeof body.summary !== 'string' || body.summary.length > 5000) {
+				return Response.json({ error: 'Invalid summary format. Must be a string under 5001 characters.' }, { status: 400 });
+			}
+		}
+
+		if (body.affected_files !== undefined && body.affected_files !== null) {
+			if (!Array.isArray(body.affected_files) || !body.affected_files.every((f) => typeof f === 'string')) {
+				return Response.json({ error: 'Invalid affected_files format. Must be an array of strings.' }, { status: 400 });
+			}
+			if (body.affected_files.length > 25 || !body.affected_files.every((f) => f.trim() !== '' && f.length <= 255)) {
+				return Response.json(
+					{ error: 'Invalid affected_files format. Must be an array of non-empty strings (max 25 files, max 255 chars each).' },
+					{ status: 400 },
+				);
 			}
 		}
 
