@@ -147,6 +147,9 @@ export async function handleIssues(request, env) {
 
 		const statusParam = url.searchParams.get('status');
 		if (statusParam !== null) {
+			if (!ISSUE_STATUSES.includes(statusParam)) {
+				return Response.json({ error: 'Invalid status format. Must be one of: Open, In Progress, Resolved, Closed.' }, { status: 400 });
+			}
 			query += ' AND status = ?';
 			bindings.push(statusParam);
 		}
