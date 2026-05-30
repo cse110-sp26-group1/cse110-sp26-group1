@@ -2,10 +2,9 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<title>Pending invitations - Allegro</title>
+		<title>Join a workspace - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
-			// Keep this before CSS so the saved theme is applied before first paint.
 			try {
 				if (localStorage.getItem('theme') === 'dark') {
 					document.documentElement.classList.add('dark');
@@ -43,30 +42,90 @@
 		</header>
 
 		<main>
-			<div class="hero">
-				<div>
-					<h1>Pending invitations</h1>
-					<p>Accept or decline invitations from team admins.</p>
+			<!-- LOADING -->
+			<div id="join-loading" class="join-state">Loading…</div>
+
+			<!-- CODE ENTRY VIEW — shown when no ?team_id param (Frame 17a) -->
+			<div id="join-code-view" hidden>
+				<div class="hero">
+					<div>
+						<h1>Join a workspace</h1>
+						<p>Enter an invite code, or accept a pending invitation below.</p>
+					</div>
+					<div class="hero-actions">
+						<a href="teams.html" class="btn">← Back to teams</a>
+					</div>
 				</div>
-				<div class="hero-actions">
+
+				<!-- Code entry card -->
+				<div class="join-card">
+					<h3>Have an invite code?</h3>
+					<p>Paste the invite link or enter the team ID your admin shared with you.</p>
+					<div class="join-code-row">
+						<input class="input" id="code-input" type="text" placeholder="Paste invite link or enter team ID…" autocomplete="off" />
+						<button class="btn primary" id="code-submit">Look up</button>
+					</div>
+					<p class="field-error" id="code-error" hidden></p>
+				</div>
+
+				<!-- Pending invitations list -->
+				<p class="invites-heading" id="invites-heading" hidden>Pending invitations</p>
+				<section class="invites" id="invite-list" hidden></section>
+
+				<!-- Empty state (no pending invites) -->
+				<div id="join-empty" class="join-state" hidden>
+					<div class="join-empty-icon">✉</div>
+					<p>You have no pending invitations.</p>
+					<a href="teams.html" class="btn primary" style="margin-top: 12px">Go to your teams</a>
+				</div>
+			</div>
+
+			<!-- PREVIEW VIEW — shown when ?team_id found (Frame 17b) -->
+			<div id="join-preview-view" hidden>
+				<div class="hero">
+					<div>
+						<h1>You've been invited</h1>
+						<p>Review the workspace below and join to get started.</p>
+					</div>
+					<div class="hero-actions">
+						<a href="teams.html" class="btn">← Back to teams</a>
+					</div>
+				</div>
+
+				<div class="join-preview-card">
+					<div class="join-preview-head">
+						<div class="team-mark c1" id="preview-mark"></div>
+						<div class="join-preview-info">
+							<h2 id="preview-name"></h2>
+							<p id="preview-meta"></p>
+						</div>
+					</div>
+					<div class="join-preview-members" id="preview-members-row">
+						<div class="member-stack" id="preview-members"></div>
+						<span class="member-count" id="preview-member-count"></span>
+					</div>
+					<div class="join-preview-foot">
+						<a href="teams.html" class="btn">Not now</a>
+						<button class="btn primary" id="preview-join">Join workspace</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- INVALID CODE STATE — shown when ?team_id has no matching invite -->
+			<div id="join-invalid" class="join-state" hidden>
+				<div class="join-empty-icon">⊘</div>
+				<p id="join-invalid-msg">That invite code is invalid or has expired.</p>
+				<div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px">
 					<a href="teams.html" class="btn">← Back to teams</a>
+					<a href="join.html" class="btn primary">Try another code</a>
 				</div>
 			</div>
 
-			<div id="join-loading" class="join-state">Loading invitations…</div>
-
-			<div id="join-empty" class="join-state" hidden>
-				<div class="join-empty-icon">✉</div>
-				<p id="join-empty-msg">You have no pending invitations.</p>
-				<a href="teams.html" class="btn primary" style="margin-top: 12px">Go to your teams</a>
-			</div>
-
+			<!-- ERROR STATE — network / API failure -->
 			<div id="join-error" class="join-state" hidden>
 				<p>Failed to load invitations. Please try again.</p>
 				<button class="btn" id="retry-btn" style="margin-top: 12px">Retry</button>
 			</div>
-
-			<section class="invites" id="invite-list" hidden></section>
 		</main>
 
 		<div class="toast" id="toast"></div>

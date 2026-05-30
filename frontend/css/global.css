@@ -910,3 +910,30 @@ html.dark .theme-toggle::before {
 	color: var(--pri-urgent);
 	font-weight: 700;
 }
+
+/* ------- form field error states ------- */
+.input.invalid {
+	border-color: var(--pri-urgent);
+	box-shadow: 0 0 0 3px oklch(55% 0.18 25deg / 12%);
+}
+
+.field-error {
+	font-size: 12px;
+	color: var(--pri-urgent);
+	margin-top: 4px;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	flex-wrap: wrap;
+}
+
+.field-error .action-link {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	font-size: inherit;
+	color: var(--accent-ink);
+	text-decoration: underline;
+	cursor: pointer;
+}

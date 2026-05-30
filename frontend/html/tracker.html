@@ -261,9 +261,10 @@
 					<p>Send an invitation to a colleague.</p>
 				</div>
 				<div class="modal-body">
-					<div class="field">
+					<div class="field" id="invite-field">
 						<label>Username or Email <span class="req">*</span></label>
-						<input class="input" id="invite-input" placeholder="e.g. ada@example.com or adalovelace" />
+						<input class="input" id="invite-input" placeholder="e.g. ada@example.com or adalovelace" autocomplete="off" />
+						<p class="field-error" id="invite-error" hidden></p>
 					</div>
 					<div class="field" style="margin-bottom: 0">
 						<label>Or share a join link</label>

@@ -86,7 +86,9 @@ export async function request(endpoint, options = {}) {
 				/* ignore JSON parse error on non-JSON error responses */
 			}
 
-			throw new Error(errorMessage);
+			const err = new Error(errorMessage);
+			err.status = response.status;
+			throw err;
 		}
 
 		// Handle 204 No Content or empty responses safely

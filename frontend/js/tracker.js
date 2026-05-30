@@ -55,11 +55,97 @@ function openInvite() {
 }
 
 /**
- * Closes the invite modal and clears the draft recipient.
+ * Closes the invite modal and clears the draft recipient and any inline error.
  */
 function closeInvite() {
 	inviteBackdrop.classList.remove('open');
 	inviteInput.value = '';
+	clearInviteError();
+}
+
+/**
+ * Checks invite email input with a lightweight chars@chars.chars pattern.
+ * @param {string} val Raw invite input value.
+ * @returns {boolean} Whether the value looks like an email address.
+ */
+function isValidEmail(val) {
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+}
+
+/** Clears the inline error under the invite input. */
+function clearInviteError() {
+	const errEl = document.getElementById('invite-error');
+	if (errEl) errEl.hidden = true;
+	inviteInput.classList.remove('invalid');
+}
+
+/**
+ * Shows an inline error beneath the invite input.
+ * @param {string} msg Error copy to display.
+ * @param {object} [resendPayload] If present, appends a "Resend?" action button.
+ */
+function setInviteError(msg, resendPayload) {
+	const errEl = document.getElementById('invite-error');
+	if (!errEl) return;
+	errEl.hidden = false;
+	errEl.innerHTML = '';
+	errEl.appendChild(document.createTextNode(msg));
+	if (resendPayload) {
+		const btn = document.createElement('button');
+		btn.className = 'action-link';
+		btn.textContent = 'Resend?';
+		btn.addEventListener('click', () => {
+			clearInviteError();
+			sendInvite(resendPayload);
+		});
+		errEl.append(' ');
+		errEl.appendChild(btn);
+	}
+	inviteInput.classList.add('invalid');
+}
+
+/**
+ * Sends an invite, branching on HTTP status for distinct error copy.
+ * @param {{ email?: string, username?: string }} payload Invite recipient payload.
+ */
+async function sendInvite(payload) {
+	const val = payload.email ?? payload.username;
+	const originalText = confirmInviteBtn.textContent;
+	confirmInviteBtn.textContent = 'Sending...';
+	confirmInviteBtn.disabled = true;
+	try {
+		await inviteToTeam(state.currentTeamId, payload);
+		showToast(`Invitation sent to ${val}`);
+		closeInvite();
+		// Refresh member list so the new invitee shows up
+		if (state.currentTeamId) {
+			fetchTeamMembers(state.currentTeamId)
+				.then((members) => {
+					state.teamMembers = members;
+					renderTeamMembers();
+				})
+				.catch(() => {});
+		}
+	} catch (err) {
+		const status = err.status;
+		if (status === 404) {
+			setInviteError(`No user found for '${val}'.`);
+		} else if (status === 409) {
+			const msg = (err.message || '').toLowerCase();
+			if (msg.includes('already a member') || msg.includes('already on') || msg.includes('already in team')) {
+				setInviteError(`${val} is already on this team.`);
+			} else {
+				setInviteError(`${val} already has a pending invite.`, payload);
+			}
+		} else if (status === 403) {
+			setInviteError('Only team admins can invite.');
+		} else {
+			showToast(err.message || "Couldn't send invite. Please try again.");
+		}
+	} finally {
+		confirmInviteBtn.textContent = originalText;
+		confirmInviteBtn.disabled = false;
+	}
 }
 
 if (copyInviteLinkBtn) {
@@ -88,30 +174,23 @@ inviteBackdrop.addEventListener('click', (e) => {
 });
 
 confirmInviteBtn.addEventListener('click', async () => {
+	clearInviteError();
 	const val = inviteInput.value.trim();
 	if (!val) {
+		setInviteError('Enter a username or email.');
 		inviteInput.focus();
 		return;
 	}
-
 	const isEmail = val.includes('@');
-	const payload = isEmail ? { email: val } : { username: val };
-
-	const originalText = confirmInviteBtn.textContent;
-	confirmInviteBtn.textContent = 'Sending...';
-	confirmInviteBtn.disabled = true;
-
-	try {
-		await inviteToTeam(state.currentTeamId, payload);
-		showToast(`Invitation sent to ${val}`);
-		closeInvite();
-	} catch (err) {
-		showToast(err.message || 'Failed to send invite.');
-	} finally {
-		confirmInviteBtn.textContent = originalText;
-		confirmInviteBtn.disabled = false;
+	if (isEmail && !isValidEmail(val)) {
+		setInviteError("That doesn't look like a valid email.");
+		inviteInput.focus();
+		return;
 	}
+	await sendInvite(isEmail ? { email: val } : { username: val });
 });
+
+inviteInput.addEventListener('input', clearInviteError);
 
 /**
  * Whether an issue matches a sidebar tag filter.
@@ -1092,7 +1171,6 @@ function renderTeamNotFound(teamId) {
 			</div>
 			<div><span class="pe-status"><span class="code">404</span> GET /teams/${teamId}</span></div>
 		</div>`;
-
 
 	const teamSwitchEl = document.getElementById('team-switch');
 	if (teamSwitchEl) {

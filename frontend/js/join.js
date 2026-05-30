@@ -1,18 +1,38 @@
-import { requireAuth, fetchInvites, acceptInvite, rejectInvite } from './api.js';
+import { requireAuth, fetchInvites, acceptInvite, rejectInvite, fetchTeamMembers } from './api.js';
 
 requireAuth();
 
 const toast = document.getElementById('toast');
 const loadingEl = document.getElementById('join-loading');
-const emptyEl = document.getElementById('join-empty');
-const emptyMsgEl = document.getElementById('join-empty-msg');
-const errorEl = document.getElementById('join-error');
+
+// Code-entry view elements
+const codeView = document.getElementById('join-code-view');
+const codeInput = document.getElementById('code-input');
+const codeSubmitBtn = document.getElementById('code-submit');
+const codeErrorEl = document.getElementById('code-error');
+const invitesHeadingEl = document.getElementById('invites-heading');
 const listEl = document.getElementById('invite-list');
+const emptyEl = document.getElementById('join-empty');
+
+// Preview view elements
+const previewView = document.getElementById('join-preview-view');
+const previewMarkEl = document.getElementById('preview-mark');
+const previewNameEl = document.getElementById('preview-name');
+const previewMetaEl = document.getElementById('preview-meta');
+const previewMembersEl = document.getElementById('preview-members');
+const previewMemberCountEl = document.getElementById('preview-member-count');
+const previewJoinBtn = document.getElementById('preview-join');
+
+// Error / invalid-code elements
+const invalidEl = document.getElementById('join-invalid');
+const errorEl = document.getElementById('join-error');
 const retryBtn = document.getElementById('retry-btn');
 
+let currentInvite = null;
+
 /**
- * Shows a short-lived toast notification.
- * @param {string} msg Message to display.
+ *
+ * @param msg
  */
 function showToast(msg) {
 	toast.textContent = msg;
@@ -21,9 +41,171 @@ function showToast(msg) {
 	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
+// Color variants cycle for team marks (matches teams.css / tracker.css)
+const COLOR_CLASSES = ['c1', 'c2', 'c3', 'c4'];
 /**
- * Wires accept/decline buttons inside the invite list section.
- * @param {Array} invites - Filtered invite objects already in the DOM.
+ *
+ * @param teamId
+ */
+function markColor(teamId) {
+	return COLOR_CLASSES[(Number(teamId) - 1) % COLOR_CLASSES.length];
+}
+
+/**
+ * Renders the preview card for a known invite and optionally its member list.
+ * @param {object} inv - Invite object from fetchInvites().
+ * @param {Array} members - Team members array (may be empty).
+ */
+function showPreview(inv, members) {
+	currentInvite = inv;
+	loadingEl.hidden = true;
+
+	const teamName = String(inv.team_name ?? '');
+	previewMarkEl.textContent = teamName.substring(0, 2).toUpperCase();
+	// Cycle through color classes based on team_id
+	previewMarkEl.className = `team-mark ${markColor(inv.team_id)}`;
+
+	previewNameEl.textContent = teamName;
+	const inviter = String(inv.inviter_username ?? '');
+	const sent = new Date(inv.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+	previewMetaEl.textContent = inviter ? `Invited by ${inviter} · ${sent}` : sent;
+
+	// Member avatar stack (up to 6)
+	const visible = members.slice(0, 6);
+	previewMembersEl.innerHTML = visible
+		.map((m) => {
+			const initials =
+				m.first_name && m.last_name
+					? (m.first_name[0] + m.last_name[0]).toUpperCase()
+					: (m.username || m.email || '??').substring(0, 2).toUpperCase();
+			const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username || '';
+			return `<div class="avatar sm" title="${name}">${initials}</div>`;
+		})
+		.join('');
+
+	if (members.length > 0) {
+		const extra = members.length > 6 ? ` +${members.length - 6} more` : '';
+		previewMemberCountEl.textContent = `${members.length} member${members.length !== 1 ? 's' : ''}${extra}`;
+	} else {
+		previewMemberCountEl.textContent = '';
+	}
+
+	previewView.hidden = false;
+}
+
+previewJoinBtn?.addEventListener('click', async () => {
+	if (!currentInvite) return;
+	const original = previewJoinBtn.textContent;
+	previewJoinBtn.textContent = 'Joining…';
+	previewJoinBtn.disabled = true;
+	try {
+		await acceptInvite(currentInvite.id);
+		showToast('Joined! Redirecting…');
+		setTimeout(() => {
+			location.href = `tracker.html?team_id=${currentInvite.team_id}`;
+		}, 900);
+	} catch (err) {
+		showToast(err.message || 'Failed to join. Please try again.');
+		previewJoinBtn.textContent = original;
+		previewJoinBtn.disabled = false;
+	}
+});
+
+/**
+ * Searches the given invite list for one matching teamId, then shows preview or invalid state.
+ * @param {string|number} teamId
+ * @param {Array} invites
+ */
+async function resolveTeamId(teamId, invites) {
+	const inv = invites.find((i) => String(i.team_id) === String(teamId));
+	if (!inv) {
+		loadingEl.hidden = true;
+		invalidEl.hidden = false;
+		return;
+	}
+	let members = [];
+	try {
+		members = await fetchTeamMembers(inv.team_id);
+	} catch {
+		/* member list is optional — show preview without it */
+	}
+	showPreview(inv, members);
+}
+
+/**
+ * Renders the code-entry view with the full list of pending invites below.
+ * @param {Array} invites
+ */
+function showCodeView(invites) {
+	loadingEl.hidden = true;
+	codeView.hidden = false;
+
+	if (!invites.length) {
+		emptyEl.hidden = false;
+		return;
+	}
+
+	invitesHeadingEl.hidden = false;
+	listEl.hidden = false;
+	renderInviteList(invites);
+}
+
+/**
+ * Builds the invite row elements and wires accept/decline buttons.
+ * @param {Array} invites
+ */
+function renderInviteList(invites) {
+	const els = invites.map((inv) => {
+		const teamName = String(inv.team_name ?? '');
+
+		const row = document.createElement('div');
+		row.className = 'invite';
+		row.dataset.inviteId = inv.id;
+
+		const info = document.createElement('div');
+		info.className = 'info';
+
+		const markEl = document.createElement('div');
+		markEl.className = 'team-mark';
+		markEl.textContent = teamName.substring(0, 2).toUpperCase();
+
+		const details = document.createElement('div');
+		const summary = document.createElement('p');
+		const nameEl = document.createElement('strong');
+		nameEl.textContent = teamName;
+		summary.append(nameEl, ` · invited by ${String(inv.inviter_username ?? '')}`);
+
+		const sentEl = document.createElement('p');
+		sentEl.textContent = `Sent ${new Date(inv.created_at).toLocaleDateString()}`;
+
+		details.append(summary, sentEl);
+		info.append(markEl, details);
+
+		const actions = document.createElement('div');
+		actions.className = 'actions';
+
+		const declineBtn = document.createElement('button');
+		declineBtn.className = 'btn sm decline-btn';
+		declineBtn.dataset.inviteId = inv.id;
+		declineBtn.textContent = 'Decline';
+
+		const acceptBtn = document.createElement('button');
+		acceptBtn.className = 'btn primary sm accept-btn';
+		acceptBtn.dataset.inviteId = inv.id;
+		acceptBtn.textContent = 'Accept';
+
+		actions.append(declineBtn, acceptBtn);
+		row.append(info, actions);
+		return row;
+	});
+
+	listEl.replaceChildren(...els);
+	wireButtons(invites);
+}
+
+/**
+ * Wires accept/decline click handlers on the rendered invite rows.
+ * @param {Array} invites
  */
 function wireButtons(invites) {
 	listEl.querySelectorAll('.accept-btn').forEach((btn) => {
@@ -67,6 +249,7 @@ function wireButtons(invites) {
 
 				if (!listEl.querySelectorAll('.invite').length) {
 					listEl.hidden = true;
+					invitesHeadingEl.hidden = true;
 					emptyEl.hidden = false;
 				}
 			} catch (err) {
@@ -79,88 +262,91 @@ function wireButtons(invites) {
 	});
 }
 
-/**
- * Renders the filtered list of pending invites.
- * @param {Array} invites - All pending invites for the current user.
- */
-function renderInvites(invites) {
-	loadingEl.hidden = true;
+// Code-entry lookup handler
+codeSubmitBtn?.addEventListener('click', async () => {
+	codeErrorEl.hidden = true;
+	codeInput.classList.remove('invalid');
 
-	const teamIdParam = new URLSearchParams(location.search).get('team_id');
-	const filtered = teamIdParam ? invites.filter((inv) => String(inv.team_id) === teamIdParam) : invites;
-
-	if (!filtered.length) {
-		emptyEl.hidden = false;
-		if (teamIdParam) {
-			emptyMsgEl.textContent = "You haven't been invited to this team, or the invitation no longer exists.";
-		}
+	const raw = codeInput.value.trim();
+	if (!raw) {
+		codeErrorEl.textContent = 'Enter an invite code.';
+		codeErrorEl.hidden = false;
+		codeInput.classList.add('invalid');
+		codeInput.focus();
 		return;
 	}
 
-	listEl.hidden = false;
+	// Extract digits from pasted link (e.g. "…join.html?team_id=42") or plain number
+	const match = raw.match(/team_id=(\d+)/) || raw.match(/^(\d+)$/);
+	const teamId = match ? match[1] : null;
 
-	const inviteEls = filtered.map((inv) => {
-		const inviteEl = document.createElement('div');
-		inviteEl.className = 'invite';
-		inviteEl.dataset.inviteId = inv.id;
+	if (!teamId) {
+		codeErrorEl.textContent = "That doesn't look like a valid invite code.";
+		codeErrorEl.hidden = false;
+		codeInput.classList.add('invalid');
+		return;
+	}
 
-		const infoEl = document.createElement('div');
-		infoEl.className = 'info';
+	const original = codeSubmitBtn.textContent;
+	codeSubmitBtn.textContent = 'Looking up…';
+	codeSubmitBtn.disabled = true;
 
-		const teamName = String(inv.team_name ?? '');
-		const teamMarkEl = document.createElement('div');
-		teamMarkEl.className = 'team-mark';
-		teamMarkEl.textContent = teamName.substring(0, 2).toUpperCase();
+	try {
+		const invites = await fetchInvites();
+		const inv = invites.find((i) => String(i.team_id) === teamId);
 
-		const detailsEl = document.createElement('div');
-		const summaryEl = document.createElement('p');
-		const teamEl = document.createElement('strong');
-		teamEl.textContent = teamName;
-		summaryEl.append(teamEl, ` · invited by ${String(inv.inviter_username ?? '')}`);
+		if (!inv) {
+			codeErrorEl.textContent = 'That invite code is invalid or has expired.';
+			codeErrorEl.hidden = false;
+			codeInput.classList.add('invalid');
+		} else {
+			let members = [];
+			try {
+				members = await fetchTeamMembers(inv.team_id);
+			} catch {
+				/* member list optional */
+			}
+			codeView.hidden = true;
+			showPreview(inv, members);
+		}
+	} catch {
+		showToast('Failed to look up invite. Please try again.');
+	} finally {
+		codeSubmitBtn.textContent = original;
+		codeSubmitBtn.disabled = false;
+	}
+});
 
-		const sentEl = document.createElement('p');
-		sentEl.textContent = `Sent ${new Date(inv.created_at).toLocaleDateString()}`;
+codeInput?.addEventListener('input', () => {
+	codeErrorEl.hidden = true;
+	codeInput.classList.remove('invalid');
+});
 
-		detailsEl.append(summaryEl, sentEl);
-		infoEl.append(teamMarkEl, detailsEl);
-
-		const actionsEl = document.createElement('div');
-		actionsEl.className = 'actions';
-
-		const declineBtn = document.createElement('button');
-		declineBtn.className = 'btn sm decline-btn';
-		declineBtn.dataset.inviteId = inv.id;
-		declineBtn.textContent = 'Decline';
-
-		const acceptBtn = document.createElement('button');
-		acceptBtn.className = 'btn primary sm accept-btn';
-		acceptBtn.dataset.inviteId = inv.id;
-		acceptBtn.textContent = 'Accept';
-
-		actionsEl.append(declineBtn, acceptBtn);
-		inviteEl.append(infoEl, actionsEl);
-		return inviteEl;
-	});
-
-	listEl.replaceChildren(...inviteEls);
-
-	wireButtons(filtered);
-}
+// Allow pressing Enter in the code input to trigger lookup
+codeInput?.addEventListener('keydown', (e) => {
+	if (e.key === 'Enter') codeSubmitBtn?.click();
+});
 
 /**
- * Loads pending invites and renders them.
+ * Loads pending invites, then routes to preview or code-entry view based on URL params.
  */
 async function init() {
 	try {
 		const invites = await fetchInvites();
-		renderInvites(invites);
+		const teamIdParam = new URLSearchParams(location.search).get('team_id');
+
+		if (teamIdParam) {
+			await resolveTeamId(teamIdParam, invites);
+		} else {
+			showCodeView(invites);
+		}
 	} catch {
 		loadingEl.hidden = true;
 		errorEl.hidden = false;
 	}
 }
 
-retryBtn.addEventListener('click', () => {
+retryBtn?.addEventListener('click', () => {
 	errorEl.hidden = true;
 	loadingEl.hidden = false;
 	init();
