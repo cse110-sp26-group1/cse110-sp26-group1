@@ -446,6 +446,23 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(data.error).toBe('Invalid assigned_to format. Must be a positive integer.');
 			});
 
+			it('400: Rejects request if difficulty query parameter format is invalid (Integration Style)', async () => {
+				const userId = await createTestUser('difficulty_get_user', 'diff_get@ucsd.edu');
+				const teamId = await createTestTeam('Difficulty Get Team');
+				const token = 'diff-get-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}&difficulty=SuperHard`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid difficulty format. Must be one of: Easy, Medium, Hard.');
+			});
+
 			it('403: Rejects request with a forbidden error if an authenticated user attempts to read records from a team context without membership (Integration Style)', async () => {
 				const userId = await createTestUser('outsider_user', 'outsider@ucsd.edu');
 				const alienTeamId = await createTestTeam('Restricted Workspace');
@@ -1062,6 +1079,29 @@ describe('Issues Endpoint Testing Suite', () => {
 				});
 				expect(resFiles.status).toBe(400);
 				expect((await resFiles.json()).error).toBe('Invalid affected_files format. Must be an array of strings.');
+			});
+
+			it('400: Rejects request if difficulty payload value is invalid (Integration Style)', async () => {
+				const userId = await createTestUser('difficulty_patch_user', 'diff_patch@ucsd.edu');
+				const teamId = await createTestTeam('Difficulty Patch Team');
+				const token = 'diff-patch-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				const issueId = await createTestIssue(teamId, userId);
+
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ difficulty: 'InvalidDifficultyValue' }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid difficulty value');
 			});
 
 			it('400: Rejects request if tags query parameter format is a string instead of an array (Integration Style)', async () => {

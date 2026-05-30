@@ -18,6 +18,7 @@ const ALLOWED_TAGS = [
 	'enhancement',
 	'research',
 ];
+const ALLOWED_DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Unknown'];	
 
 /**
  * @param {unknown} tags
@@ -174,6 +175,10 @@ export async function handleIssues(request, env) {
 
 		const difficultyParam = url.searchParams.get('difficulty');
 		if (difficultyParam !== null) {
+			// NEW VALIDATION GUARD
+			if (!ALLOWED_DIFFICULTIES.includes(difficultyParam)) {
+				return Response.json({ error: 'Invalid difficulty format. Must be one of: Easy, Medium, Hard.' }, { status: 400 });
+			}
 			query += ' AND difficulty = ?';
 			bindings.push(difficultyParam);
 		}
@@ -545,6 +550,13 @@ export async function handleIssues(request, env) {
 		}
 		if (category && !ALLOWED_CATEGORIES.includes(category)) {
 			return Response.json({ error: `Invalid category. Must be one of: ${ALLOWED_CATEGORIES.join(', ')}` }, { status: 400 });
+		}
+		// NEW VALIDATION GUARD FOR DIFFICULTY
+		if (body.difficulty !== undefined && body.difficulty !== null) {
+			const difficultyStr = typeof body.difficulty === 'string' ? body.difficulty.trim() : '';
+			if (!ALLOWED_DIFFICULTIES.includes(difficultyStr)) {
+				return Response.json({ error: 'Invalid difficulty value' }, { status: 400 });
+			}
 		}
 
 		let assignedTo = null;
