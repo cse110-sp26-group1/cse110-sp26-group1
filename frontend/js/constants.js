@@ -12,7 +12,36 @@ export const STATUS_NAME = {
 export const SKILLS_MD = `# skills.md - Issue Tracker agent guide...`;
 
 // Standard list of tags
-export const TAGS = ['bug', 'ui', 'infra', 'auth', 'perf'];
+export const TAGS = [
+	'ui',
+	'backend',
+	'database',
+	'authentication',
+	'performance',
+	'security',
+	'testing',
+	'documentation',
+	'integration',
+	'enhancement',
+	'research',
+];
+
+/** Maps sidebar tag to backend category enum (Bug | Feature | Task).
+ * Temporary until backend fix
+ */
+export const TAG_MAP = {
+	ui: 'Bug',
+	backend: 'Bug',
+	database: 'Bug',
+	authentication: 'Bug',
+	performance: 'Bug',
+	security: 'Bug',
+	testing: 'Bug',
+	documentation: 'Bug',
+	integration: 'Bug',
+	enhancement: 'Bug',
+	research: 'Bug',
+};
 
 // Predefined "Views" (Saved filter/sort combinations)
 export const DEFAULT_VIEWS = [
