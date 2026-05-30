@@ -83,12 +83,13 @@ export async function handleIssues(request, env) {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
 
-		const teamId = Number(url.searchParams.get('team_id'));
-		if (!teamId) {
+		const teamIdParam = url.searchParams.get('team_id');
+		if (teamIdParam === null || teamIdParam.trim() === '') {
 			return Response.json({ error: 'team_id query param required' }, { status: 400 });
 		}
 
-		if (!Number.isInteger(teamId) || teamId <= 0) {
+		const teamId = Number(teamIdParam);
+		if (Number.isNaN(teamId) || !Number.isInteger(teamId) || teamId <= 0) {
 			return Response.json({ error: 'Invalid team_id format. Must be a positive integer.' }, { status: 400 });
 		}
 
@@ -119,8 +120,12 @@ export async function handleIssues(request, env) {
 
 		const assignedToParam = url.searchParams.get('assigned_to');
 		if (assignedToParam !== null) {
+			const assignedTo = Number(assignedToParam);
+			if (Number.isNaN(assignedTo) || !Number.isInteger(assignedTo) || assignedTo <= 0) {
+				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
+			}
 			query += ' AND assigned_to = ?';
-			bindings.push(Number(assignedToParam));
+			bindings.push(assignedTo);
 		}
 
 		const categoryParam = url.searchParams.get('category');
