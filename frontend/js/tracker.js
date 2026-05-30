@@ -89,7 +89,45 @@ confirmInviteBtn.addEventListener('click', async () => {
 });
 
 /**
- * Calculates issue counts and updates the sidebar UI
+ * Whether an issue matches a sidebar tag filter.
+ * @param {object} issue
+ * @param {string} tag
+ * @returns {boolean}
+ */
+function issueMatchesTag(issue, tag) {
+	if ((issue.tags || []).includes(tag)) return true;
+	if (tag === 'bug' && issue.category === 'Bug') return true;
+	return false;
+}
+
+/**
+ * Builds sidebar TAG filter rows from TAGS in constants.js.
+ */
+function renderTagFilters() {
+	const container = document.getElementById('tag-filters');
+	if (!container) return;
+
+	container.innerHTML = TAGS.map(
+		(t) => `
+		<div class="filter-item" data-group="tag" data-val="${t}">
+			<span class="indicator label-${t}"></span> ${t}
+			<span class="count" id="cnt-${t}">0</span>
+		</div>`,
+	).join('');
+}
+
+/**
+ * Populates the new-issue tag dropdown from TAGS.
+ */
+function populateNewTagSelect() {
+	const select = document.getElementById('new-tag');
+	if (!select) return;
+
+	select.innerHTML = TAGS.map((t) => `<option value="${t}">${t}</option>`).join('');
+}
+
+/**
+ * Gets issue counts and updates the sidebar UI
  * Reuses the fetched issue list so counts match the active team and filters.
  */
 function syncSidebar() {
@@ -107,23 +145,25 @@ function syncSidebar() {
 	safeSet('cnt-resolved', ISSUES.filter((i) => i.status === 'Resolved').length);
 	safeSet('cnt-closed', ISSUES.filter((i) => i.status === 'Closed').length);
 
-	// Tag counts drive sidebar filter badges (cnt-bug, cnt-feature, cnt-task).
+	// Tag counts drive sidebar filter badges (cnt-bug, cnt-ui, cnt-infra, cnt-auth, cnt-perf).
 	TAGS.forEach((t) => {
-		safeSet(`cnt-${t}`, ISSUES.filter((i) => (i.tags || []).includes(t)).length);
+		safeSet(`cnt-${t}`, ISSUES.filter((i) => issueMatchesTag(i, t)).length);
 	});
 }
 
-document.querySelectorAll('.sidebar .filter-item[data-group]').forEach((item) => {
-	item.addEventListener('click', () => {
+const sidebarEl = document.querySelector('.sidebar');
+if (sidebarEl) {
+	sidebarEl.addEventListener('click', (e) => {
+		const item = e.target.closest('.filter-item[data-group]');
+		if (!item) return;
+
 		const group = item.dataset.group;
 		const val = item.dataset.val;
 
-		// Toggle logic, if clicking the active one, reset to 'all'
 		if (state[group] === val) {
 			state[group] = 'all';
 			item.classList.remove('active');
 		} else {
-			// Remove active from sibling items in the same group
 			document.querySelectorAll(`.sidebar .filter-item[data-group="${group}"]`).forEach((el) => el.classList.remove('active'));
 			state[group] = val;
 			item.classList.add('active');
@@ -131,7 +171,10 @@ document.querySelectorAll('.sidebar .filter-item[data-group]').forEach((item) =>
 
 		renderList();
 	});
-});
+}
+
+renderTagFilters();
+populateNewTagSelect();
 
 /**
  * Filters, sorts, groups, and re-renders the issue list.
@@ -142,7 +185,7 @@ function renderList() {
 	let items = ISSUES.slice();
 
 	if (state.tag !== 'all') {
-		items = items.filter((i) => (i.tags || []).includes(state.tag));
+		items = items.filter((i) => issueMatchesTag(i, state.tag));
 	}
 	if (state.status !== 'all') {
 		// Each status filter maps to a single backend status value.

@@ -112,18 +112,10 @@
 					</div>
 				</div>
 
-				<!-- Tag filters use the same bug / feature / task values stored on issue.tags -->
+				<!-- Tag filters rendered from TAGS in constants.js -->
 				<div class="nav-section">
 					<div class="label-sm">TAGS</div>
-					<div class="filter-item" data-group="tag" data-val="bug">
-						<span class="indicator label-bug"></span> bug <span class="count" id="cnt-bug">0</span>
-					</div>
-					<div class="filter-item" data-group="tag" data-val="feature">
-						<span class="indicator label-feature"></span> feature <span class="count" id="cnt-feature">0</span>
-					</div>
-					<div class="filter-item" data-group="tag" data-val="task">
-						<span class="indicator label-task"></span> task <span class="count" id="cnt-task">0</span>
-					</div>
+					<div id="tag-filters"></div>
 				</div>
 
 				<!-- Compact invite control sits on the same row as the Team label -->
@@ -210,11 +202,7 @@
 						<div class="field" style="flex: 1; margin-bottom: 0">
 							<!-- Tag is written to tags[] and mapped to backend category via TAG_MAP -->
 							<label>Tag</label>
-							<select class="input" id="new-tag">
-								<option value="bug">bug</option>
-								<option value="feature">feature</option>
-								<option value="task">task</option>
-							</select>
+							<select class="input" id="new-tag"></select>
 						</div>
 						<div class="field" style="flex: 1; margin-bottom: 0">
 							<label>Assignee</label>

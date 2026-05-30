@@ -11,11 +11,17 @@ export const STATUS_NAME = {
 
 export const SKILLS_MD = `# skills.md - Issue Tracker agent guide...`;
 
-// Standard issue-type tags shown in the sidebar, list, and create/edit forms.
-export const TAGS = ['bug', 'feature', 'task'];
+// Standard list of tags
+export const TAGS = ['bug', 'ui', 'infra', 'auth', 'perf'];
 
-// Backend stores category as Title Case; UI tags stay lowercase.
-export const TAG_MAP = { bug: 'Bug', feature: 'Feature', task: 'Task' };
+/** Maps sidebar tag to backend category enum (Bug | Feature | Task). */
+export const TAG_MAP = {
+	bug: 'Bug',
+	ui: 'Bug',
+	auth: 'Bug',
+	perf: 'Bug',
+	infra: 'Task',
+};
 
 // Predefined "Views" (Saved filter/sort combinations)
 export const DEFAULT_VIEWS = [
