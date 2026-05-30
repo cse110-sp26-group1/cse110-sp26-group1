@@ -156,6 +156,9 @@ export async function handleIssues(request, env) {
 
 		const priorityParam = url.searchParams.get('priority');
 		if (priorityParam !== null) {
+			if (!ISSUE_PRIORITIES.includes(priorityParam)) {
+				return Response.json({ error: 'Invalid priority format. Must be one of: Low, Medium, High, Critical.' }, { status: 400 });
+			}
 			query += ' AND priority = ?';
 			bindings.push(priorityParam);
 		}
