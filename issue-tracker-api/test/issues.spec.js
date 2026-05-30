@@ -611,7 +611,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				formData.append('title', 'UI Rendering Glitch');
 				formData.append('description', 'Navbar overlaps on mobile viewports.');
 				formData.append('team_id', String(teamId));
-				formData.append('tags', JSON.stringify(['css', 'mobile', 'frontend']));
+				formData.append('tags', JSON.stringify(['ui', 'testing', 'documentation']));
 
 				const res = await SELF.fetch('http://localhost/issues', {
 					method: 'POST',
@@ -622,7 +622,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(res.status).toBe(201);
 				const data = await res.json();
 				expect(data.success).toBe(true);
-				expect(data.enriched.tags).toEqual(['css', 'mobile', 'frontend']);
+				expect(data.enriched.tags).toEqual(['ui', 'testing', 'documentation']);
 			});
 
 			it('201: Attachment Ingestion: Uploads log files as explicit form file attachments and verifies text is appended to description (Integration Style)', async () => {
@@ -673,7 +673,7 @@ describe('Issues Endpoint Testing Suite', () => {
 					priority: 'Critical',
 					category: 'Bug',
 					summary: 'AI Generated Summary Context',
-					tags: ['ai-inferred', 'automated'],
+					tags: ['security', 'backend'],
 				});
 
 				const reqSuccess = new Request('http://localhost/issues', {
@@ -701,7 +701,7 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(dataSuccess.enriched.status).toBe('In Progress');
 				expect(dataSuccess.enriched.priority).toBe('Critical');
 				expect(dataSuccess.enriched.summary).toBe('AI Generated Summary Context');
-				expect(dataSuccess.enriched.tags).toEqual(['ai-inferred', 'automated']);
+				expect(dataSuccess.enriched.tags).toEqual(['security', 'backend']);
 
 				// Scenario B: Non-fatal failure resilience fallback loop execution
 				vi.mocked(processIssue).mockRejectedValueOnce(new Error('API Timeout Exception'));
@@ -816,6 +816,31 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(res.status).toBe(400);
 				const data = await res.json();
 				expect(data.error).toBe('Invalid assignment. Assignee must be an established member of the team.');
+			});
+
+			it('400: Enum Validation - Tags: Rejects tags not in the allowed list', async () => {
+				const userId = await createTestUser('post_fail_tags_enum', 'pftags@ucsd.edu');
+				const teamId = await createTestTeam('Tags Enum Team');
+				const token = 'pftags-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch('http://localhost/issues', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						title: 'Valid Title',
+						description: 'Valid Description',
+						team_id: teamId,
+						tags: ['frontend', 'ui'],
+					}),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toContain('Invalid tag(s): frontend');
+				expect(data.error).toContain('Must be one of:');
 			});
 
 			it('400: Type Validation - Tags: Rejects configurations if tags is passed as a non-array value or contains non-string elements (Integration Style)', async () => {
