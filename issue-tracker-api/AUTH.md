@@ -2,7 +2,7 @@
 
 ## How it works
 
-1. User registers → password is hashed and stored in `users` table
+1. User registers → password is hashed and stored in `users` table, a session is created immediately, and a token is returned
 2. User logs in → worker verifies password, creates a session token in `sessions` table, returns the token
 3. Frontend stores the token in `localStorage`
 4. Every protected request sends the token in the `Authorization` header
@@ -48,8 +48,8 @@ export async function handleSomething(request, env) {
 
 | Method | Endpoint | Body | Description |
 |---|---|---|---|
-| POST | `/auth/register` | `{ username, email, password }` | Create a new user |
-| POST | `/auth/login` | `{ email, password }` | Returns `{ token, expires_at }` |
+| POST | `/auth/register` | `{ username, email, password, first_name, last_name }` | Create a new user — returns `{ success: true, token, expires_at }` |
+| POST | `/auth/login` | `{ email, password }` | Returns `{ token, expires_at }` with status 200 |
 | POST | `/auth/logout` | none (token in header) | Deletes the session |
 
 ---
@@ -61,9 +61,9 @@ Every protected request must include this header:
 Authorization: Bearer <token>
 ```
 
-The token comes from `localStorage` after login:
+The token comes from `localStorage` after login or registration:
 ```js
-// after login
+// after login or register
 localStorage.setItem('token', data.token);
 
 // on every protected request
