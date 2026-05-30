@@ -26,6 +26,9 @@ export const TAGS = [
 	'research',
 ];
 
+// Backend category enum values, used by the new-issue Category dropdown.
+export const CATEGORIES = ['Bug', 'Feature', 'Task'];
+
 /** Maps sidebar tag to backend category enum (Bug | Feature | Task).
  * Temporary until backend fix
  */

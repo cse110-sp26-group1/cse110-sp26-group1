@@ -71,6 +71,40 @@
 					</button>
 				</div>
 				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
+				<!-- Notification inbox button -->
+				<div class="notif-wrap" id="notif-wrap">
+					<button class="btn ghost icon notif-btn" id="notif-btn" aria-label="Notifications" title="Notifications">
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+							<path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+						</svg>
+						<span class="notif-badge" id="notif-badge" hidden>0</span>
+					</button>
+					<div class="notif-dropdown" id="notif-dropdown" hidden>
+						<div class="notif-head">
+							<strong>Notifications</strong>
+							<button class="notif-mark-all" id="notif-mark-all">Mark all read</button>
+						</div>
+						<div class="notif-tabs" id="notif-tabs">
+							<button class="notif-tab active" data-filter="all">All</button>
+							<button class="notif-tab" data-filter="issues">Issues</button>
+						</div>
+						<div class="notif-list" id="notif-list"></div>
+						<div class="notif-foot">
+							<button class="notif-view-all" id="notif-view-all">View all notifications</button>
+						</div>
+					</div>
+				</div>
 				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
 				<div class="user-switch" id="user-switch">
 					<button
@@ -118,6 +152,12 @@
 					<div id="tag-filters"></div>
 				</div>
 
+				<!-- Category filters rendered from CATEGORIES in constants.js -->
+				<div class="nav-section">
+					<div class="label-sm">CATEGORY</div>
+					<div id="category-filters"></div>
+				</div>
+
 				<!-- Compact invite control sits on the same row as the Team label -->
 				<div class="nav-section team-section">
 					<div class="team-header">
@@ -125,6 +165,14 @@
 						<button class="btn sm invite-btn" id="open-invite-modal" type="button" title="Invite user">Invite user</button>
 					</div>
 					<div class="members"></div>
+				</div>
+
+				<!-- Notifications sidebar row (DES-08) -->
+				<div class="nav-section">
+					<div class="notif-sidebar-row" id="notif-sidebar-row">
+						<span>Notifications</span>
+						<span class="count notif-sidebar-count" id="notif-sidebar-count" hidden>0</span>
+					</div>
 				</div>
 
 				<div class="skill-card">
@@ -200,8 +248,8 @@
 							</select>
 						</div>
 						<div class="field" style="flex: 1; margin-bottom: 0">
-							<!-- Tag is written to tags[] and mapped to backend category via TAG_MAP -->
-							<label>Tag</label>
+							<!-- Selected category is sent to the backend category enum -->
+							<label>Category</label>
 							<select class="input" id="new-tag"></select>
 						</div>
 						<div class="field" style="flex: 1; margin-bottom: 0">
@@ -219,13 +267,8 @@
 						</div>
 						<div class="field" style="flex: 2; margin-bottom: 0">
 							<label>Tags</label>
-							<div class="tag-picker" id="tag-picker">
-								<button type="button" class="tag-opt tag-bug" data-tag="bug">bug</button>
-								<button type="button" class="tag-opt tag-ui" data-tag="ui">ui</button>
-								<button type="button" class="tag-opt tag-infra" data-tag="infra">infra</button>
-								<button type="button" class="tag-opt tag-auth" data-tag="auth">auth</button>
-								<button type="button" class="tag-opt tag-perf" data-tag="perf">perf</button>
-							</div>
+							<!-- Options are rendered from TAGS (constants.js) so only valid tags can be picked -->
+							<div class="tag-picker" id="tag-picker"></div>
 							<div class="hint">Pick from your team's label set.</div>
 						</div>
 					</div>
@@ -292,5 +335,6 @@
 		<script src="../js/theme.js"></script>
 		<script type="module" src="../js/user-menu.js"></script>
 		<script type="module" src="../js/tracker.js"></script>
+		<script type="module" src="../js/notif-ui.js"></script>
 	</body>
 </html>

@@ -1,15 +1,17 @@
-import { PRI_ORDER, STATUS_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP } from './constants.js';
+import { PRI_ORDER, STATUS_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
 
 import { fetchIssues, createIssue, updateIssue } from './api.js';
-import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
+import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers, leaveTeam } from './api.js';
+import { createIssueNotification, renderNotificationBadge } from './notifications.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
 
-// Sidebar filters: status + tag only (priority is sortable, not filterable here).
+// Sidebar filters: status, tag, and category (priority is sortable, not filterable here).
 const state = {
 	sort: 'priority',
 	tag: 'all',
 	status: 'all',
+	category: 'all',
 	query: '',
 	selected: null,
 	detailOpen: true,
@@ -192,6 +194,25 @@ confirmInviteBtn.addEventListener('click', async () => {
 
 inviteInput.addEventListener('input', clearInviteError);
 
+// === Leave team === //
+/**
+ * Confirms and leaves the current team, then redirects to the teams list.
+ */
+async function handleLeaveTeam() {
+	if (!state.currentTeamId) return;
+	if (!window.confirm('Leave this team? You will lose access to its issues.')) return;
+
+	try {
+		await leaveTeam(state.currentTeamId);
+		showToast('You left the team. Redirecting…');
+		setTimeout(() => {
+			location.href = 'teams.html';
+		}, 900);
+	} catch (err) {
+		showToast(err.message || 'Failed to leave team.');
+	}
+}
+
 /**
  * Whether an issue matches a sidebar tag filter.
  * @param {object} issue Issue data from the API.
@@ -221,13 +242,49 @@ function renderTagFilters() {
 }
 
 /**
- * Populates the new-issue tag dropdown from TAGS.
+ * Builds sidebar CATEGORY filter rows from CATEGORIES in constants.js.
+ */
+function renderCategoryFilters() {
+	const container = document.getElementById('category-filters');
+	if (!container) return;
+
+	container.innerHTML = CATEGORIES.map(
+		(c) => `
+		<div class="filter-item" data-group="category" data-val="${c}">
+			<span class="indicator"></span> ${c.toLowerCase()}
+			<span class="count" id="cnt-cat-${c}">0</span>
+		</div>`,
+	).join('');
+}
+
+/**
+ * Whether an issue belongs to a sidebar category filter.
+ * @param {object} issue Issue data from the API.
+ * @param {string} category Sidebar category filter value.
+ * @returns {boolean}
+ */
+function issueMatchesCategory(issue, category) {
+	return (issue.category || '').toLowerCase() === category.toLowerCase();
+}
+
+/**
+ * Populates the new-issue category dropdown from CATEGORIES.
  */
 function populateNewTagSelect() {
 	const select = document.getElementById('new-tag');
 	if (!select) return;
 
-	select.innerHTML = TAGS.map((t) => `<option value="${t}">${t}</option>`).join('');
+	select.innerHTML = CATEGORIES.map((c) => `<option value="${c}">${c.toLowerCase()}</option>`).join('');
+}
+
+/**
+ * Renders the new-issue tag-picker chips from TAGS so only valid tags can be selected.
+ */
+function populateTagPicker() {
+	const picker = document.getElementById('tag-picker');
+	if (!picker) return;
+
+	picker.innerHTML = TAGS.map((t) => `<button type="button" class="tag-opt tag-${t}" data-tag="${t}">${t}</button>`).join('');
 }
 
 /**
@@ -252,6 +309,11 @@ function syncSidebar() {
 	// Tag counts drive sidebar filter badges (cnt-bug, cnt-ui, cnt-infra, cnt-auth, cnt-perf).
 	TAGS.forEach((t) => {
 		safeSet(`cnt-${t}`, ISSUES.filter((i) => issueMatchesTag(i, t)).length);
+	});
+
+	// Category counts drive the sidebar CATEGORY filter badges.
+	CATEGORIES.forEach((c) => {
+		safeSet(`cnt-cat-${c}`, ISSUES.filter((i) => issueMatchesCategory(i, c)).length);
 	});
 }
 
@@ -278,7 +340,9 @@ if (sidebarEl) {
 }
 
 renderTagFilters();
+renderCategoryFilters();
 populateNewTagSelect();
+populateTagPicker();
 
 /**
  * Filters, sorts, groups, and re-renders the issue list.
@@ -294,6 +358,9 @@ function renderList() {
 	if (state.status !== 'all') {
 		// Each status filter maps to a single backend status value.
 		items = items.filter((i) => i.status === state.status);
+	}
+	if (state.category !== 'all') {
+		items = items.filter((i) => issueMatchesCategory(i, state.category));
 	}
 
 	if (state.sort === 'priority') {
@@ -366,6 +433,16 @@ function renderTeamMenu() {
 		})
 		.join('');
 
+	const hasCurrentTeam = state.teams.some((t) => t.id === currentId);
+	const leaveItemHtml = hasCurrentTeam
+		? `
+        <div class="item" data-action="leave-team">
+            <span class="mark all-teams-mark">⏻</span>
+            Leave team
+        </div>
+    `
+		: '';
+
 	teamMenu.innerHTML = `
         ${itemsHtml}
         <div class="divider"></div>
@@ -373,6 +450,7 @@ function renderTeamMenu() {
             <span class="mark all-teams-mark">+</span>
             All teams &amp; settings
         </div>
+        ${leaveItemHtml}
     `;
 
 	teamMenu.querySelectorAll('.item[data-id]').forEach((it) => {
@@ -383,6 +461,9 @@ function renderTeamMenu() {
 	});
 
 	teamMenu.querySelector('[data-action="all-teams"]').addEventListener('click', () => (location.href = 'teams.html'));
+
+	const leaveItem = teamMenu.querySelector('[data-action="leave-team"]');
+	if (leaveItem) leaveItem.addEventListener('click', handleLeaveTeam);
 }
 
 /**
@@ -799,6 +880,14 @@ teamMenu.addEventListener('click', (e) => e.stopPropagation());
 function toggleDetail() {
 	state.detailOpen = !state.detailOpen;
 	content.classList.toggle('collapsed-detail', !state.detailOpen);
+	// Divider drag persists an inline grid-template-columns; clear it while the
+	// detail pane is collapsed so the .collapsed-detail (1fr) rule can expand the
+	// list to full width, then restore the saved width when reopened.
+	if (state.detailOpen) {
+		content.style.gridTemplateColumns = localStorage.getItem('detailWidth') || '';
+	} else {
+		content.style.gridTemplateColumns = '';
+	}
 }
 document.getElementById('toggle-detail').addEventListener('click', toggleDetail);
 
@@ -949,17 +1038,19 @@ confirmNewBtn.addEventListener('click', async () => {
 	if (state.currentTeamId) formData.append('team_id', state.currentTeamId);
 
 	const priority = document.getElementById('new-priority')?.value;
-	const tag = document.getElementById('new-tag')?.value;
+	const category = document.getElementById('new-tag')?.value;
 	const assignee = document.getElementById('new-assignee')?.value;
 	const difficulty = document.getElementById('new-difficulty')?.value;
+	// Only forward tags that exist in TAGS so invalid values can't reach the backend.
 	const selectedTags = Array.from(document.querySelectorAll('#tag-picker .tag-opt.selected'))
 		.map((btn) => btn.dataset.tag)
+		.filter((t) => TAGS.includes(t))
 		.join(',');
 
 	if (priority) formData.append('priority', priority);
-	if (tag) {
-		formData.append('tags', tag);
-		formData.append('category', TAG_MAP[tag]);
+	// Only forward a known category enum value so invalid input can't reach the backend.
+	if (category && CATEGORIES.includes(category)) {
+		formData.append('category', category);
 	}
 	if (assignee) formData.append('assigned_to', assignee);
 	if (difficulty) formData.append('difficulty', difficulty);
@@ -990,6 +1081,10 @@ confirmNewBtn.addEventListener('click', async () => {
 		} else {
 			state.selected = ISSUES[0]?.id ?? null;
 		}
+
+		const createdIssue = ISSUES.find((i) => i.id === response.id) ?? { id: response.id, title };
+		createIssueNotification(createdIssue);
+		renderNotificationBadge();
 
 		closeNew();
 		renderList();
@@ -1094,7 +1189,12 @@ detailEl.addEventListener('click', async (e) => {
 			return;
 		}
 
-		const updates = { title, status, priority, description, tags: [tag], category: TAG_MAP[tag] };
+		const updates = { title, status, priority, description };
+		// Only include the tag when it is a known value from TAGS.
+		if (tag && TAGS.includes(tag)) {
+			updates.tags = [tag];
+			updates.category = TAG_MAP[tag];
+		}
 
 		saveBtn.textContent = 'Saving...';
 		saveBtn.disabled = true;
@@ -1160,16 +1260,17 @@ detailEl.addEventListener('click', async (e) => {
 function renderTeamNotFound(teamId) {
 	const contentEl = document.getElementById('content');
 	contentEl.classList.add('is-error');
+	const safeTeamId = escapeHtml(String(teamId));
 	contentEl.innerHTML = `
 		<div class="page-error">
 			<div class="glyph">⊘</div>
 			<h2>Team not found</h2>
-			<p>The team <code>#${teamId}</code> doesn't exist, or you no longer have access to it. Check the link, or pick a team you belong to.</p>
+			<p>The team <code>#${safeTeamId}</code> doesn't exist, or you no longer have access to it. Check the link, or pick a team you belong to.</p>
 			<div class="pe-actions">
 				<a class="btn primary" href="teams.html">← Back to teams</a>
 				<button class="btn" id="retry-team">Retry</button>
 			</div>
-			<div><span class="pe-status"><span class="code">404</span> GET /teams/${teamId}</span></div>
+			<div><span class="pe-status"><span class="code">404</span> GET /teams/${safeTeamId}</span></div>
 		</div>`;
 
 	const teamSwitchEl = document.getElementById('team-switch');
@@ -1191,7 +1292,14 @@ function renderTeamNotFound(teamId) {
 async function initTracker() {
 	const qs = new URLSearchParams(location.search);
 	const teamIdParam = qs.get('team_id');
-	const teamId = teamIdParam ? Number(teamIdParam) : null;
+	const teamId = teamIdParam !== null ? Number(teamIdParam) : null;
+
+	// A present-but-invalid team_id (e.g. ?team_id=abc) must surface the
+	// not-found state instead of silently loading an empty tracker.
+	if (teamIdParam !== null && (teamIdParam.trim() === '' || !Number.isInteger(teamId))) {
+		renderTeamNotFound(teamIdParam);
+		return;
+	}
 
 	try {
 		const teams = await fetchTeams();
