@@ -115,8 +115,8 @@ confirmInviteBtn.addEventListener('click', async () => {
 
 /**
  * Whether an issue matches a sidebar tag filter.
- * @param {object} issue
- * @param {string} tag
+ * @param {object} issue Issue data from the API.
+ * @param {string} tag Sidebar tag filter value.
  * @returns {boolean}
  */
 function issueMatchesTag(issue, tag) {
@@ -1076,22 +1076,23 @@ detailEl.addEventListener('click', async (e) => {
 /**
  * Replaces the content pane with a 404-style error when the requested team
  * does not exist or the user no longer has access to it.
- * @param teamId
+ * @param {number} teamId requested team id from the URL.
  */
 function renderTeamNotFound(teamId) {
 	const contentEl = document.getElementById('content');
 	contentEl.classList.add('is-error');
 	contentEl.innerHTML = `
-		<div class="team-error">
+		<div class="page-error">
 			<div class="glyph">⊘</div>
 			<h2>Team not found</h2>
 			<p>The team <code>#${teamId}</code> doesn't exist, or you no longer have access to it. Check the link, or pick a team you belong to.</p>
-			<div class="te-actions">
+			<div class="pe-actions">
 				<a class="btn primary" href="teams.html">← Back to teams</a>
 				<button class="btn" id="retry-team">Retry</button>
 			</div>
-			<div><span class="te-status"><span class="code">404</span> GET /teams/${teamId}</span></div>
+			<div><span class="pe-status"><span class="code">404</span> GET /teams/${teamId}</span></div>
 		</div>`;
+
 
 	const teamSwitchEl = document.getElementById('team-switch');
 	if (teamSwitchEl) {
