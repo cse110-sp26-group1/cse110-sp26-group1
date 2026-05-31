@@ -604,13 +604,6 @@ body {
 	font-size: 1.143rem;
 	line-height: 1;
 	flex-shrink: 0;
-/* list pane */
-.list-pane {
-	display: grid;
-	grid-template-rows: auto auto 1fr;
-	min-height: 0;
-	min-width: 0;
-	background: var(--bg);
 }
 
 .list-head {

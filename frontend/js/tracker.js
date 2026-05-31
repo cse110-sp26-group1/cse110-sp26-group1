@@ -891,7 +891,7 @@ function setSidebarOpen(open) {
 }
 
 /**
- * for sidebar view 
+ * for sidebar view
  */
 function toggleSidebar() {
 	setSidebarOpen(!sidebarOpen);
@@ -925,7 +925,7 @@ function syncContentGrid() {
 }
 
 /**
- * for mobile view 
+ * for mobile view
  */
 function syncLayout() {
 	syncMobileLayout();
