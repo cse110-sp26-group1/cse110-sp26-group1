@@ -7,7 +7,7 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 14px 28px;
+	padding: 1rem 2rem;
 	border-bottom: 1px solid var(--line);
 	background: var(--bg);
 	position: sticky;
@@ -18,7 +18,7 @@ body {
 .brand {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 0.714rem;
 }
 
 .brand .name {
@@ -28,27 +28,27 @@ body {
 .user-menu {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 0.714rem;
 }
 
 /* layout */
 main {
-	max-width: 1080px;
+	max-width: min(77.143rem, 100%);
 	margin: 0 auto;
-	padding: 56px 28px 80px;
+	padding: 4rem 2rem 5.714rem;
 }
 
 .hero {
 	display: flex;
 	justify-content: space-between;
 	align-items: flex-end;
-	margin-bottom: 32px;
-	gap: 16px;
+	margin-bottom: 2.286rem;
+	gap: 1.143rem;
 }
 
 .hero h1 {
-	margin: 0 0 4px;
-	font-size: 30px;
+	margin: 0 0 0.286rem;
+	font-size: 2.143rem;
 	font-weight: 600;
 	letter-spacing: -0.02em;
 }
@@ -61,29 +61,29 @@ main {
 /* search row */
 .hero-actions {
 	display: flex;
-	gap: 8px;
+	gap: 0.571rem;
 }
 
 .new-team-caption {
-	margin: 4px 0 0;
-	font-size: 12.5px;
+	margin: 0.286rem 0 0;
+	font-size: 0.893rem;
 }
 
 .search-row {
 	display: flex;
-	gap: 10px;
-	margin-bottom: 24px;
+	gap: 0.714rem;
+	margin-bottom: 1.714rem;
 }
 
 .search-row .input {
-	max-width: 320px;
+	max-width: min(22.857rem, 100%);
 }
 
 /* team grid */
 .grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-	gap: 14px;
+	grid-template-columns: repeat(auto-fill, minmax(min(20rem, 100%), 1fr));
+	gap: 1rem;
 }
 
 team-card {
@@ -92,10 +92,10 @@ team-card {
 }
 
 .team {
-	padding: 18px 20px 16px;
+	padding: 1.286rem 1.429rem 1.143rem;
 	display: flex;
 	flex-direction: column;
-	gap: 14px;
+	gap: 1rem;
 	cursor: pointer;
 	transition:
 		border-color 0.12s,
@@ -117,20 +117,20 @@ team-card {
 .team-head {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 0.857rem;
 }
 
 .team-mark {
-	width: 40px;
-	height: 40px;
-	border-radius: 8px;
+	width: 2.857rem;
+	height: 2.857rem;
+	border-radius: 0.571rem;
 	background: var(--surface-3);
 	border: 1px solid var(--line);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	font-weight: 700;
-	font-size: 15px;
+	font-size: 1.071rem;
 	letter-spacing: 0.02em;
 	flex: 0 0 auto;
 }
@@ -161,7 +161,7 @@ team-card {
 
 .team h2 {
 	margin: 0;
-	font-size: 15.5px;
+	font-size: 1.107rem;
 	font-weight: 600;
 	line-height: 1.2;
 	letter-spacing: -0.005em;
@@ -169,17 +169,17 @@ team-card {
 
 .team .slug {
 	font-family: var(--mono);
-	font-size: 11px;
+	font-size: 0.786rem;
 	color: var(--muted);
-	margin-top: 2px;
+	margin-top: 0.143rem;
 }
 
 .stats {
 	/* Stats markup remains in the template for future data, but team-card.js hides it today. */
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
-	gap: 4px;
-	padding: 10px 0;
+	gap: 0.286rem;
+	padding: 0.714rem 0;
 	border-top: 1px solid var(--line);
 }
 
@@ -189,18 +189,18 @@ team-card {
 }
 
 .stats .stat .n {
-	font-size: 18px;
+	font-size: 1.286rem;
 	font-weight: 600;
 	letter-spacing: -0.01em;
 }
 
 .stats .stat .l {
 	font-family: var(--mono);
-	font-size: 10px;
+	font-size: 0.714rem;
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
 	color: var(--muted);
-	margin-top: 2px;
+	margin-top: 0.143rem;
 }
 
 .team-foot {
@@ -214,7 +214,7 @@ team-card {
 }
 
 .members .avatar {
-	margin-left: -8px;
+	margin-left: -0.571rem;
 	background: var(--surface);
 }
 
@@ -223,22 +223,22 @@ team-card {
 }
 
 .members .more {
-	margin-left: -8px;
-	width: 28px;
-	height: 28px;
+	margin-left: -0.571rem;
+	width: 2rem;
+	height: 2rem;
 	border-radius: 50%;
 	background: var(--surface-2);
 	color: var(--muted);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 11px;
+	font-size: 0.786rem;
 	font-weight: 600;
 	border: 1px solid var(--line);
 }
 
 .last-active {
-	font-size: 12px;
+	font-size: 0.857rem;
 	color: var(--muted);
 }
 
@@ -259,31 +259,31 @@ team-card {
 }
 
 .team.new .plus {
-	width: 40px;
-	height: 40px;
+	width: 2.857rem;
+	height: 2.857rem;
 	border-radius: 50%;
 	border: 1px solid var(--line-strong);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 22px;
-	margin: 0 auto 4px;
+	font-size: 1.571rem;
+	margin: 0 auto 0.286rem;
 }
 
 .team.new h2 {
-	font-size: 15px;
+	font-size: 1.071rem;
 }
 
 /* pending invites */
 .invites {
-	margin-top: 36px;
+	margin-top: 2.571rem;
 	border-top: 1px solid var(--line);
-	padding-top: 24px;
+	padding-top: 1.714rem;
 }
 
 .invites h3 {
-	margin: 0 0 10px;
-	font-size: 14px;
+	margin: 0 0 0.714rem;
+	font-size: 1rem;
 	font-weight: 600;
 }
 
@@ -291,33 +291,33 @@ team-card {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 12px 16px;
+	padding: 0.857rem 1.143rem;
 	background: var(--surface);
 	border: 1px solid var(--line);
 	border-radius: var(--r-2);
-	margin-bottom: 8px;
+	margin-bottom: 0.571rem;
 }
 
 .invite .info {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 0.857rem;
 }
 
 .invite .info .team-mark {
-	width: 32px;
-	height: 32px;
-	font-size: 13px;
+	width: 2.286rem;
+	height: 2.286rem;
+	font-size: 0.929rem;
 }
 
 .invite .actions {
 	display: flex;
-	gap: 6px;
+	gap: 0.429rem;
 }
 
 .invite p {
 	margin: 0;
-	font-size: 12.5px;
+	font-size: 0.893rem;
 	color: var(--muted);
 }
 
@@ -330,8 +330,8 @@ team-card {
 .sort-item {
 	display: flex;
 	align-items: center;
-	padding: 6px 12px;
-	font-size: 13px;
+	padding: 0.429rem 0.857rem;
+	font-size: 0.929rem;
 	border-radius: var(--r-1);
 	cursor: pointer;
 	color: var(--ink-2);
@@ -339,11 +339,11 @@ team-card {
 
 /* The circle indicator to be used in the "Sort: recent" dropdown */
 .sort-item .circle {
-	width: 10px;
-	height: 10px;
+	width: 0.714rem;
+	height: 0.714rem;
 	border-radius: 50%;
-	border: 1.5px solid var(--line-strong);
-	margin-right: 10px;
+	border: 0.107rem solid var(--line-strong);
+	margin-right: 0.714rem;
 	flex-shrink: 0;
 }
 

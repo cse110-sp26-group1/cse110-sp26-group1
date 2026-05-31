@@ -124,6 +124,7 @@
 
 		<!-- ============ APP ============ -->
 		<div class="app">
+			<div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
 			<!-- SIDEBAR -->
 			<aside class="sidebar">
 				<!-- Removed "Views" Nav Section  -->
@@ -198,6 +199,16 @@
 					</div>
 
 					<div class="filter-bar">
+						<button
+							type="button"
+							class="btn ghost icon sidebar-toggle"
+							id="sidebar-toggle"
+							aria-label="Toggle filters sidebar"
+							aria-expanded="false"
+							title="Toggle sidebar"
+						>
+							›
+						</button>
 						<div class="filter-group">
 							<span class="label-sm">SORT</span>
 							<!-- Multiple sort triggers -->
