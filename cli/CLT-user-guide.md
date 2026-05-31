@@ -81,8 +81,9 @@ allegro login --email=xxx
 allegro logout
 allegro list_teams
 allegro list_issues --team_id=<team_id> [--status=xxx] [--priority=xxx] [--assigned_to=xxx] [--category=xxx] [--difficulty=xxx] [--sort_by=xxx] [--order=asc|desc]
+allegro create_issue --team_id=<team_id> --title=<title> [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags='["a","b"]'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace='["..."]'] [--affected_files='["..."]'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]
 allegro get_issue <id>
-allegro update_issue <id> [--status=xxx] [--priority=xxx] [--assigned_to=xxx]
+allegro update_issue <id> [--title=<title>] [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags='["a","b"]'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace='["..."]'] [--affected_files='["..."]'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]
 allegro resolve_issue <id>
 allegro help
 ```
@@ -92,15 +93,31 @@ allegro help
 - `email`: string. Example: `user@example.com`
 - `team_id`: integer. Example: `1`
 - `id` for `get_issue`, `update_issue`, and `resolve_issue`: integer issue ID. Example: `42`
+- `title`: string. Example: `Button click does not trigger save`
+- `summary`: string. Short overview of the issue
 - `status`: string. Valid values: `"Open"`, `"In Progress"`, `"Resolved"`, `"Closed"`
 - `priority`: string. Valid values: `"Low"`, `"Medium"`, `"High"`, `"Critical"`
 - `assigned_to`: integer user ID. Example: `7`
 - `category`: string. Example values may include `"Bug"`, `"Feature"`, or `"Task"`
 - `difficulty`: string. Use the difficulty values supported by the backend for your project
+- `tags`: JSON array of strings. Example: `--tags='["frontend","urgent"]'`
+- `entry_point`: string. Example: `src/components/Button.jsx`
+- `error_type`: string. Example: `TypeError`
+- `error_message`: string. Example: `Cannot read properties of undefined`
+- `stack_trace`: JSON array of strings. Example: `--stack_trace='["at saveButton (Button.jsx:12:3)"]'`
+- `affected_files`: JSON array of strings. Example: `--affected_files='["src/components/Button.jsx","src/pages/Form.jsx"]'`
+- `expected_behavior`: string. Describes what should have happened
+- `actual_behavior`: string. Describes what actually happened
+- `missing_information`: string. Notes any missing context or unknowns
+- `steps_to_reproduce`: string. Reproduction steps for the issue
+- `hypothesis`: string. Working theory for the root cause
+- `resolution_notes`: string. Notes about the fix or resolution
 - `sort_by`: string. Example values: `id`, `title`, `status`, `priority`, `category`, `difficulty`, `created_at`, `updated_at`, `assigned_to`
 - `order`: string. Valid values: `asc` or `desc`
 
 ## Additional Notes
 
 - If a status contains spaces, wrap it in quotes, for example: `--status="In Progress"`.
+- `create_issue` and `update_issue` use the agent routes, so blocked agent fields such as `assigned_to`, `description`, `team_id` cannot be updated through `update_issue`.
+- For array-valued fields such as `tags`, `stack_trace`, and `affected_files`, pass valid JSON arrays with double-quoted strings.
 - `list_issues` returns a compact issue summary by default and hides issues with status `Resolved` or `Closed`. Pass `--status=Resolved` or `--status=Closed` to see them.
