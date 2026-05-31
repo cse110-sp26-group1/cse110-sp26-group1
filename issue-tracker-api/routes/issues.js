@@ -18,6 +18,7 @@ const ALLOWED_TAGS = [
 	'enhancement',
 	'research',
 ];
+const ALLOWED_DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Unknown'];
 
 /**
  * @param {unknown} tags
@@ -146,12 +147,18 @@ export async function handleIssues(request, env) {
 
 		const statusParam = url.searchParams.get('status');
 		if (statusParam !== null) {
+			if (!ISSUE_STATUSES.includes(statusParam)) {
+				return Response.json({ error: 'Invalid status format. Must be one of: Open, In Progress, Resolved, Closed.' }, { status: 400 });
+			}
 			query += ' AND status = ?';
 			bindings.push(statusParam);
 		}
 
 		const priorityParam = url.searchParams.get('priority');
 		if (priorityParam !== null) {
+			if (!ISSUE_PRIORITIES.includes(priorityParam)) {
+				return Response.json({ error: 'Invalid priority format. Must be one of: Low, Medium, High, Critical.' }, { status: 400 });
+			}
 			query += ' AND priority = ?';
 			bindings.push(priorityParam);
 		}
@@ -168,12 +175,19 @@ export async function handleIssues(request, env) {
 
 		const categoryParam = url.searchParams.get('category');
 		if (categoryParam !== null) {
+			if (!ALLOWED_CATEGORIES.includes(categoryParam)) {
+				return Response.json({ error: 'Invalid category format. Must be one of: Bug, Feature, Task.' }, { status: 400 });
+			}
 			query += ' AND category = ?';
 			bindings.push(categoryParam);
 		}
 
 		const difficultyParam = url.searchParams.get('difficulty');
 		if (difficultyParam !== null) {
+			// NEW VALIDATION GUARD
+			if (!ALLOWED_DIFFICULTIES.includes(difficultyParam)) {
+				return Response.json({ error: 'Invalid difficulty format. Must be one of: Easy, Medium, Hard.' }, { status: 400 });
+			}
 			query += ' AND difficulty = ?';
 			bindings.push(difficultyParam);
 		}
@@ -328,13 +342,15 @@ export async function handleIssues(request, env) {
 
 		// Point 2 Change: Mid-flight workspace membership validation when an assignment is requested during initialization
 		//Checks valid assigned member for new issue
+		// Validate assigned_to field if provided (automatically handles both JSON and Multipart via body.assigned_to)
 		let assignedTo = null;
-		if (body.assigned_to !== undefined && body.assigned_to !== null) {
+		if (body.assigned_to !== undefined && body.assigned_to !== null && body.assigned_to !== '') {
 			assignedTo = Number(body.assigned_to);
-			if (!Number.isInteger(assignedTo) || assignedTo <= 0) {
+			if (Number.isNaN(assignedTo) || !Number.isInteger(assignedTo) || assignedTo <= 0) {
 				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
 			}
 
+			// Core verification: Lock down assignment to workspace group boundaries
 			const assigneeMembership = await requireTeamMember(env, assignedTo, parsedTeamId);
 			if (assigneeMembership.error) {
 				return Response.json({ error: 'Invalid assignment. Assignee must be an established member of the team.' }, { status: 400 });
@@ -508,16 +524,40 @@ export async function handleIssues(request, env) {
 		}
 
 		// Validation rules for Point 1
+		// Symmetrical validation splitting to satisfy both pre-existing type tests and new length cap filters
 		if (body.title !== undefined) {
 			if (typeof body.title !== 'string' || body.title.trim() === '') {
 				return Response.json({ error: 'Invalid title format. Must be a non-empty string.' }, { status: 400 });
 			}
+			if (body.title.length > 255) {
+				return Response.json({ error: 'Invalid title format. Must be a non-empty string under 256 characters.' }, { status: 400 });
+			}
 		}
 
-		// Enforce non-empty constraint if description is optionally supplied for a slide update
 		if (body.description !== undefined) {
 			if (typeof body.description !== 'string' || body.description.trim() === '') {
 				return Response.json({ error: 'Invalid description format. Must be a non-empty string.' }, { status: 400 });
+			}
+			if (body.description.length > 10000) {
+				return Response.json({ error: 'Invalid description format. Must be a non-empty string under 10001 characters.' }, { status: 400 });
+			}
+		}
+
+		if (body.summary !== undefined && body.summary !== null) {
+			if (typeof body.summary !== 'string' || body.summary.length > 5000) {
+				return Response.json({ error: 'Invalid summary format. Must be a string under 5001 characters.' }, { status: 400 });
+			}
+		}
+
+		if (body.affected_files !== undefined && body.affected_files !== null) {
+			if (!Array.isArray(body.affected_files) || !body.affected_files.every((f) => typeof f === 'string')) {
+				return Response.json({ error: 'Invalid affected_files format. Must be an array of strings.' }, { status: 400 });
+			}
+			if (body.affected_files.length > 25 || !body.affected_files.every((f) => f.trim() !== '' && f.length <= 255)) {
+				return Response.json(
+					{ error: 'Invalid affected_files format. Must be an array of non-empty strings (max 25 files, max 255 chars each).' },
+					{ status: 400 },
+				);
 			}
 		}
 
@@ -546,17 +586,24 @@ export async function handleIssues(request, env) {
 		if (category && !ALLOWED_CATEGORIES.includes(category)) {
 			return Response.json({ error: `Invalid category. Must be one of: ${ALLOWED_CATEGORIES.join(', ')}` }, { status: 400 });
 		}
+		// NEW VALIDATION GUARD FOR DIFFICULTY
+		if (body.difficulty !== undefined && body.difficulty !== null) {
+			const difficultyStr = typeof body.difficulty === 'string' ? body.difficulty.trim() : '';
+			if (!ALLOWED_DIFFICULTIES.includes(difficultyStr)) {
+				return Response.json({ error: 'Invalid difficulty value' }, { status: 400 });
+			}
+		}
 
 		let assignedTo = null;
-		if (body.assigned_to !== undefined) {
+		if (body.assigned_to !== undefined && body.assigned_to !== null && body.assigned_to !== '') {
 			assignedTo = Number(body.assigned_to);
-			if (!Number.isInteger(assignedTo) || assignedTo <= 0) {
+			if (Number.isNaN(assignedTo) || !Number.isInteger(assignedTo) || assignedTo <= 0) {
 				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
 			}
 
 			// Point 2 Change: Mid-flight workspace membership validation when an assignment update is requested
-			//Checks if issue is assigned to member of same team before allowing assignment update; if not, returns a 400 error indicating invalid assignment. This ensures that issues cannot be assigned to users who are not part of the issue's team, maintaining data integrity and proper access control.
-			//Checks valid assigned member for issue update
+			// Checks if issue is assigned to member of same team before allowing assignment update; if not, returns a 400 error indicating invalid assignment. This ensures that issues cannot be assigned to users who are not part of the issue's team, maintaining data integrity and proper access control.
+			// Checks valid assigned member for issue update
 			const assigneeMembership = await requireTeamMember(env, assignedTo, issue.team_id);
 			if (assigneeMembership.error) {
 				return Response.json({ error: 'Invalid assignment. Assignee must be an established member of the team.' }, { status: 400 });

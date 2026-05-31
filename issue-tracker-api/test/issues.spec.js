@@ -427,6 +427,40 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(data.error).toBe('Invalid team_id format. Must be a positive integer.');
 			});
 
+			it('400: Rejects request if status query parameter format is invalid (Integration Style)', async () => {
+				const userId = await createTestUser('status_get_user', 'status_get@ucsd.edu');
+				const teamId = await createTestTeam('Status Get Team');
+				const token = 'status-get-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}&status=InvalidStatusValue`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid status format. Must be one of: Open, In Progress, Resolved, Closed.');
+			});
+
+			it('400: Rejects request if priority query parameter format is invalid (Integration Style)', async () => {
+				const userId = await createTestUser('priority_get_user', 'priority_get@ucsd.edu');
+				const teamId = await createTestTeam('Priority Get Team');
+				const token = 'priority-get-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}&priority=InvalidPriorityValue`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid priority format. Must be one of: Low, Medium, High, Critical.');
+			});
+
 			it('400: Rejects request if assigned_to query parameter format is non-numeric (Integration Style)', async () => {
 				const userId = await createTestUser('assigned_to_type_user', 'at_type@ucsd.edu');
 				const teamId = await createTestTeam('Assigned To Type Team');
@@ -444,6 +478,40 @@ describe('Issues Endpoint Testing Suite', () => {
 				expect(res.status).toBe(400);
 				const data = await res.json();
 				expect(data.error).toBe('Invalid assigned_to format. Must be a positive integer.');
+			});
+
+			it('400: Rejects request if category query parameter format is invalid (Integration Style)', async () => {
+				const userId = await createTestUser('category_get_user', 'category_get@ucsd.edu');
+				const teamId = await createTestTeam('Category Get Team');
+				const token = 'category-get-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}&category=InvalidCategoryValue`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid category format. Must be one of: Bug, Feature, Task.');
+			});
+
+			it('400: Rejects request if difficulty query parameter format is invalid (Integration Style)', async () => {
+				const userId = await createTestUser('difficulty_get_user', 'diff_get@ucsd.edu');
+				const teamId = await createTestTeam('Difficulty Get Team');
+				const token = 'diff-get-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+
+				const res = await SELF.fetch(`http://localhost/issues?team_id=${teamId}&difficulty=SuperHard`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid difficulty format. Must be one of: Easy, Medium, Hard.');
 			});
 
 			it('403: Rejects request with a forbidden error if an authenticated user attempts to read records from a team context without membership (Integration Style)', async () => {
@@ -1062,6 +1130,138 @@ describe('Issues Endpoint Testing Suite', () => {
 				});
 				expect(resFiles.status).toBe(400);
 				expect((await resFiles.json()).error).toBe('Invalid affected_files format. Must be an array of strings.');
+			});
+
+			it('400: Rejects request if difficulty payload value is invalid (Integration Style)', async () => {
+				const userId = await createTestUser('difficulty_patch_user', 'diff_patch@ucsd.edu');
+				const teamId = await createTestTeam('Difficulty Patch Team');
+				const token = 'diff-patch-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				const issueId = await createTestIssue(teamId, userId);
+
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ difficulty: 'InvalidDifficultyValue' }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid difficulty value');
+			});
+
+			it('400: Rejects request if title length exceeds 255 characters (Integration Style)', async () => {
+				const userId = await createTestUser('title_len_user', 'title_len@ucsd.edu');
+				const teamId = await createTestTeam('Title Length Team');
+				const token = 'title-len-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				const issueId = await createTestIssue(teamId, userId);
+
+				const longTitle = 'a'.repeat(256);
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ title: longTitle }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid title format. Must be a non-empty string under 256 characters.');
+			});
+
+			it('400: Rejects request if description length exceeds 10000 characters (Integration Style)', async () => {
+				const userId = await createTestUser('desc_len_user', 'desc_len@ucsd.edu');
+				const teamId = await createTestTeam('Desc Length Team');
+				const token = 'desc-len-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				const issueId = await createTestIssue(teamId, userId);
+
+				const longDesc = 'a'.repeat(10001);
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ description: longDesc }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid description format. Must be a non-empty string under 10001 characters.');
+			});
+
+			it('400: Rejects request if summary format is not a string or exceeds 5000 characters (Integration Style)', async () => {
+				const userId = await createTestUser('summary_val_user', 'summary_val@ucsd.edu');
+				const teamId = await createTestTeam('Summary Val Team');
+				const token = 'summary-val-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				const issueId = await createTestIssue(teamId, userId);
+
+				// Verify numerical input rejection
+				let res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ summary: 99999 }),
+				});
+				expect(res.status).toBe(400);
+
+				// Verify length overflow protection
+				const longSummary = 'a'.repeat(5001);
+				res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ summary: longSummary }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid summary format. Must be a string under 5001 characters.');
+			});
+
+			it('400: Rejects request if affected_files format fails length or element counts bounds (Integration Style)', async () => {
+				const userId = await createTestUser('files_val_user', 'files_val@ucsd.edu');
+				const teamId = await createTestTeam('Files Val Team');
+				const token = 'files-val-token';
+
+				await createTestSession(userId, token, 24);
+				await createTeamMembership(userId, teamId, 'member');
+				const issueId = await createTestIssue(teamId, userId);
+
+				// Verify max array index boundary ceiling (26 elements)
+				const tooManyFiles = Array(26).fill('src/index.js');
+				const res = await SELF.fetch(`http://localhost/issues/${issueId}`, {
+					method: 'PATCH',
+					headers: {
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ affected_files: tooManyFiles }),
+				});
+
+				expect(res.status).toBe(400);
+				const data = await res.json();
+				expect(data.error).toBe('Invalid affected_files format. Must be an array of non-empty strings (max 25 files, max 255 chars each).');
 			});
 
 			it('400: Rejects request if tags query parameter format is a string instead of an array (Integration Style)', async () => {
