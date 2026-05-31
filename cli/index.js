@@ -121,6 +121,22 @@ function formatIssueList(issues, statusFilterApplied) {
 }
 
 /**
+ * Formats a single issue response for terminal output by omitting
+ * internal fields that are not useful to CLI consumers.
+ *
+ * @param {unknown} issue - Raw issue returned by the API.
+ * @returns {unknown} The issue without `token_usage`, or the original value if not an object.
+ */
+function formatIssue(issue) {
+	if (!issue || typeof issue !== 'object') {
+		return issue;
+	}
+
+	const { token_usage, ...formattedIssue } = issue;
+	return formattedIssue;
+}
+
+/**
  * Loads the saved session token from the local CLI config file.
  *
  * Exits the process if the user is not currently logged in.
@@ -375,7 +391,7 @@ if (command === 'login') {
 		console.error('Error:', data);
 		process.exit(1);
 	}
-	console.log(JSON.stringify(data, null, 2));
+	console.log(JSON.stringify(formatIssue(data), null, 2));
 } else if (command === 'update_issue') {
 	if (!id) {
 		console.error(
