@@ -5,6 +5,44 @@ import { processIssue } from '../src/llm.js';
 const ISSUE_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const ISSUE_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 const ALLOWED_CATEGORIES = ['Bug', 'Feature', 'Task'];
+const ALLOWED_TAGS = [
+	'ui',
+	'backend',
+	'database',
+	'authentication',
+	'performance',
+	'security',
+	'testing',
+	'documentation',
+	'integration',
+	'enhancement',
+	'research',
+];
+
+/**
+ * @param {unknown} tags
+ * @returns {string | null} Error message, or null if valid / omitted.
+ */
+function getTagsValidationError(tags) {
+	if (tags === undefined || tags === null) return null;
+	if (!Array.isArray(tags) || !tags.every((t) => typeof t === 'string')) {
+		return 'Invalid tags format';
+	}
+	const invalid = tags.filter((t) => !ALLOWED_TAGS.includes(t));
+	if (invalid.length > 0) {
+		return `Invalid tag(s): ${invalid.join(', ')}. Must be one of: ${ALLOWED_TAGS.join(', ')}`;
+	}
+	return null;
+}
+
+/**
+ * @param {unknown} tags
+ * @returns {string[]}
+ */
+function sanitizeTags(tags) {
+	if (!Array.isArray(tags)) return [];
+	return tags.filter((t) => typeof t === 'string' && ALLOWED_TAGS.includes(t));
+}
 
 /**
  * Picks the user value if present, otherwise the LLM value if it's in the
@@ -303,13 +341,9 @@ export async function handleIssues(request, env) {
 			}
 		}
 
-		// Point 6 Change: Strict Array Schema Validation for Tags in POST payload
-		// Assures type-safety to prevent runtime exceptions upon JSON parsing of malicious payloads.
-		//Checks that tag is array not invalid object type to protect GET fetches that parse tags with JSON.parse; if tags is provided in the body, it must be an array of strings. If it's not, return a 400 error indicating invalid format. This validation ensures that the tags field adheres to the expected structure, preventing potential issues during data processing and retrieval.
-		if (body.tags !== undefined && body.tags !== null) {
-			if (!Array.isArray(body.tags) || !body.tags.every((t) => typeof t === 'string')) {
-				return Response.json({ error: 'Invalid tags format' }, { status: 400 });
-			}
+		const tagsValidationError = getTagsValidationError(body.tags);
+		if (tagsValidationError) {
+			return Response.json({ error: tagsValidationError }, { status: 400 });
 		}
 
 		const status = body.status?.trim();
@@ -346,7 +380,9 @@ export async function handleIssues(request, env) {
 		const finalCategory = pickEnum(category, llm.category, ALLOWED_CATEGORIES, 'Bug');
 		const finalDifficulty = body.difficulty || (llm.difficulty && llm.difficulty !== 'null' ? llm.difficulty : null);
 		const finalSummary = coerceText(body.summary, llm.summary);
-		const finalTags = JSON.stringify(coerceArray(body.tags, llm.tags));
+		const mergedTags = coerceArray(body.tags, llm.tags);
+		const finalTagsList = body.tags !== undefined && body.tags !== null ? mergedTags : sanitizeTags(mergedTags);
+		const finalTags = JSON.stringify(finalTagsList);
 
 		const finalEntryPoint = coerceText(body.details?.entry_point, llm.entry_point ?? llm.details?.entry_point);
 		const finalErrorType = coerceText(body.details?.error_type, llm.error_type ?? llm.details?.error_type);
@@ -485,13 +521,9 @@ export async function handleIssues(request, env) {
 			}
 		}
 
-		// Point 6 Change: Strict Array Schema Validation for Tags in PATCH payload
-		// Rejects variations to guard downstream workflows when updating tags.
-		//Checks that tag is array not invalid object type to protect GET fetches that parse tags with JSON.parse; if invalid, returns a 400 error indicating invalid tags format. This ensures that the tags field maintains consistent data structure for proper handling in retrieval and display logic.
-		if (body.tags !== undefined && body.tags !== null) {
-			if (!Array.isArray(body.tags) || !body.tags.every((t) => typeof t === 'string')) {
-				return Response.json({ error: 'Invalid tags format' }, { status: 400 });
-			}
+		const tagsValidationError = getTagsValidationError(body.tags);
+		if (tagsValidationError) {
+			return Response.json({ error: tagsValidationError }, { status: 400 });
 		}
 
 		// Strictly validate type matching for affected_files array syntax representation
