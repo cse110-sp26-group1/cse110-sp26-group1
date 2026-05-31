@@ -26,7 +26,7 @@ body {
 	background: var(--surface);
 	padding: 2.286rem 2.857rem;
 	border-radius: 0;
-	border: 1px solid var(--line);
+	border: 0.071rem solid var(--line);
 	box-shadow: none;
 }
 
@@ -42,7 +42,7 @@ body {
 	gap: 0.714rem;
 	margin-bottom: 3.429rem;
 	padding-bottom: 0.857rem;
-	border-bottom: 1px solid var(--line);
+	border-bottom: 0.071rem solid var(--line);
 }
 
 /* === name === */
@@ -93,7 +93,7 @@ p.sub {
 .tabs-seg {
 	display: inline-flex;
 	background: var(--surface-2);
-	border: 1px solid var(--line);
+	border: 0.071rem solid var(--line);
 	border-radius: 0.571rem;
 	padding: 0.214rem;
 	margin-bottom: 1.571rem;
@@ -179,7 +179,7 @@ p.sub {
 .or::after {
 	content: '';
 	flex: 1;
-	height: 1px;
+	height: 0.071rem;
 	background: var(--line);
 }
 

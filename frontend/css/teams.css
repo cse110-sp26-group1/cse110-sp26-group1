@@ -8,7 +8,7 @@ body {
 	align-items: center;
 	justify-content: space-between;
 	padding: 1rem 2rem;
-	border-bottom: 1px solid var(--line);
+	border-bottom: 0.071rem solid var(--line);
 	background: var(--bg);
 	position: sticky;
 	top: 0;
@@ -102,7 +102,7 @@ team-card {
 		transform 0.08s,
 		box-shadow 0.12s;
 	background: var(--surface);
-	border: 1px solid var(--line);
+	border: 0.071rem solid var(--line);
 	border-radius: var(--r-3);
 	box-shadow: var(--shadow-1);
 	text-align: left;
@@ -110,7 +110,7 @@ team-card {
 
 .team:hover {
 	border-color: var(--ink-2);
-	transform: translateY(-1px);
+	transform: translateY(-0.071rem);
 	box-shadow: var(--shadow-2);
 }
 
@@ -125,7 +125,7 @@ team-card {
 	height: 2.857rem;
 	border-radius: 0.571rem;
 	background: var(--surface-3);
-	border: 1px solid var(--line);
+	border: 0.071rem solid var(--line);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -180,7 +180,7 @@ team-card {
 	grid-template-columns: repeat(3, 1fr);
 	gap: 0.286rem;
 	padding: 0.714rem 0;
-	border-top: 1px solid var(--line);
+	border-top: 0.071rem solid var(--line);
 }
 
 .stats .stat {
@@ -234,7 +234,7 @@ team-card {
 	justify-content: center;
 	font-size: 0.786rem;
 	font-weight: 600;
-	border: 1px solid var(--line);
+	border: 0.071rem solid var(--line);
 }
 
 .last-active {
@@ -262,7 +262,7 @@ team-card {
 	width: 2.857rem;
 	height: 2.857rem;
 	border-radius: 50%;
-	border: 1px solid var(--line-strong);
+	border: 0.071rem solid var(--line-strong);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -277,7 +277,7 @@ team-card {
 /* pending invites */
 .invites {
 	margin-top: 2.571rem;
-	border-top: 1px solid var(--line);
+	border-top: 0.071rem solid var(--line);
 	padding-top: 1.714rem;
 }
 
@@ -293,7 +293,7 @@ team-card {
 	justify-content: space-between;
 	padding: 0.857rem 1.143rem;
 	background: var(--surface);
-	border: 1px solid var(--line);
+	border: 0.071rem solid var(--line);
 	border-radius: var(--r-2);
 	margin-bottom: 0.571rem;
 }
