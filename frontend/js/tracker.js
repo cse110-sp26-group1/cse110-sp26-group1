@@ -1,16 +1,17 @@
-import { PRI_ORDER, STATUS_ORDER, PRI_LABEL, PRI_NAME, STATUS_NAME, SKILLS_MD } from './constants.js';
+import { PRI_ORDER, STATUS_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
 
 import { fetchIssues, createIssue, updateIssue } from './api.js';
-import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
+import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers, leaveTeam } from './api.js';
+import { createIssueNotification, renderNotificationBadge } from './notifications.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
 
-// STATE
+// Sidebar filters: status, tag, and category (priority is sortable, not filterable here).
 const state = {
 	sort: 'priority',
 	tag: 'all',
 	status: 'all',
-	priority: 'all',
+	category: 'all',
 	query: '',
 	selected: null,
 	detailOpen: true,
@@ -25,6 +26,8 @@ let ISSUES = [];
 const inviteBackdrop = document.getElementById('invite-backdrop');
 const confirmInviteBtn = document.getElementById('confirm-invite');
 const inviteInput = document.getElementById('invite-input');
+const inviteLinkDisplay = document.getElementById('invite-link-display');
+const copyInviteLinkBtn = document.getElementById('copy-invite-link');
 const openInviteModalBtn = document.getElementById('open-invite-modal');
 
 const listEl = document.getElementById('issue-list');
@@ -37,6 +40,7 @@ const fileList = document.getElementById('file-list');
 // helpers for invite listeners below
 /**
  * Opens the invite modal only after a team has been resolved from the URL.
+ * Also populates the copyable join link for the current team.
  */
 function openInvite() {
 	if (!state.currentTeamId) {
@@ -44,15 +48,123 @@ function openInvite() {
 		return;
 	}
 	inviteBackdrop.classList.add('open');
+
+	if (inviteLinkDisplay) {
+		inviteLinkDisplay.value = new URL(`join.html?team_id=${state.currentTeamId}`, window.location.href).href;
+	}
+
 	setTimeout(() => inviteInput.focus(), 30);
 }
 
 /**
- * Closes the invite modal and clears the draft recipient.
+ * Closes the invite modal and clears the draft recipient and any inline error.
  */
 function closeInvite() {
 	inviteBackdrop.classList.remove('open');
 	inviteInput.value = '';
+	clearInviteError();
+}
+
+/**
+ * Checks invite email input with a lightweight chars@chars.chars pattern.
+ * @param {string} val Raw invite input value.
+ * @returns {boolean} Whether the value looks like an email address.
+ */
+function isValidEmail(val) {
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+}
+
+/** Clears the inline error under the invite input. */
+function clearInviteError() {
+	const errEl = document.getElementById('invite-error');
+	if (errEl) errEl.hidden = true;
+	inviteInput.classList.remove('invalid');
+}
+
+/**
+ * Shows an inline error beneath the invite input.
+ * @param {string} msg Error copy to display.
+ * @param {object} [resendPayload] If present, appends a "Resend?" action button.
+ */
+function setInviteError(msg, resendPayload) {
+	const errEl = document.getElementById('invite-error');
+	if (!errEl) return;
+	errEl.hidden = false;
+	errEl.innerHTML = '';
+	errEl.appendChild(document.createTextNode(msg));
+	if (resendPayload) {
+		const btn = document.createElement('button');
+		btn.className = 'action-link';
+		btn.textContent = 'Resend?';
+		btn.addEventListener('click', () => {
+			clearInviteError();
+			sendInvite(resendPayload);
+		});
+		errEl.append(' ');
+		errEl.appendChild(btn);
+	}
+	inviteInput.classList.add('invalid');
+}
+
+/**
+ * Sends an invite, branching on HTTP status for distinct error copy.
+ * @param {{ email?: string, username?: string }} payload Invite recipient payload.
+ */
+async function sendInvite(payload) {
+	const val = payload.email ?? payload.username;
+	const originalText = confirmInviteBtn.textContent;
+	confirmInviteBtn.textContent = 'Sending...';
+	confirmInviteBtn.disabled = true;
+	try {
+		await inviteToTeam(state.currentTeamId, payload);
+		showToast(`Invitation sent to ${val}`);
+		closeInvite();
+		// Refresh member list so the new invitee shows up
+		if (state.currentTeamId) {
+			fetchTeamMembers(state.currentTeamId)
+				.then((members) => {
+					state.teamMembers = members;
+					renderTeamMembers();
+				})
+				.catch(() => {});
+		}
+	} catch (err) {
+		const status = err.status;
+		if (status === 404) {
+			setInviteError(`No user found for '${val}'.`);
+		} else if (status === 409) {
+			const msg = (err.message || '').toLowerCase();
+			if (msg.includes('already a member') || msg.includes('already on') || msg.includes('already in team')) {
+				setInviteError(`${val} is already on this team.`);
+			} else {
+				setInviteError(`${val} already has a pending invite.`, payload);
+			}
+		} else if (status === 403) {
+			setInviteError('Only team admins can invite.');
+		} else {
+			showToast(err.message || "Couldn't send invite. Please try again.");
+		}
+	} finally {
+		confirmInviteBtn.textContent = originalText;
+		confirmInviteBtn.disabled = false;
+	}
+}
+
+if (copyInviteLinkBtn) {
+	copyInviteLinkBtn.addEventListener('click', async () => {
+		const url = inviteLinkDisplay?.value;
+		if (!url) return;
+		try {
+			await navigator.clipboard.writeText(url);
+			const original = copyInviteLinkBtn.textContent;
+			copyInviteLinkBtn.textContent = 'Copied!';
+			setTimeout(() => {
+				copyInviteLinkBtn.textContent = original;
+			}, 1500);
+		} catch {
+			showToast('Could not copy link — try selecting it manually.');
+		}
+	});
 }
 
 if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
@@ -64,33 +176,119 @@ inviteBackdrop.addEventListener('click', (e) => {
 });
 
 confirmInviteBtn.addEventListener('click', async () => {
+	clearInviteError();
 	const val = inviteInput.value.trim();
 	if (!val) {
+		setInviteError('Enter a username or email.');
 		inviteInput.focus();
 		return;
 	}
-
 	const isEmail = val.includes('@');
-	const payload = isEmail ? { email: val } : { username: val };
-
-	const originalText = confirmInviteBtn.textContent;
-	confirmInviteBtn.textContent = 'Sending...';
-	confirmInviteBtn.disabled = true;
-
-	try {
-		await inviteToTeam(state.currentTeamId, payload);
-		showToast(`Invitation sent to ${val}`);
-		closeInvite();
-	} catch (err) {
-		showToast(err.message || 'Failed to send invite.');
-	} finally {
-		confirmInviteBtn.textContent = originalText;
-		confirmInviteBtn.disabled = false;
+	if (isEmail && !isValidEmail(val)) {
+		setInviteError("That doesn't look like a valid email.");
+		inviteInput.focus();
+		return;
 	}
+	await sendInvite(isEmail ? { email: val } : { username: val });
 });
 
+inviteInput.addEventListener('input', clearInviteError);
+
+// === Leave team === //
 /**
- * Calculates issue counts and updates the sidebar UI
+ * Confirms and leaves the current team, then redirects to the teams list.
+ */
+async function handleLeaveTeam() {
+	if (!state.currentTeamId) return;
+	if (!window.confirm('Leave this team? You will lose access to its issues.')) return;
+
+	try {
+		await leaveTeam(state.currentTeamId);
+		showToast('You left the team. Redirecting…');
+		setTimeout(() => {
+			location.href = 'teams.html';
+		}, 900);
+	} catch (err) {
+		showToast(err.message || 'Failed to leave team.');
+	}
+}
+
+/**
+ * Whether an issue matches a sidebar tag filter.
+ * @param {object} issue Issue data from the API.
+ * @param {string} tag Sidebar tag filter value.
+ * @returns {boolean}
+ */
+function issueMatchesTag(issue, tag) {
+	if ((issue.tags || []).includes(tag)) return true;
+	if (tag === 'bug' && issue.category === 'Bug') return true;
+	return false;
+}
+
+/**
+ * Builds sidebar TAG filter rows from TAGS in constants.js.
+ */
+function renderTagFilters() {
+	const container = document.getElementById('tag-filters');
+	if (!container) return;
+
+	container.innerHTML = TAGS.map(
+		(t) => `
+		<div class="filter-item" data-group="tag" data-val="${t}">
+			<span class="indicator label-${t}"></span> ${t}
+			<span class="count" id="cnt-${t}">0</span>
+		</div>`,
+	).join('');
+}
+
+/**
+ * Builds sidebar CATEGORY filter rows from CATEGORIES in constants.js.
+ */
+function renderCategoryFilters() {
+	const container = document.getElementById('category-filters');
+	if (!container) return;
+
+	container.innerHTML = CATEGORIES.map(
+		(c) => `
+		<div class="filter-item" data-group="category" data-val="${c}">
+			<span class="indicator"></span> ${c.toLowerCase()}
+			<span class="count" id="cnt-cat-${c}">0</span>
+		</div>`,
+	).join('');
+}
+
+/**
+ * Whether an issue belongs to a sidebar category filter.
+ * @param {object} issue Issue data from the API.
+ * @param {string} category Sidebar category filter value.
+ * @returns {boolean}
+ */
+function issueMatchesCategory(issue, category) {
+	return (issue.category || '').toLowerCase() === category.toLowerCase();
+}
+
+/**
+ * Populates the new-issue category dropdown from CATEGORIES.
+ */
+function populateNewTagSelect() {
+	const select = document.getElementById('new-tag');
+	if (!select) return;
+
+	select.innerHTML = CATEGORIES.map((c) => `<option value="${c}">${c.toLowerCase()}</option>`).join('');
+}
+
+/**
+ * Renders the new-issue tag-picker chips from TAGS so only valid tags can be selected.
+ */
+function populateTagPicker() {
+	const picker = document.getElementById('tag-picker');
+	if (!picker) return;
+
+	picker.innerHTML = TAGS.map((t) => `<button type="button" class="tag-opt tag-${t}" data-tag="${t}">${t}</button>`).join('');
+}
+
+/**
+ * Gets issue counts and updates the sidebar UI
  * Reuses the fetched issue list so counts match the active team and filters.
  */
 function syncSidebar() {
@@ -105,29 +303,33 @@ function syncSidebar() {
 
 	safeSet('cnt-open', ISSUES.filter((i) => i.status === 'Open').length);
 	safeSet('cnt-prog', ISSUES.filter((i) => i.status === 'In Progress').length);
-	safeSet('cnt-done', ISSUES.filter((i) => ['Resolved', 'Closed'].includes(i.status)).length);
+	safeSet('cnt-resolved', ISSUES.filter((i) => i.status === 'Resolved').length);
+	safeSet('cnt-closed', ISSUES.filter((i) => i.status === 'Closed').length);
 
-	safeSet('cnt-crit', ISSUES.filter((i) => i.priority === 'Critical').length);
-	safeSet('cnt-high', ISSUES.filter((i) => i.priority === 'High').length);
-	safeSet('cnt-med', ISSUES.filter((i) => i.priority === 'Medium').length);
-	safeSet('cnt-low', ISSUES.filter((i) => i.priority === 'Low').length);
+	// Tag counts drive sidebar filter badges (cnt-bug, cnt-ui, cnt-infra, cnt-auth, cnt-perf).
+	TAGS.forEach((t) => {
+		safeSet(`cnt-${t}`, ISSUES.filter((i) => issueMatchesTag(i, t)).length);
+	});
 
-	['bug', 'ui', 'infra', 'auth', 'perf'].forEach((t) => {
-		safeSet(`cnt-${t}`, ISSUES.filter((i) => (i.tags || []).includes(t)).length);
+	// Category counts drive the sidebar CATEGORY filter badges.
+	CATEGORIES.forEach((c) => {
+		safeSet(`cnt-cat-${c}`, ISSUES.filter((i) => issueMatchesCategory(i, c)).length);
 	});
 }
 
-document.querySelectorAll('.sidebar .filter-item[data-group]').forEach((item) => {
-	item.addEventListener('click', () => {
+const sidebarEl = document.querySelector('.sidebar');
+if (sidebarEl) {
+	sidebarEl.addEventListener('click', (e) => {
+		const item = e.target.closest('.filter-item[data-group]');
+		if (!item) return;
+
 		const group = item.dataset.group;
 		const val = item.dataset.val;
 
-		// Toggle logic, if clicking the active one, reset to 'all'
 		if (state[group] === val) {
 			state[group] = 'all';
 			item.classList.remove('active');
 		} else {
-			// Remove active from sibling items in the same group
 			document.querySelectorAll(`.sidebar .filter-item[data-group="${group}"]`).forEach((el) => el.classList.remove('active'));
 			state[group] = val;
 			item.classList.add('active');
@@ -135,7 +337,12 @@ document.querySelectorAll('.sidebar .filter-item[data-group]').forEach((item) =>
 
 		renderList();
 	});
-});
+}
+
+renderTagFilters();
+renderCategoryFilters();
+populateNewTagSelect();
+populateTagPicker();
 
 /**
  * Filters, sorts, groups, and re-renders the issue list.
@@ -146,25 +353,20 @@ function renderList() {
 	let items = ISSUES.slice();
 
 	if (state.tag !== 'all') {
-		items = items.filter((i) => (i.tags || []).includes(state.tag));
+		items = items.filter((i) => issueMatchesTag(i, state.tag));
 	}
 	if (state.status !== 'all') {
-		if (state.status === 'Resolved') {
-			items = items.filter((i) => ['Resolved', 'Closed'].includes(i.status));
-		} else {
-			items = items.filter((i) => i.status === state.status);
-		}
+		// Each status filter maps to a single backend status value.
+		items = items.filter((i) => i.status === state.status);
 	}
-	if (state.priority !== 'all') {
-		items = items.filter((i) => i.priority === state.priority);
+	if (state.category !== 'all') {
+		items = items.filter((i) => issueMatchesCategory(i, state.category));
 	}
 
 	if (state.sort === 'priority') {
 		items.sort((a, b) => PRI_ORDER[a.priority] - PRI_ORDER[b.priority] || STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
 	} else if (state.sort === 'updated') {
 		items.sort((a, b) => ISSUES.indexOf(a) - ISSUES.indexOf(b));
-	} else if (state.sort === 'difficulty') {
-		items.sort((a, b) => b.difficulty - a.difficulty);
 	}
 
 	totalCountEl.textContent = items.length;
@@ -180,14 +382,6 @@ function renderList() {
 			{ label: 'Medium', rows: buckets.Medium },
 			{ label: 'Low', rows: buckets.Low },
 		].filter((g) => g.rows.length);
-	} else if (state.sort === 'difficulty') {
-		const map = {};
-		items.forEach((i) => {
-			const k = `Difficulty ${i.difficulty}`;
-			if (!map[k]) map[k] = [];
-			map[k].push(i);
-		});
-		groups = Object.entries(map).map(([label, rows]) => ({ label, rows }));
 	} else {
 		groups = [{ label: 'Most recent', rows: items }];
 	}
@@ -204,6 +398,7 @@ function renderList() {
 	listEl.querySelectorAll('.issue-row').forEach((el) => {
 		el.addEventListener('click', () => {
 			state.selected = Number(el.dataset.id);
+			state.isEditing = false;
 			renderList();
 			renderDetail();
 			// Selection should reveal the pane; otherwise a row click can look
@@ -238,6 +433,16 @@ function renderTeamMenu() {
 		})
 		.join('');
 
+	const hasCurrentTeam = state.teams.some((t) => t.id === currentId);
+	const leaveItemHtml = hasCurrentTeam
+		? `
+        <div class="item" data-action="leave-team">
+            <span class="mark all-teams-mark">⏻</span>
+            Leave team
+        </div>
+    `
+		: '';
+
 	teamMenu.innerHTML = `
         ${itemsHtml}
         <div class="divider"></div>
@@ -245,6 +450,7 @@ function renderTeamMenu() {
             <span class="mark all-teams-mark">+</span>
             All teams &amp; settings
         </div>
+        ${leaveItemHtml}
     `;
 
 	teamMenu.querySelectorAll('.item[data-id]').forEach((it) => {
@@ -255,6 +461,9 @@ function renderTeamMenu() {
 	});
 
 	teamMenu.querySelector('[data-action="all-teams"]').addEventListener('click', () => (location.href = 'teams.html'));
+
+	const leaveItem = teamMenu.querySelector('[data-action="leave-team"]');
+	if (leaveItem) leaveItem.addEventListener('click', handleLeaveTeam);
 }
 
 /**
@@ -295,6 +504,138 @@ function renderTeamMembers() {
 	membersContainer.innerHTML = membersHtml;
 }
 
+// === Date Formatting === //
+/**
+ * @param {string | null | undefined} value - Raw timestamp from the API.
+ * @returns {Date | null}
+ */
+function parseIssueTimestamp(value) {
+	if (!value) return null;
+	const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+	const date = new Date(normalized);
+	return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * @param {string | null | undefined} value - Raw timestamp from the API.
+ * @returns {string}
+ */
+function formatIssueDate(value) {
+	const date = parseIssueTimestamp(value);
+	if (!date) return value || '—';
+
+	const now = new Date();
+	const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	const dayDiff = Math.round((startOfToday - startOfDate) / 86400000);
+
+	if (dayDiff === 0) return 'Today';
+	if (dayDiff === 1) return 'Yesterday';
+
+	return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+}
+
+/**
+ * @param {string | null | undefined} value - Raw timestamp from the API.
+ * @returns {string}
+ */
+function formatIssueDateTime(value) {
+	const date = parseIssueTimestamp(value);
+	if (!date) return value || '';
+
+	return new Intl.DateTimeFormat(undefined, {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit',
+	}).format(date);
+}
+
+// === Issue detail display (view pane) === //
+// Summary, Hypothesis, and Steps come from LLM enrichment; Details is the user's create-form description.
+
+/**
+ * Escape user/LLM text before inserting into detail pane HTML.
+ * @param {string} text - Raw text to escape.
+ * @returns {string}
+ */
+function escapeHtml(text) {
+	return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Plain-text section body with fallback when LLM/user field is empty.
+ * @param {string | null | undefined} value - Field value from the issue record.
+ * @param {string} [fallback='Not available yet'] - Text shown when value is empty.
+ * @returns {string}
+ */
+function formatIssueText(value, fallback = 'Not available yet') {
+	if (value === null || value === undefined) return fallback;
+	const text = (typeof value === 'string' ? value : String(value)).trim();
+	if (!text || text.toLowerCase() === 'null') return fallback;
+	return escapeHtml(text);
+}
+
+/**
+ * Merges LLM-enriched fields from POST /issues into an in-memory issue record.
+ * @param {object} issue - Existing in-memory issue record.
+ * @param {object} enriched - LLM fields returned by the API.
+ * @returns {object}
+ */
+function applyEnrichedFields(issue, enriched) {
+	return {
+		...issue,
+		summary: enriched.summary ?? issue.summary,
+		hypothesis: enriched.hypothesis ?? issue.hypothesis,
+		steps_to_reproduce: enriched.steps_to_reproduce ?? issue.steps_to_reproduce,
+	};
+}
+
+/**
+ * Render steps_to_reproduce — API may store plain text or a JSON array string.
+ * @param {string | string[] | null | undefined} value - Steps field from the issue record.
+ * @returns {string}
+ */
+const STEPS_UNAVAILABLE_HTML = '<p class="issue-section-body">Not available yet</p>';
+
+function formatStepsToReproduce(value) {
+	if (value === null || value === undefined || value === '') return STEPS_UNAVAILABLE_HTML;
+
+	let steps = value;
+	if (typeof value === 'string') {
+		try {
+			const parsed = JSON.parse(value);
+			if (Array.isArray(parsed)) steps = parsed;
+		} catch {
+			// Not JSON — treat as a single plain-text block from the LLM
+			return `<p class="issue-section-body">${escapeHtml(value.trim())}</p>`;
+		}
+	}
+
+	if (Array.isArray(steps)) {
+		const items = steps.map((s) => String(s).trim()).filter(Boolean);
+		if (items.length === 0) return STEPS_UNAVAILABLE_HTML;
+		return `<ol class="issue-section-body issue-steps">${items.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`;
+	}
+
+	const text = String(steps).trim();
+	return text ? `<p class="issue-section-body">${escapeHtml(text)}</p>` : STEPS_UNAVAILABLE_HTML;
+}
+
+/**
+ * Resolve the primary tag for an issue from tags or legacy category.
+ * @param {object} issue - Issue record from the API.
+ * @returns {string}
+ */
+function getIssueTag(issue) {
+	const tag = (issue.tags || []).find((t) => TAGS.includes(t));
+	if (tag) return tag;
+	const cat = issue.category?.toLowerCase();
+	if (TAGS.includes(cat)) return cat;
+	return 'bug';
+}
+
 /**
  * Build HTML for a single issue row in the list.
  * @param {object} i - Issue record.
@@ -306,8 +647,8 @@ function rowHtml(i) {
 
 	// Tag Shrink Logic
 	const maxTags = 2;
-	const visibleTags = i.tags.slice(0, maxTags);
-	const moreCount = i.tags.length - maxTags;
+	const visibleTags = (i.tags || []).slice(0, maxTags);
+	const moreCount = (i.tags || []).length - maxTags;
 
 	const tagsHtml =
 		visibleTags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('') +
@@ -315,14 +656,13 @@ function rowHtml(i) {
 
 	return `
 	<div class="issue-row ${isSel ? 'selected' : ''}" data-id="${i.id}">
-		<span class="pri-mark ${i.priority.toLowerCase()}" title="${PRI_NAME[i.priority]}">${PRI_LABEL[i.priority]}</span>
 		<div class="title">
 			<span>${i.title}</span>
 			<span class="sub">${i.summary || ''}</span>
 		</div>
 		<div class="labels">${tagsHtml}</div>
 		<span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
-		<span class="updated">${i.updated_at}</span>
+		<span class="updated" title="${formatIssueDateTime(i.updated_at)}">${formatIssueDate(i.updated_at)}</span>
 	</div>`;
 }
 
@@ -350,10 +690,11 @@ function renderDetail() {
 	// Implementation of View vs Edit Mode
 	if (!state.isEditing) {
 		// --- VIEW MODE ---
+		// Sections: Summary / Steps / Hypothesis (LLM) + Details (user description on create)
 		detailEl.innerHTML = `
 			<div class="issue-details-header">
 				<h1 class="h-2" style="margin:0">${i.title}</h1>
-				<button class="btn sm edit-issue-btn" title="Edit Issue">✎</button>
+				<button type="button" class="btn sm edit-issue-btn" title="Edit Issue">✎</button>
 			</div>
 			
 			<div class="details-meta-grid">
@@ -366,13 +707,9 @@ function renderDetail() {
 					<span class="chip sm"><span class="dot" style="background:var(--pri-${i.priority.toLowerCase()})"></span>${i.priority}</span>
 				</div>
 				<div class="meta-col">
-					<span class="label-sm">DIFFICULTY</span>
-					<div class="diff">${Array.from({ length: 3 }, (_, k) => `<span class="d ${k < i.difficulty ? 'on' : ''}"></span>`).join('')}</div>
-				</div>
-				<div class="meta-col">
 					<span class="label-sm">LABELS</span>
 					<div class="tag-container">
-						${i.tags.map((t) => `<span class="chip sm">${t}</span>`).join('')}
+						${(i.tags || []).map((t) => `<span class="chip sm tag-${t}">${t}</span>`).join('')}
 					</div>
 				</div>
 				<div class="meta-col">
@@ -384,21 +721,29 @@ function renderDetail() {
 			<div class="detail-body">
 				<div class="ai-content-block">
 					<span class="label-sm">Summary</span>
-					<p style="margin-top:8px">${i.summary || 'AI is generating a summary...'}</p>
+					<p class="issue-section-body">${formatIssueText(i.summary)}</p>
+				</div>
+				<div class="ai-content-block" style="margin-top:24px">
+					<span class="label-sm">Steps to reproduce</span>
+					${formatStepsToReproduce(i.steps_to_reproduce)}
 				</div>
 				<div class="ai-content-block" style="margin-top:24px">
 					<span class="label-sm">Hypothesis</span>
-					<p style="margin-top:8px">${i.description || 'No description provided.'}</p>
+					<p class="issue-section-body">${formatIssueText(i.hypothesis)}</p>
+				</div>
+				<div class="ai-content-block" style="margin-top:24px">
+					<span class="label-sm">Details</span>
+					<p class="issue-section-body">${formatIssueText(i.description, 'No description provided.')}</p>
 				</div>
 			</div>`;
 	} else {
-		// --- EDIT MODE (Edit Issue UI) ---
+		// --- EDIT MODE — human fields only; LLM sections stay read-only in view mode ---
 		detailEl.innerHTML = `
 			<div class="issue-details-header">
 				<input class="input h-2" id="edit-title" value="${i.title}" style="width: 70%">
 				<div class="actions">
-					<button class="btn sm" id="cancel-edit">Cancel</button>
-					<button class="btn sm primary" id="save-edit">Save</button>
+					<button type="button" class="btn sm" id="cancel-edit">Cancel</button>
+					<button type="button" class="btn sm primary" id="save-edit">Save</button>
 				</div>
 			</div>
 			
@@ -409,6 +754,7 @@ function renderDetail() {
 						<option ${i.status === 'Open' ? 'selected' : ''}>Open</option>
 						<option ${i.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
 						<option ${i.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+						<option ${i.status === 'Closed' ? 'selected' : ''}>Closed</option>
 					</select>
 				</div>
 				<div class="meta-col">
@@ -420,11 +766,17 @@ function renderDetail() {
 						<option ${i.priority === 'Low' ? 'selected' : ''}>Low</option>
 					</select>
 				</div>
+				<div class="meta-col">
+					<span class="label-sm">TAG</span>
+					<select class="input sm" id="edit-tag">
+						${TAGS.map((t) => `<option value="${t}" ${getIssueTag(i) === t ? 'selected' : ''}>${t}</option>`).join('')}
+					</select>
+				</div>
 			</div>
 
 			<div class="detail-body">
-				<span class="label-sm">Description</span>
-				<textarea class="textarea" id="edit-desc" style="margin-top:8px">${i.description}</textarea>
+				<span class="label-sm">Details</span>
+				<textarea class="textarea" id="edit-desc" style="margin-top:8px">${i.description || ''}</textarea>
 			</div>`;
 	}
 }
@@ -530,6 +882,14 @@ teamMenu.addEventListener('click', (e) => e.stopPropagation());
 function toggleDetail() {
 	state.detailOpen = !state.detailOpen;
 	content.classList.toggle('collapsed-detail', !state.detailOpen);
+	// Divider drag persists an inline grid-template-columns; clear it while the
+	// detail pane is collapsed so the .collapsed-detail (1fr) rule can expand the
+	// list to full width, then restore the saved width when reopened.
+	if (state.detailOpen) {
+		content.style.gridTemplateColumns = localStorage.getItem('detailWidth') || '';
+	} else {
+		content.style.gridTemplateColumns = '';
+	}
 }
 document.getElementById('toggle-detail').addEventListener('click', toggleDetail);
 
@@ -574,10 +934,16 @@ function resetForm() {
 	document.getElementById('new-title').value = '';
 	document.getElementById('new-desc').value = '';
 	document.getElementById('file-list').innerHTML = '';
+	document.querySelectorAll('#tag-picker .tag-opt').forEach((btn) => btn.classList.remove('selected'));
 	pendingFiles = [];
 }
 document.getElementById('new-issue').addEventListener('click', openNew);
 document.getElementById('cancel-new').addEventListener('click', closeNew);
+
+document.getElementById('tag-picker').addEventListener('click', (e) => {
+	const btn = e.target.closest('.tag-opt');
+	if (btn) btn.classList.toggle('selected');
+});
 newBackdrop.addEventListener('click', (e) => {
 	if (e.target === newBackdrop) closeNew();
 });
@@ -674,16 +1040,23 @@ confirmNewBtn.addEventListener('click', async () => {
 	if (state.currentTeamId) formData.append('team_id', state.currentTeamId);
 
 	const priority = document.getElementById('new-priority')?.value;
-	const category = document.getElementById('new-category')?.value;
+	const category = document.getElementById('new-tag')?.value;
 	const assignee = document.getElementById('new-assignee')?.value;
 	const difficulty = document.getElementById('new-difficulty')?.value;
-	const tags = document.getElementById('new-tags')?.value;
+	// Only forward tags that exist in TAGS so invalid values can't reach the backend.
+	const selectedTags = Array.from(document.querySelectorAll('#tag-picker .tag-opt.selected'))
+		.map((btn) => btn.dataset.tag)
+		.filter((t) => TAGS.includes(t))
+		.join(',');
 
 	if (priority) formData.append('priority', priority);
-	if (category) formData.append('category', category);
+	// Only forward a known category enum value so invalid input can't reach the backend.
+	if (category && CATEGORIES.includes(category)) {
+		formData.append('category', category);
+	}
 	if (assignee) formData.append('assigned_to', assignee);
 	if (difficulty) formData.append('difficulty', difficulty);
-	if (tags) formData.append('tags', tags);
+	if (selectedTags) formData.append('tags', selectedTags);
 
 	pendingFiles.forEach((f) => formData.append('attachments', f));
 
@@ -698,11 +1071,22 @@ confirmNewBtn.addEventListener('click', async () => {
 
 		ISSUES = await fetchIssues(state.currentTeamId);
 
+		if (response?.id && response.enriched) {
+			const idx = ISSUES.findIndex((issue) => issue.id === response.id);
+			if (idx !== -1) {
+				ISSUES[idx] = applyEnrichedFields(ISSUES[idx], response.enriched);
+			}
+		}
+
 		if (response.id) {
 			state.selected = response.id;
 		} else {
 			state.selected = ISSUES[0]?.id ?? null;
 		}
+
+		const createdIssue = ISSUES.find((i) => i.id === response.id) ?? { id: response.id, title };
+		createIssueNotification(createdIssue);
+		renderNotificationBadge();
 
 		closeNew();
 		renderList();
@@ -777,15 +1161,67 @@ document.addEventListener('keydown', (e) => {
 });
 
 detailEl.addEventListener('click', async (e) => {
-	//Toggle Edit Mode
-	if (e.target.matches('.edit-issue-btn')) {
+	const editBtn = e.target.closest('.edit-issue-btn');
+	if (editBtn) {
 		state.isEditing = true;
 		renderDetail();
+		return;
 	}
-	if (e.target.matches('#cancel-edit')) {
+
+	const cancelBtn = e.target.closest('#cancel-edit');
+	if (cancelBtn) {
 		state.isEditing = false;
 		renderDetail();
+		return;
 	}
+
+	const saveBtn = e.target.closest('#save-edit');
+	if (saveBtn) {
+		const currentIssue = ISSUES.find((issue) => issue.id === state.selected);
+		if (!currentIssue) return;
+
+		const title = document.getElementById('edit-title')?.value.trim();
+		const status = document.getElementById('edit-status')?.value;
+		const priority = document.getElementById('edit-priority')?.value;
+		const tag = document.getElementById('edit-tag')?.value;
+		const description = document.getElementById('edit-desc')?.value.trim();
+
+		if (!title || !description) {
+			showToast('Title and details are required');
+			return;
+		}
+
+		const updates = { title, status, priority, description };
+		// Only include the tag when it is a known value from TAGS.
+		if (tag && TAGS.includes(tag)) {
+			updates.tags = [tag];
+			updates.category = TAG_MAP[tag];
+		}
+
+		saveBtn.textContent = 'Saving...';
+		saveBtn.disabled = true;
+		try {
+			await updateIssue(state.selected, updates);
+
+			if (state.currentTeamId) {
+				ISSUES = await fetchIssues(state.currentTeamId);
+			} else {
+				const index = ISSUES.findIndex((issue) => issue.id === state.selected);
+				if (index !== -1) ISSUES[index] = { ...ISSUES[index], ...updates };
+			}
+
+			state.isEditing = false;
+			renderList();
+			renderDetail();
+			showToast('Issue updated');
+		} catch {
+			showToast('Failed to save edits');
+			saveBtn.textContent = 'Save';
+			saveBtn.disabled = false;
+		}
+		return;
+	}
+
 	// Fix close details blank page
 	// If your "Back" or "Details" toggle clears selection, ensure it re-renders
 	if (e.target.id === 'toggle-detail') {
@@ -812,51 +1248,41 @@ detailEl.addEventListener('click', async (e) => {
 			showToast('Failed to update status');
 		}
 	}
-	if (e.target.matches('.edit-issue-btn')) {
-		const btn = e.target;
-		const currentIssue = ISSUES.find((i) => i.id === state.selected);
-		if (!currentIssue) return;
-
-		const newTitle = prompt('Edit Title:', currentIssue.title);
-		if (newTitle === null) return;
-		const newStatus = prompt('Edit Status (Open, In Progress, Resolved, Closed):', currentIssue.status);
-		if (newStatus === null) return;
-
-		const statusMap = {
-			open: 'Open',
-			'in-progress': 'In Progress',
-			'in progress': 'In Progress',
-			done: 'Resolved',
-			resolved: 'Resolved',
-			closed: 'Closed',
-		};
-		// Prompt input accepts user-friendly aliases but the API stores the
-		// canonical status labels used elsewhere in this file.
-		const normalisedStatus = statusMap[newStatus.trim().toLowerCase()] ?? newStatus.trim();
-
-		const updates = {
-			title: newTitle.trim() || currentIssue.title,
-			status: normalisedStatus || currentIssue.status,
-		};
-
-		btn.textContent = 'Saving...';
-		btn.disabled = true;
-		try {
-			await updateIssue(state.selected, updates);
-
-			const index = ISSUES.findIndex((i) => i.id === state.selected);
-			if (index !== -1) ISSUES[index] = { ...ISSUES[index], ...updates };
-
-			renderList();
-			renderDetail();
-			showToast('Issue updated');
-		} catch {
-			showToast('Failed to save edits');
-			btn.textContent = 'Edit';
-			btn.disabled = false;
-		}
-	}
 });
+
+// ============================================================
+// TEAM NOT FOUND
+// ============================================================
+
+/**
+ * Replaces the content pane with a 404-style error when the requested team
+ * does not exist or the user no longer has access to it.
+ * @param {number} teamId requested team id from the URL.
+ */
+function renderTeamNotFound(teamId) {
+	const contentEl = document.getElementById('content');
+	contentEl.classList.add('is-error');
+	const safeTeamId = escapeHtml(String(teamId));
+	contentEl.innerHTML = `
+		<div class="page-error">
+			<div class="glyph">⊘</div>
+			<h2>Team not found</h2>
+			<p>The team <code>#${safeTeamId}</code> doesn't exist, or you no longer have access to it. Check the link, or pick a team you belong to.</p>
+			<div class="pe-actions">
+				<a class="btn primary" href="teams.html">← Back to teams</a>
+				<button class="btn" id="retry-team">Retry</button>
+			</div>
+			<div><span class="pe-status"><span class="code">404</span> GET /teams/${safeTeamId}</span></div>
+		</div>`;
+
+	const teamSwitchEl = document.getElementById('team-switch');
+	if (teamSwitchEl) {
+		teamSwitchEl.style.opacity = '0.5';
+		teamSwitchEl.style.pointerEvents = 'none';
+	}
+
+	document.getElementById('retry-team').addEventListener('click', () => location.reload());
+}
 
 // ============================================================
 // INIT
@@ -868,7 +1294,14 @@ detailEl.addEventListener('click', async (e) => {
 async function initTracker() {
 	const qs = new URLSearchParams(location.search);
 	const teamIdParam = qs.get('team_id');
-	const teamId = teamIdParam ? Number(teamIdParam) : null;
+	const teamId = teamIdParam !== null ? Number(teamIdParam) : null;
+
+	// A present-but-invalid team_id (e.g. ?team_id=abc) must surface the
+	// not-found state instead of silently loading an empty tracker.
+	if (teamIdParam !== null && (teamIdParam.trim() === '' || !Number.isInteger(teamId))) {
+		renderTeamNotFound(teamIdParam);
+		return;
+	}
 
 	try {
 		const teams = await fetchTeams();
@@ -877,6 +1310,11 @@ async function initTracker() {
 		renderTeamMenu();
 
 		const currentTeam = teams.find((t) => t.id === teamId);
+
+		if (teamId && !currentTeam) {
+			renderTeamNotFound(teamId);
+			return;
+		}
 
 		if (currentTeam) {
 			document.getElementById('team-label').textContent = currentTeam.team_name;
