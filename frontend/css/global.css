@@ -64,6 +64,7 @@
 
 html {
 	font-size: 14px;
+	color-scheme: light;
 }
 
 html,
@@ -675,10 +676,6 @@ select.input:focus-visible {
    The FOUC-prevention inline script in each page reads
    localStorage('theme') and sets this class before paint.
    ============================================================ */
-html {
-	color-scheme: light;
-}
-
 html.dark {
 	color-scheme: dark;
 

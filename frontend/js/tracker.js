@@ -662,10 +662,16 @@ const SIDEBAR_BP = 980;
 let dragging = false;
 let sidebarOpen = false;
 
+/**
+ *
+ */
 function isMobileViewport() {
 	return window.innerWidth <= MOBILE_BP;
 }
 
+/**
+ *
+ */
 function isSidebarCollapsible() {
 	return window.innerWidth <= SIDEBAR_BP;
 }
@@ -686,6 +692,10 @@ function syncSidebarLayout() {
 	}
 }
 
+/**
+ *
+ * @param open
+ */
 function setSidebarOpen(open) {
 	if (!isSidebarCollapsible()) return;
 	sidebarOpen = open;
@@ -693,13 +703,16 @@ function setSidebarOpen(open) {
 	syncSidebarLayout();
 }
 
+/**
+ * for sidebar view 
+ */
 function toggleSidebar() {
 	setSidebarOpen(!sidebarOpen);
 }
 
 /** Phone master-detail: full-screen detail when an issue is selected. */
 function syncMobileLayout() {
-	const showDetail = isMobileViewport() && state.detailOpen && state.selected != null;
+	const showDetail = isMobileViewport() && state.detailOpen && state.selected !== null;
 	content.classList.toggle('mobile-detail-view', showDetail);
 	if (toggleDetailBtn) {
 		toggleDetailBtn.textContent = showDetail ? '← Back' : '⇌ Details';
@@ -724,6 +737,9 @@ function syncContentGrid() {
 	}
 }
 
+/**
+ * for mobile view 
+ */
 function syncLayout() {
 	syncMobileLayout();
 	syncContentGrid();
