@@ -1,0 +1,158 @@
+/* join.css — styles for the pending-invitations / join-workspace page */
+
+/* Empty / status states */
+.join-state {
+	text-align: center;
+	padding: 56px 24px;
+	color: var(--muted);
+	font-size: 14px;
+}
+
+.join-empty-icon {
+	font-size: 36px;
+	margin-bottom: 12px;
+	opacity: 0.4;
+}
+
+/* --- Code-entry card (Frame 17a) --- */
+.join-card {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--r-3);
+	box-shadow: var(--shadow-1);
+	padding: 22px 24px;
+	max-width: 480px;
+	margin-bottom: 36px;
+}
+
+.join-card h3 {
+	margin: 0 0 4px;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.join-card p {
+	margin: 0 0 14px;
+	color: var(--muted);
+	font-size: 13px;
+}
+
+.join-code-row {
+	display: flex;
+	gap: 8px;
+	align-items: flex-start;
+}
+
+.join-code-row .input {
+	flex: 1;
+}
+
+/* --- Preview card (Frame 17b) --- */
+.join-preview-card {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--r-3);
+	box-shadow: var(--shadow-2);
+	padding: 28px 32px;
+	max-width: 520px;
+}
+
+.join-preview-head {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.join-preview-head .team-mark {
+	width: 48px;
+	height: 48px;
+	border-radius: 10px;
+	background: var(--surface-3);
+	border: 1px solid var(--line);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
+	font-size: 18px;
+	letter-spacing: 0.02em;
+	flex: 0 0 auto;
+}
+
+.join-preview-head .team-mark.c1 {
+	background: oklch(92% 0.04 38deg);
+	color: oklch(40% 0.12 38deg);
+	border-color: oklch(85% 0.05 38deg);
+}
+
+.join-preview-head .team-mark.c2 {
+	background: oklch(92% 0.04 200deg);
+	color: oklch(38% 0.1 200deg);
+	border-color: oklch(85% 0.05 200deg);
+}
+
+.join-preview-head .team-mark.c3 {
+	background: oklch(93% 0.04 130deg);
+	color: oklch(38% 0.1 130deg);
+	border-color: oklch(85% 0.05 130deg);
+}
+
+.join-preview-head .team-mark.c4 {
+	background: oklch(92% 0.04 320deg);
+	color: oklch(40% 0.1 320deg);
+	border-color: oklch(85% 0.05 320deg);
+}
+
+.join-preview-info h2 {
+	margin: 0 0 4px;
+	font-size: 20px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+
+.join-preview-info p {
+	margin: 0;
+	color: var(--muted);
+	font-size: 13px;
+}
+
+.join-preview-members {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 22px;
+	padding-top: 16px;
+	border-top: 1px solid var(--line);
+}
+
+.join-preview-members .member-stack {
+	display: inline-flex;
+}
+
+.join-preview-members .member-stack .avatar {
+	margin-left: -8px;
+	background: var(--surface);
+}
+
+.join-preview-members .member-stack .avatar:first-child {
+	margin-left: 0;
+}
+
+.join-preview-members .member-count {
+	font-size: 12.5px;
+	color: var(--muted);
+}
+
+.join-preview-foot {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+/* Invites sub-heading on the code-entry view */
+.invites-heading {
+	font-size: 14px;
+	font-weight: 600;
+	margin: 0 0 12px;
+	color: var(--ink);
+}
