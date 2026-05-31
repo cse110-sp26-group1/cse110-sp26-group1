@@ -1,15 +1,17 @@
-import { PRI_ORDER, STATUS_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP } from './constants.js';
+import { PRI_ORDER, STATUS_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
 
 import { fetchIssues, createIssue, updateIssue } from './api.js';
-import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers } from './api.js';
+import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers, leaveTeam } from './api.js';
+import { createIssueNotification, renderNotificationBadge } from './notifications.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
 
-// Sidebar filters: status + tag only (priority is sortable, not filterable here).
+// Sidebar filters: status, tag, and category (priority is sortable, not filterable here).
 const state = {
 	sort: 'priority',
 	tag: 'all',
 	status: 'all',
+	category: 'all',
 	query: '',
 	selected: null,
 	detailOpen: true,
@@ -24,6 +26,8 @@ let ISSUES = [];
 const inviteBackdrop = document.getElementById('invite-backdrop');
 const confirmInviteBtn = document.getElementById('confirm-invite');
 const inviteInput = document.getElementById('invite-input');
+const inviteLinkDisplay = document.getElementById('invite-link-display');
+const copyInviteLinkBtn = document.getElementById('copy-invite-link');
 const openInviteModalBtn = document.getElementById('open-invite-modal');
 
 const listEl = document.getElementById('issue-list');
@@ -36,6 +40,7 @@ const fileList = document.getElementById('file-list');
 // helpers for invite listeners below
 /**
  * Opens the invite modal only after a team has been resolved from the URL.
+ * Also populates the copyable join link for the current team.
  */
 function openInvite() {
 	if (!state.currentTeamId) {
@@ -43,15 +48,123 @@ function openInvite() {
 		return;
 	}
 	inviteBackdrop.classList.add('open');
+
+	if (inviteLinkDisplay) {
+		inviteLinkDisplay.value = new URL(`join.html?team_id=${state.currentTeamId}`, window.location.href).href;
+	}
+
 	setTimeout(() => inviteInput.focus(), 30);
 }
 
 /**
- * Closes the invite modal and clears the draft recipient.
+ * Closes the invite modal and clears the draft recipient and any inline error.
  */
 function closeInvite() {
 	inviteBackdrop.classList.remove('open');
 	inviteInput.value = '';
+	clearInviteError();
+}
+
+/**
+ * Checks invite email input with a lightweight chars@chars.chars pattern.
+ * @param {string} val Raw invite input value.
+ * @returns {boolean} Whether the value looks like an email address.
+ */
+function isValidEmail(val) {
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+}
+
+/** Clears the inline error under the invite input. */
+function clearInviteError() {
+	const errEl = document.getElementById('invite-error');
+	if (errEl) errEl.hidden = true;
+	inviteInput.classList.remove('invalid');
+}
+
+/**
+ * Shows an inline error beneath the invite input.
+ * @param {string} msg Error copy to display.
+ * @param {object} [resendPayload] If present, appends a "Resend?" action button.
+ */
+function setInviteError(msg, resendPayload) {
+	const errEl = document.getElementById('invite-error');
+	if (!errEl) return;
+	errEl.hidden = false;
+	errEl.innerHTML = '';
+	errEl.appendChild(document.createTextNode(msg));
+	if (resendPayload) {
+		const btn = document.createElement('button');
+		btn.className = 'action-link';
+		btn.textContent = 'Resend?';
+		btn.addEventListener('click', () => {
+			clearInviteError();
+			sendInvite(resendPayload);
+		});
+		errEl.append(' ');
+		errEl.appendChild(btn);
+	}
+	inviteInput.classList.add('invalid');
+}
+
+/**
+ * Sends an invite, branching on HTTP status for distinct error copy.
+ * @param {{ email?: string, username?: string }} payload Invite recipient payload.
+ */
+async function sendInvite(payload) {
+	const val = payload.email ?? payload.username;
+	const originalText = confirmInviteBtn.textContent;
+	confirmInviteBtn.textContent = 'Sending...';
+	confirmInviteBtn.disabled = true;
+	try {
+		await inviteToTeam(state.currentTeamId, payload);
+		showToast(`Invitation sent to ${val}`);
+		closeInvite();
+		// Refresh member list so the new invitee shows up
+		if (state.currentTeamId) {
+			fetchTeamMembers(state.currentTeamId)
+				.then((members) => {
+					state.teamMembers = members;
+					renderTeamMembers();
+				})
+				.catch(() => {});
+		}
+	} catch (err) {
+		const status = err.status;
+		if (status === 404) {
+			setInviteError(`No user found for '${val}'.`);
+		} else if (status === 409) {
+			const msg = (err.message || '').toLowerCase();
+			if (msg.includes('already a member') || msg.includes('already on') || msg.includes('already in team')) {
+				setInviteError(`${val} is already on this team.`);
+			} else {
+				setInviteError(`${val} already has a pending invite.`, payload);
+			}
+		} else if (status === 403) {
+			setInviteError('Only team admins can invite.');
+		} else {
+			showToast(err.message || "Couldn't send invite. Please try again.");
+		}
+	} finally {
+		confirmInviteBtn.textContent = originalText;
+		confirmInviteBtn.disabled = false;
+	}
+}
+
+if (copyInviteLinkBtn) {
+	copyInviteLinkBtn.addEventListener('click', async () => {
+		const url = inviteLinkDisplay?.value;
+		if (!url) return;
+		try {
+			await navigator.clipboard.writeText(url);
+			const original = copyInviteLinkBtn.textContent;
+			copyInviteLinkBtn.textContent = 'Copied!';
+			setTimeout(() => {
+				copyInviteLinkBtn.textContent = original;
+			}, 1500);
+		} catch {
+			showToast('Could not copy link — try selecting it manually.');
+		}
+	});
 }
 
 if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
@@ -63,35 +176,47 @@ inviteBackdrop.addEventListener('click', (e) => {
 });
 
 confirmInviteBtn.addEventListener('click', async () => {
+	clearInviteError();
 	const val = inviteInput.value.trim();
 	if (!val) {
+		setInviteError('Enter a username or email.');
 		inviteInput.focus();
 		return;
 	}
-
 	const isEmail = val.includes('@');
-	const payload = isEmail ? { email: val } : { username: val };
+	if (isEmail && !isValidEmail(val)) {
+		setInviteError("That doesn't look like a valid email.");
+		inviteInput.focus();
+		return;
+	}
+	await sendInvite(isEmail ? { email: val } : { username: val });
+});
 
-	const originalText = confirmInviteBtn.textContent;
-	confirmInviteBtn.textContent = 'Sending...';
-	confirmInviteBtn.disabled = true;
+inviteInput.addEventListener('input', clearInviteError);
+
+// === Leave team === //
+/**
+ * Confirms and leaves the current team, then redirects to the teams list.
+ */
+async function handleLeaveTeam() {
+	if (!state.currentTeamId) return;
+	if (!window.confirm('Leave this team? You will lose access to its issues.')) return;
 
 	try {
-		await inviteToTeam(state.currentTeamId, payload);
-		showToast(`Invitation sent to ${val}`);
-		closeInvite();
+		await leaveTeam(state.currentTeamId);
+		showToast('You left the team. Redirecting…');
+		setTimeout(() => {
+			location.href = 'teams.html';
+		}, 900);
 	} catch (err) {
-		showToast(err.message || 'Failed to send invite.');
-	} finally {
-		confirmInviteBtn.textContent = originalText;
-		confirmInviteBtn.disabled = false;
+		showToast(err.message || 'Failed to leave team.');
 	}
-});
+}
 
 /**
  * Whether an issue matches a sidebar tag filter.
- * @param {object} issue
- * @param {string} tag
+ * @param {object} issue Issue data from the API.
+ * @param {string} tag Sidebar tag filter value.
  * @returns {boolean}
  */
 function issueMatchesTag(issue, tag) {
@@ -117,13 +242,49 @@ function renderTagFilters() {
 }
 
 /**
- * Populates the new-issue tag dropdown from TAGS.
+ * Builds sidebar CATEGORY filter rows from CATEGORIES in constants.js.
+ */
+function renderCategoryFilters() {
+	const container = document.getElementById('category-filters');
+	if (!container) return;
+
+	container.innerHTML = CATEGORIES.map(
+		(c) => `
+		<div class="filter-item" data-group="category" data-val="${c}">
+			<span class="indicator"></span> ${c.toLowerCase()}
+			<span class="count" id="cnt-cat-${c}">0</span>
+		</div>`,
+	).join('');
+}
+
+/**
+ * Whether an issue belongs to a sidebar category filter.
+ * @param {object} issue Issue data from the API.
+ * @param {string} category Sidebar category filter value.
+ * @returns {boolean}
+ */
+function issueMatchesCategory(issue, category) {
+	return (issue.category || '').toLowerCase() === category.toLowerCase();
+}
+
+/**
+ * Populates the new-issue category dropdown from CATEGORIES.
  */
 function populateNewTagSelect() {
 	const select = document.getElementById('new-tag');
 	if (!select) return;
 
-	select.innerHTML = TAGS.map((t) => `<option value="${t}">${t}</option>`).join('');
+	select.innerHTML = CATEGORIES.map((c) => `<option value="${c}">${c.toLowerCase()}</option>`).join('');
+}
+
+/**
+ * Renders the new-issue tag-picker chips from TAGS so only valid tags can be selected.
+ */
+function populateTagPicker() {
+	const picker = document.getElementById('tag-picker');
+	if (!picker) return;
+
+	picker.innerHTML = TAGS.map((t) => `<button type="button" class="tag-opt tag-${t}" data-tag="${t}">${t}</button>`).join('');
 }
 
 /**
@@ -148,6 +309,11 @@ function syncSidebar() {
 	// Tag counts drive sidebar filter badges (cnt-bug, cnt-ui, cnt-infra, cnt-auth, cnt-perf).
 	TAGS.forEach((t) => {
 		safeSet(`cnt-${t}`, ISSUES.filter((i) => issueMatchesTag(i, t)).length);
+	});
+
+	// Category counts drive the sidebar CATEGORY filter badges.
+	CATEGORIES.forEach((c) => {
+		safeSet(`cnt-cat-${c}`, ISSUES.filter((i) => issueMatchesCategory(i, c)).length);
 	});
 }
 
@@ -175,7 +341,9 @@ if (sidebarEl) {
 }
 
 renderTagFilters();
+renderCategoryFilters();
 populateNewTagSelect();
+populateTagPicker();
 
 /**
  * Filters, sorts, groups, and re-renders the issue list.
@@ -191,6 +359,9 @@ function renderList() {
 	if (state.status !== 'all') {
 		// Each status filter maps to a single backend status value.
 		items = items.filter((i) => i.status === state.status);
+	}
+	if (state.category !== 'all') {
+		items = items.filter((i) => issueMatchesCategory(i, state.category));
 	}
 
 	if (state.sort === 'priority') {
@@ -263,6 +434,16 @@ function renderTeamMenu() {
 		})
 		.join('');
 
+	const hasCurrentTeam = state.teams.some((t) => t.id === currentId);
+	const leaveItemHtml = hasCurrentTeam
+		? `
+        <div class="item" data-action="leave-team">
+            <span class="mark all-teams-mark">⏻</span>
+            Leave team
+        </div>
+    `
+		: '';
+
 	teamMenu.innerHTML = `
         ${itemsHtml}
         <div class="divider"></div>
@@ -270,6 +451,7 @@ function renderTeamMenu() {
             <span class="mark all-teams-mark">+</span>
             All teams &amp; settings
         </div>
+        ${leaveItemHtml}
     `;
 
 	teamMenu.querySelectorAll('.item[data-id]').forEach((it) => {
@@ -280,6 +462,9 @@ function renderTeamMenu() {
 	});
 
 	teamMenu.querySelector('[data-action="all-teams"]').addEventListener('click', () => (location.href = 'teams.html'));
+
+	const leaveItem = teamMenu.querySelector('[data-action="leave-team"]');
+	if (leaveItem) leaveItem.addEventListener('click', handleLeaveTeam);
 }
 
 /**
@@ -413,8 +598,10 @@ function applyEnrichedFields(issue, enriched) {
  * @param {string | string[] | null | undefined} value - Steps field from the issue record.
  * @returns {string}
  */
+const STEPS_UNAVAILABLE_HTML = '<p class="issue-section-body">Not available yet</p>';
+
 function formatStepsToReproduce(value) {
-	if (value === null || value === undefined || value === '') return 'Not available yet';
+	if (value === null || value === undefined || value === '') return STEPS_UNAVAILABLE_HTML;
 
 	let steps = value;
 	if (typeof value === 'string') {
@@ -429,12 +616,12 @@ function formatStepsToReproduce(value) {
 
 	if (Array.isArray(steps)) {
 		const items = steps.map((s) => String(s).trim()).filter(Boolean);
-		if (items.length === 0) return 'Not available yet';
+		if (items.length === 0) return STEPS_UNAVAILABLE_HTML;
 		return `<ol class="issue-section-body issue-steps">${items.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`;
 	}
 
 	const text = String(steps).trim();
-	return text ? `<p class="issue-section-body">${escapeHtml(text)}</p>` : 'Not available yet';
+	return text ? `<p class="issue-section-body">${escapeHtml(text)}</p>` : STEPS_UNAVAILABLE_HTML;
 }
 
 /**
@@ -855,10 +1042,16 @@ function resetForm() {
 	document.getElementById('new-title').value = '';
 	document.getElementById('new-desc').value = '';
 	document.getElementById('file-list').innerHTML = '';
+	document.querySelectorAll('#tag-picker .tag-opt').forEach((btn) => btn.classList.remove('selected'));
 	pendingFiles = [];
 }
 document.getElementById('new-issue').addEventListener('click', openNew);
 document.getElementById('cancel-new').addEventListener('click', closeNew);
+
+document.getElementById('tag-picker').addEventListener('click', (e) => {
+	const btn = e.target.closest('.tag-opt');
+	if (btn) btn.classList.toggle('selected');
+});
 newBackdrop.addEventListener('click', (e) => {
 	if (e.target === newBackdrop) closeNew();
 });
@@ -955,15 +1148,23 @@ confirmNewBtn.addEventListener('click', async () => {
 	if (state.currentTeamId) formData.append('team_id', state.currentTeamId);
 
 	const priority = document.getElementById('new-priority')?.value;
-	const tag = document.getElementById('new-tag')?.value;
+	const category = document.getElementById('new-tag')?.value;
 	const assignee = document.getElementById('new-assignee')?.value;
+	const difficulty = document.getElementById('new-difficulty')?.value;
+	// Only forward tags that exist in TAGS so invalid values can't reach the backend.
+	const selectedTags = Array.from(document.querySelectorAll('#tag-picker .tag-opt.selected'))
+		.map((btn) => btn.dataset.tag)
+		.filter((t) => TAGS.includes(t))
+		.join(',');
 
 	if (priority) formData.append('priority', priority);
-	if (tag) {
-		formData.append('tags', tag);
-		formData.append('category', TAG_MAP[tag]);
+	// Only forward a known category enum value so invalid input can't reach the backend.
+	if (category && CATEGORIES.includes(category)) {
+		formData.append('category', category);
 	}
 	if (assignee) formData.append('assigned_to', assignee);
+	if (difficulty) formData.append('difficulty', difficulty);
+	if (selectedTags) formData.append('tags', selectedTags);
 
 	pendingFiles.forEach((f) => formData.append('attachments', f));
 
@@ -990,6 +1191,10 @@ confirmNewBtn.addEventListener('click', async () => {
 		} else {
 			state.selected = ISSUES[0]?.id ?? null;
 		}
+
+		const createdIssue = ISSUES.find((i) => i.id === response.id) ?? { id: response.id, title };
+		createIssueNotification(createdIssue);
+		renderNotificationBadge();
 
 		closeNew();
 		renderList();
@@ -1099,7 +1304,12 @@ detailEl.addEventListener('click', async (e) => {
 			return;
 		}
 
-		const updates = { title, status, priority, description, tags: [tag], category: TAG_MAP[tag] };
+		const updates = { title, status, priority, description };
+		// Only include the tag when it is a known value from TAGS.
+		if (tag && TAGS.includes(tag)) {
+			updates.tags = [tag];
+			updates.category = TAG_MAP[tag];
+		}
 
 		saveBtn.textContent = 'Saving...';
 		saveBtn.disabled = true;
@@ -1147,6 +1357,40 @@ detailEl.addEventListener('click', async (e) => {
 });
 
 // ============================================================
+// TEAM NOT FOUND
+// ============================================================
+
+/**
+ * Replaces the content pane with a 404-style error when the requested team
+ * does not exist or the user no longer has access to it.
+ * @param {number} teamId requested team id from the URL.
+ */
+function renderTeamNotFound(teamId) {
+	const contentEl = document.getElementById('content');
+	contentEl.classList.add('is-error');
+	const safeTeamId = escapeHtml(String(teamId));
+	contentEl.innerHTML = `
+		<div class="page-error">
+			<div class="glyph">⊘</div>
+			<h2>Team not found</h2>
+			<p>The team <code>#${safeTeamId}</code> doesn't exist, or you no longer have access to it. Check the link, or pick a team you belong to.</p>
+			<div class="pe-actions">
+				<a class="btn primary" href="teams.html">← Back to teams</a>
+				<button class="btn" id="retry-team">Retry</button>
+			</div>
+			<div><span class="pe-status"><span class="code">404</span> GET /teams/${safeTeamId}</span></div>
+		</div>`;
+
+	const teamSwitchEl = document.getElementById('team-switch');
+	if (teamSwitchEl) {
+		teamSwitchEl.style.opacity = '0.5';
+		teamSwitchEl.style.pointerEvents = 'none';
+	}
+
+	document.getElementById('retry-team').addEventListener('click', () => location.reload());
+}
+
+// ============================================================
 // INIT
 // ============================================================
 
@@ -1156,7 +1400,14 @@ detailEl.addEventListener('click', async (e) => {
 async function initTracker() {
 	const qs = new URLSearchParams(location.search);
 	const teamIdParam = qs.get('team_id');
-	const teamId = teamIdParam ? Number(teamIdParam) : null;
+	const teamId = teamIdParam !== null ? Number(teamIdParam) : null;
+
+	// A present-but-invalid team_id (e.g. ?team_id=abc) must surface the
+	// not-found state instead of silently loading an empty tracker.
+	if (teamIdParam !== null && (teamIdParam.trim() === '' || !Number.isInteger(teamId))) {
+		renderTeamNotFound(teamIdParam);
+		return;
+	}
 
 	try {
 		const teams = await fetchTeams();
@@ -1165,6 +1416,11 @@ async function initTracker() {
 		renderTeamMenu();
 
 		const currentTeam = teams.find((t) => t.id === teamId);
+
+		if (teamId && !currentTeam) {
+			renderTeamNotFound(teamId);
+			return;
+		}
 
 		if (currentTeam) {
 			document.getElementById('team-label').textContent = currentTeam.team_name;
