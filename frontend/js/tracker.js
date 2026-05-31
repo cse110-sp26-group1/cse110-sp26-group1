@@ -170,6 +170,7 @@ if (sidebarEl) {
 		}
 
 		renderList();
+		setSidebarOpen(false);
 	});
 }
 
@@ -230,9 +231,9 @@ function renderList() {
 			state.isEditing = false;
 			renderList();
 			renderDetail();
-			// Selection should reveal the pane; otherwise a row click can look
-			// ignored after the user has collapsed issue details.
-			if (!state.detailOpen) toggleDetail();
+			state.detailOpen = true;
+			content.classList.remove('collapsed-detail');
+			syncLayout();
 		});
 	});
 }
@@ -506,6 +507,7 @@ function renderDetail() {
 		// Sections: Summary / Steps / Hypothesis (LLM) + Details (user description on create)
 		detailEl.innerHTML = `
 			<div class="issue-details-header">
+				<button type="button" class="btn sm mobile-back-btn">← Back</button>
 				<h1 class="h-2" style="margin:0">${i.title}</h1>
 				<button type="button" class="btn sm edit-issue-btn" title="Edit Issue">✎</button>
 			</div>
@@ -536,15 +538,15 @@ function renderDetail() {
 					<span class="label-sm">Summary</span>
 					<p class="issue-section-body">${formatIssueText(i.summary)}</p>
 				</div>
-				<div class="ai-content-block" style="margin-top:24px">
+				<div class="ai-content-block" style="margin-top:1.714rem">
 					<span class="label-sm">Steps to reproduce</span>
 					${formatStepsToReproduce(i.steps_to_reproduce)}
 				</div>
-				<div class="ai-content-block" style="margin-top:24px">
+				<div class="ai-content-block" style="margin-top:1.714rem">
 					<span class="label-sm">Hypothesis</span>
 					<p class="issue-section-body">${formatIssueText(i.hypothesis)}</p>
 				</div>
-				<div class="ai-content-block" style="margin-top:24px">
+				<div class="ai-content-block" style="margin-top:1.714rem">
 					<span class="label-sm">Details</span>
 					<p class="issue-section-body">${formatIssueText(i.description, 'No description provided.')}</p>
 				</div>
@@ -553,6 +555,7 @@ function renderDetail() {
 		// --- EDIT MODE — human fields only; LLM sections stay read-only in view mode ---
 		detailEl.innerHTML = `
 			<div class="issue-details-header">
+				<button type="button" class="btn sm mobile-back-btn">← Back</button>
 				<input class="input h-2" id="edit-title" value="${i.title}" style="width: 70%">
 				<div class="actions">
 					<button type="button" class="btn sm" id="cancel-edit">Cancel</button>
@@ -589,7 +592,7 @@ function renderDetail() {
 
 			<div class="detail-body">
 				<span class="label-sm">Details</span>
-				<textarea class="textarea" id="edit-desc" style="margin-top:8px">${i.description || ''}</textarea>
+				<textarea class="textarea" id="edit-desc" style="margin-top:0.571rem">${i.description || ''}</textarea>
 			</div>`;
 	}
 }
@@ -645,12 +648,90 @@ document.querySelectorAll('.chip-btn').forEach((b) => {
 });
 
 // ============================================================
-// DIVIDER DRAG
+// DIVIDER DRAG & RESPONSIVE LAYOUT
 // ============================================================
 const content = document.getElementById('content');
 const divider = document.getElementById('divider');
+const toggleDetailBtn = document.getElementById('toggle-detail');
+const appEl = document.querySelector('.app');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+const MOBILE_BP = 640;
+const TABLET_BP = 760;
+const SIDEBAR_BP = 980;
 let dragging = false;
+let sidebarOpen = false;
+
+function isMobileViewport() {
+	return window.innerWidth <= MOBILE_BP;
+}
+
+function isSidebarCollapsible() {
+	return window.innerWidth <= SIDEBAR_BP;
+}
+
+/** Overlay drawer for filters sidebar on narrow viewports. */
+function syncSidebarLayout() {
+	if (!isSidebarCollapsible()) {
+		sidebarOpen = false;
+		appEl?.classList.remove('sidebar-open');
+	}
+	if (sidebarToggle) {
+		const open = sidebarOpen && isSidebarCollapsible();
+		sidebarToggle.textContent = open ? '‹' : '›';
+		sidebarToggle.setAttribute('aria-expanded', String(open));
+	}
+	if (sidebarBackdrop) {
+		sidebarBackdrop.hidden = !(sidebarOpen && isSidebarCollapsible());
+	}
+}
+
+function setSidebarOpen(open) {
+	if (!isSidebarCollapsible()) return;
+	sidebarOpen = open;
+	appEl?.classList.toggle('sidebar-open', open);
+	syncSidebarLayout();
+}
+
+function toggleSidebar() {
+	setSidebarOpen(!sidebarOpen);
+}
+
+/** Phone master-detail: full-screen detail when an issue is selected. */
+function syncMobileLayout() {
+	const showDetail = isMobileViewport() && state.detailOpen && state.selected != null;
+	content.classList.toggle('mobile-detail-view', showDetail);
+	if (toggleDetailBtn) {
+		toggleDetailBtn.textContent = showDetail ? '← Back' : '⇌ Details';
+	}
+}
+
+/**
+ * Applies or clears the persisted list/detail column split.
+ */
+function syncContentGrid() {
+	if (!state.detailOpen || isMobileViewport()) {
+		content.style.removeProperty('grid-template-columns');
+		return;
+	}
+	if (window.innerWidth <= TABLET_BP) {
+		content.style.removeProperty('grid-template-columns');
+		return;
+	}
+	const saved = localStorage.getItem('detailWidth');
+	if (saved) {
+		content.style.gridTemplateColumns = saved;
+	}
+}
+
+function syncLayout() {
+	syncMobileLayout();
+	syncContentGrid();
+	syncSidebarLayout();
+}
+
 divider.addEventListener('mousedown', () => {
+	if (!state.detailOpen || isMobileViewport()) return;
 	dragging = true;
 	divider.classList.add('dragging');
 	document.body.style.userSelect = 'none';
@@ -660,19 +741,25 @@ window.addEventListener('mouseup', () => {
 	dragging = false;
 	divider.classList.remove('dragging');
 	document.body.style.userSelect = '';
-	localStorage.setItem('detailWidth', content.style.gridTemplateColumns);
+	if (state.detailOpen) {
+		localStorage.setItem('detailWidth', content.style.gridTemplateColumns);
+	}
 });
 window.addEventListener('mousemove', (e) => {
-	if (!dragging) return;
+	if (!dragging || !state.detailOpen) return;
 	const rect = content.getBoundingClientRect();
 	let left = e.clientX - rect.left;
-	// Clamp the divider so both panes remain usable before persisting the grid
-	// template as the user's preferred layout.
-	left = Math.max(340, Math.min(rect.width - 380, left));
-	content.style.gridTemplateColumns = `${left}px 6px 1fr`;
+	const listMin = rect.width * 0.3;
+	const detailMin = rect.width * 0.3;
+	left = Math.max(listMin, Math.min(rect.width - detailMin, left));
+	const pct = ((left / rect.width) * 100).toFixed(2);
+	content.style.gridTemplateColumns = `${pct}% 0.429rem 1fr`;
 });
-const savedWidth = localStorage.getItem('detailWidth');
-if (savedWidth) content.style.gridTemplateColumns = savedWidth;
+window.addEventListener('resize', syncLayout);
+syncLayout();
+
+sidebarToggle?.addEventListener('click', toggleSidebar);
+sidebarBackdrop?.addEventListener('click', () => setSidebarOpen(false));
 
 // ============================================================
 // TEAM MENU
@@ -693,8 +780,21 @@ teamMenu.addEventListener('click', (e) => e.stopPropagation());
  * Collapses or restores the detail pane.
  */
 function toggleDetail() {
+	// On phone, Back returns to the issue list.
+	if (isMobileViewport() && content.classList.contains('mobile-detail-view')) {
+		state.detailOpen = false;
+		content.classList.add('collapsed-detail');
+		syncLayout();
+		return;
+	}
 	state.detailOpen = !state.detailOpen;
 	content.classList.toggle('collapsed-detail', !state.detailOpen);
+	if (!state.detailOpen) {
+		content.style.removeProperty('grid-template-columns');
+	} else {
+		syncContentGrid();
+	}
+	syncMobileLayout();
 }
 document.getElementById('toggle-detail').addEventListener('click', toggleDetail);
 
@@ -948,6 +1048,11 @@ document.addEventListener('keydown', (e) => {
 });
 
 detailEl.addEventListener('click', async (e) => {
+	if (e.target.closest('.mobile-back-btn')) {
+		toggleDetail();
+		return;
+	}
+
 	const editBtn = e.target.closest('.edit-issue-btn');
 	if (editBtn) {
 		state.isEditing = true;
@@ -1004,13 +1109,6 @@ detailEl.addEventListener('click', async (e) => {
 		return;
 	}
 
-	// Fix close details blank page
-	// If your "Back" or "Details" toggle clears selection, ensure it re-renders
-	if (e.target.id === 'toggle-detail') {
-		state.selected = null; // Clear selection to avoid "stuck" highlights
-		renderList();
-		renderDetail();
-	}
 	if (e.target.matches('.mark-done-btn')) {
 		const btn = e.target;
 		btn.textContent = 'Saving...';
@@ -1084,6 +1182,12 @@ async function initTracker() {
 		renderTeamMembers();
 		renderList();
 		renderDetail();
+
+		if (isMobileViewport()) {
+			state.detailOpen = false;
+			content.classList.add('collapsed-detail');
+		}
+		syncLayout();
 	} catch {
 		showToast('Failed to load workspace data.');
 	}
