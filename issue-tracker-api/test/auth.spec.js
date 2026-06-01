@@ -1,6 +1,5 @@
-import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
+import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import worker from '../src';
 import sqlSchemaRaw from '../schema.sql?raw';
 
 const REGISTER_URL = 'http://localhost/auth/register';
