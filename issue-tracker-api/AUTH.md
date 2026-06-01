@@ -2,12 +2,13 @@
 
 ## How it works
 
-1. User registers → password is hashed and stored in `users` table, a session is created immediately, and a token is returned
-2. User logs in → worker verifies password, creates a session token in `sessions` table, returns the token
-3. Frontend stores the token in `localStorage`
-4. Every protected request sends the token in the `Authorization` header
-5. Worker verifies the token and extracts the `user_id` from it
-6. User logs out → session token is deleted from `sessions` table
+1. User registers → password is hashed and stored in `users` table, a session is created immediately, token + name returned
+2. User logs in → worker verifies password, cleans up expired sessions, creates a new session token, returns token + name
+3. Frontend stores the token and `first_name`/`last_name` in `localStorage`
+4. On every page load, frontend calls `GET /auth/validate` to confirm the session is still active
+5. Every protected request sends the token in the `Authorization` header
+6. Worker verifies the token and extracts the `user_id` from it
+7. User logs out → session token is deleted from `sessions` table
 
 ---
 
@@ -48,9 +49,10 @@ export async function handleSomething(request, env) {
 
 | Method | Endpoint | Body | Description |
 |---|---|---|---|
-| POST | `/auth/register` | `{ username, email, password, first_name, last_name }` | Create a new user — returns `{ success: true, token, expires_at }` |
-| POST | `/auth/login` | `{ email, password }` | Returns `{ token, expires_at }` with status 200 |
+| POST | `/auth/register` | `{ username, email, password, first_name, last_name }` | Create a new user — returns `{ success: true, token, expires_at, first_name, last_name }` |
+| POST | `/auth/login` | `{ email, password }` | Returns `{ token, expires_at, first_name, last_name }` with status 200 |
 | POST | `/auth/logout` | none (token in header) | Deletes the session |
+| GET | `/auth/validate` | none (token in header) | Returns `{ valid: true }` if the token is valid, 401 otherwise |
 
 ---
 
@@ -65,6 +67,8 @@ The token comes from `localStorage` after login or registration:
 ```js
 // after login or register
 localStorage.setItem('token', data.token);
+localStorage.setItem('first_name', data.first_name);
+localStorage.setItem('last_name', data.last_name);
 
 // on every protected request
 const token = localStorage.getItem('token');

@@ -24,9 +24,7 @@ export async function handleAuth(request, env) {
 
 	// POST /auth/register
 	// Inserts new user row -> Creates new token/expiration date -> Inserts new session row -> Returns response
-	//
-	// Returns, status code 201, success true, a token, and token expiration date:
-	// success: 201 { success: true, token, expires_at }
+	// success: 201 { success: true, token, expires_at, first_name, last_name }
 	if (url.pathname === '/auth/register' && method === 'POST') {
 		const body = await request.json();
 
@@ -100,7 +98,7 @@ export async function handleAuth(request, env) {
 	}
 
 	// POST /auth/login
-	// success: 201 { token, expires_at }
+	// success: 200 { token, expires_at, first_name, last_name }
 	if (url.pathname === '/auth/login' && method === 'POST') {
 		const body = await request.json();
 
