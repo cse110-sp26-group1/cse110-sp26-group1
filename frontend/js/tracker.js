@@ -1,4 +1,4 @@
-import { PRI_ORDER, STATUS_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
+import { PRI_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
 
 import { fetchIssues, createIssue, updateIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers, leaveTeam } from './api.js';
@@ -365,7 +365,13 @@ function renderList() {
 	}
 
 	if (state.sort === 'priority') {
-		items.sort((a, b) => PRI_ORDER[a.priority] - PRI_ORDER[b.priority] || STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+		items.sort((a, b) => {
+			const byPriority = PRI_ORDER[a.priority] - PRI_ORDER[b.priority];
+			if (byPriority !== 0) return byPriority;
+			const aTime = Date.parse(a.updated_at || a.created_at || 0);
+			const bTime = Date.parse(b.updated_at || b.created_at || 0);
+			return bTime - aTime || b.id - a.id;
+		});
 	} else if (state.sort === 'updated') {
 		items.sort((a, b) => {
 			const aTime = Date.parse(a.updated_at || a.created_at || 0);
