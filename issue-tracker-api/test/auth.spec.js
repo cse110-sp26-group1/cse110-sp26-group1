@@ -5,6 +5,7 @@ import sqlSchemaRaw from '../schema.sql?raw';
 const REGISTER_URL = 'http://localhost/auth/register';
 const LOGIN_URL = 'http://localhost/auth/login';
 const LOGOUT_URL = 'http://localhost/auth/logout';
+const VALIDATE_URL = 'http://localhost/auth/validate';
 
 const VALID_USER = {
 	username: 'jdoe',
@@ -519,6 +520,70 @@ describe('Auth Endpoint Testing Suite', () => {
 				const res = await SELF.fetch(LOGOUT_URL, {
 					method: 'POST',
 					headers: { Authorization: `Bearer ${token}` },
+				});
+				expect(res.status).toBe(401);
+			});
+		});
+	});
+
+	// ==========================================
+	// GET /auth/validate Testing
+	// ==========================================
+	describe('GET /auth/validate', () => {
+		describe('Success Cases', () => {
+			// Tests return value for a valid token
+			it('200: returns { valid: true } for a valid token', async () => {
+				const token = await getToken();
+
+				const res = await SELF.fetch(VALIDATE_URL, {
+					method: 'GET',
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(200);
+				const data = await res.json();
+				expect(data.valid).toBe(true);
+			});
+		});
+
+		describe('Failure Cases', () => {
+			// Tests for missing or malformed token
+			it('401: rejects request with no Authorization header', async () => {
+				const res = await SELF.fetch(VALIDATE_URL, { method: 'GET' });
+				expect(res.status).toBe(401);
+			});
+
+			it('401: rejects malformed Authorization header', async () => {
+				const res = await SELF.fetch(VALIDATE_URL, {
+					method: 'GET',
+					headers: { Authorization: 'notavalidtoken' },
+				});
+				expect(res.status).toBe(401);
+			});
+
+			// Tests for tokens that don't exist in the DB
+			it('401: rejects a token not in the DB', async () => {
+				const res = await SELF.fetch(VALIDATE_URL, {
+					method: 'GET',
+					headers: { Authorization: 'Bearer fake-token-that-does-not-exist' },
+				});
+				expect(res.status).toBe(401);
+			});
+
+			// Tests for expired token
+			it('401: rejects an expired token', async () => {
+				await registerUser();
+				const user = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(VALID_USER.email).first();
+
+				// manually insert an already-expired session
+				const expiredToken = crypto.randomUUID();
+				await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)')
+					.bind(user.id, expiredToken, '2000-01-01T00:00:00.000Z')
+					.run();
+
+				const res = await SELF.fetch(VALIDATE_URL, {
+					method: 'GET',
+					headers: { Authorization: `Bearer ${expiredToken}` },
 				});
 				expect(res.status).toBe(401);
 			});
