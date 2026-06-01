@@ -1,4 +1,4 @@
-import { login, requireNoAuth } from './api.js';
+import { login, requireNoAuth, getPostAuthRedirect } from './api.js';
 import { saveStoredUser, userFromApiProfile } from './user-profile.js';
 import { initPasswordToggles } from './view-password.js';
 
@@ -6,6 +6,12 @@ requireNoAuth();
 initPasswordToggles();
 
 const authForm = document.getElementById('auth-form');
+const signupLink = document.querySelector('.auth-switch a');
+const redirectParam = new URLSearchParams(location.search).get('redirect');
+
+if (signupLink && redirectParam) {
+	signupLink.href = `signup.html?redirect=${encodeURIComponent(redirectParam)}`;
+}
 
 /**
  * Handles sign-in form submit. Validates email and password, then
@@ -32,7 +38,7 @@ async function handleLoginSubmit(e) {
 		localStorage.setItem('allegro_token', token);
 		localStorage.setItem('allegro_token_expires', expires_at);
 		if (user) saveStoredUser(userFromApiProfile(user));
-		location.href = 'teams.html';
+		location.href = getPostAuthRedirect();
 	} catch (err) {
 		emailEl.setCustomValidity(err.message ?? 'Invalid credentials');
 		emailEl.reportValidity();
