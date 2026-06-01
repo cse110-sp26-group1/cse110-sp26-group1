@@ -74,10 +74,10 @@ describe('Teams Endpoints', () => {
 			.filter((line) => line.length > 0)
 			.join(' ');
 		await env.DB.exec(cleanSql);
-		
+
 		// Ensure bio column exists (for existing databases)
 		try {
-			await env.DB.exec("ALTER TABLE teams ADD COLUMN bio TEXT;");
+			await env.DB.exec('ALTER TABLE teams ADD COLUMN bio TEXT;');
 		} catch (e) {
 			// Column already exists - ignore error
 		}
@@ -103,13 +103,13 @@ describe('Teams Endpoints', () => {
 			expect(data.team_id).toBeDefined();
 		});
 
-		it('creates a team without bio (bio optional)', async() => {
+		it('creates a team without bio (bio optional)', async () => {
 			const user = await createTestUser('creator2', 'creator2@test.com');
 
 			const response = await SELF.fetch('http://localhost/teams', {
 				method: 'POST',
 				headers: authHeaders(user.token),
-				body: JSON.stringify({team_name: 'New Team No Bio' }),
+				body: JSON.stringify({ team_name: 'New Team No Bio' }),
 			});
 
 			expect(response.status).toBe(201);
