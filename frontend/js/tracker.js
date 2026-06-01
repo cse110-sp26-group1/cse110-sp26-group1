@@ -367,7 +367,11 @@ function renderList() {
 	if (state.sort === 'priority') {
 		items.sort((a, b) => PRI_ORDER[a.priority] - PRI_ORDER[b.priority] || STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
 	} else if (state.sort === 'updated') {
-		items.sort((a, b) => ISSUES.indexOf(a) - ISSUES.indexOf(b));
+		items.sort((a, b) => {
+			const aTime = Date.parse(a.updated_at || a.created_at || 0);
+			const bTime = Date.parse(b.updated_at || b.created_at || 0);
+			return bTime - aTime || b.id - a.id;
+		});
 	}
 
 	totalCountEl.textContent = items.length;
