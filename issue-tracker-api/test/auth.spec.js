@@ -75,7 +75,7 @@ describe('Auth Endpoint Testing Suite', () => {
 	describe('POST /auth/register', () => {
 		describe('Success Cases', () => {
 			// Test return values
-			it('returns success: true, a non-empty token, and a non-empty expires_at on valid input', async () => {
+			it('returns success: true, a non-empty token, expires_at, and correct first_name and last_name on valid input', async () => {
 				// response object from the POST /auth/register request
 				const res = await registerUser();
 				expect(res.status).toBe(201);
@@ -93,6 +93,10 @@ describe('Auth Endpoint Testing Suite', () => {
 				// check if the expires_at field is a non-empty string
 				expect(typeof data.expires_at).toBe('string');
 				expect(data.expires_at.length).toBeGreaterThan(0);
+
+				// check first_name and last_name match what was registered
+				expect(data.first_name).toBe(VALID_USER.first_name);
+				expect(data.last_name).toBe(VALID_USER.last_name);
 			});
 
 			// Tests session row insertion
@@ -306,7 +310,7 @@ describe('Auth Endpoint Testing Suite', () => {
 	describe('POST /auth/login', () => {
 		describe('Success Cases', () => {
 			// Tests return values
-			it('returns a non-empty token and a future expires_at on valid credentials', async () => {
+			it('returns a non-empty token, a future expires_at, and correct first_name and last_name on valid credentials', async () => {
 				await registerUser();
 
 				const res = await SELF.fetch(LOGIN_URL, {
@@ -325,6 +329,10 @@ describe('Auth Endpoint Testing Suite', () => {
 
 				// expires_at comes back as an ISO string and confirm it's ahead of now.
 				expect(new Date(data.expires_at).getTime()).toBeGreaterThan(Date.now());
+
+				// check first_name and last_name match what was registered
+				expect(data.first_name).toBe(VALID_USER.first_name);
+				expect(data.last_name).toBe(VALID_USER.last_name);
 			});
 
 			// Tests session row insertion
