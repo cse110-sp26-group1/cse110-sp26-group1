@@ -57,18 +57,20 @@
 				</div>
 			</div>
 			<div class="right">
-				<div class="search-wrap">
-					<input
-						class="search-top"
-						id="issue-search"
-						type="search"
-						placeholder="Search issues, files…"
-						autocomplete="off"
-						aria-label="Search issues"
-					/>
-					<button type="button" class="search-clear" id="issue-search-clear" aria-label="Clear search" hidden>
-						<span aria-hidden="true">×</span>
-					</button>
+				<div id="topbar-search-slot" class="topbar-search-slot">
+					<div class="search-wrap">
+						<input
+							class="search-top"
+							id="issue-search"
+							type="search"
+							placeholder="Search issues, files…"
+							autocomplete="off"
+							aria-label="Search issues"
+						/>
+						<button type="button" class="search-clear" id="issue-search-clear" aria-label="Clear search" hidden>
+							<span aria-hidden="true">×</span>
+						</button>
+					</div>
 				</div>
 				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
 				<!-- Notification inbox button -->
@@ -127,7 +129,7 @@
 			<div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
 			<!-- SIDEBAR -->
 			<aside class="sidebar">
-				<!-- Removed "Views" Nav Section  -->
+				<div id="sidebar-search-slot" class="sidebar-search-slot"></div>
 
 				<!-- Status filters match backend values one-to-one (Resolved and Closed are separate). -->
 				<div class="nav-section">
@@ -201,7 +203,7 @@
 					<div class="filter-bar">
 						<button
 							type="button"
-							class="btn ghost icon sidebar-toggle"
+							class="btn icon sidebar-toggle"
 							id="sidebar-toggle"
 							aria-label="Toggle filters sidebar"
 							aria-expanded="false"
