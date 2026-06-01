@@ -1,3 +1,7 @@
+:root {
+	--topbar-h: 4rem;
+}
+
 html,
 body {
 	height: 100%;
@@ -14,7 +18,9 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0 1.143rem;
+	min-height: var(--topbar-h);
+	box-sizing: border-box;
+	padding: 0.571rem 1rem;
 	border-bottom: 0.071rem solid var(--line);
 	background: var(--bg);
 	gap: 0.857rem;
@@ -377,6 +383,20 @@ body {
 	background: var(--surface);
 	border-color: var(--line-strong);
 	outline: none;
+}
+
+.topbar-search-slot:empty,
+.sidebar-search-slot:empty {
+	display: none;
+}
+
+.sidebar-search-slot .search-wrap {
+	width: 100%;
+}
+
+.sidebar-search-slot .search-top {
+	width: 100%;
+	box-sizing: border-box;
 }
 
 /* ============ MAIN GRID ============ */
@@ -1068,7 +1088,7 @@ body {
 /* ============ RESPONSIVE ============ */
 
 /* Sidebar becomes an overlay drawer; content uses full width below 70rem */
-@media (width <= 70rem) {
+@media (width <= 980px) {
 	.sidebar-toggle {
 		display: inline-flex;
 	}
@@ -1106,8 +1126,16 @@ body {
 	}
 }
 
-/* Tablet: flexible side-by-side list + detail when pane is open */
-@media (width <= 54.286rem) {
+/* ======================== MOBILE ======================== */
+
+/* When the user is in a narrow view
+* the sidebar is hidden and list fills the screen
+* use can use arrow to open sidebar, search can be found there when needed
+* issue details are shown when clicked and can be exited with back button 
+*/
+
+/* Tablet */
+@media (width <= 760px) {
 	.content:not(.collapsed-detail) {
 		grid-template-columns: minmax(0, 1fr) var(--divider-w) minmax(0, 1fr);
 	}
@@ -1117,9 +1145,41 @@ body {
 	}
 }
 
-/* Phone: master-detail — list OR full-screen detail, toggled via .mobile-detail-view */
-@media (width <= 45.714rem) {
+/* Phone */
+@media (width <= 640px) {
+	.topbar {
+		padding-inline: 0.714rem;
+		gap: 0.429rem;
+	}
+
 	.topbar .left {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		gap: 0.429rem;
+	}
+
+	.topbar .right {
+		min-width: 0;
+		flex-shrink: 1;
+		gap: 0.286rem;
+	}
+
+	.sidebar-search-slot:not(:empty) {
+		margin: 0 0 1rem;
+	}
+
+	.team-switch {
+		min-width: 0;
+		max-width: min(11rem, 42vw);
+		overflow: hidden;
+	}
+
+	#team-label {
+		flex: 1 1 auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 		min-width: 0;
 	}
 
@@ -1127,8 +1187,30 @@ body {
 		display: none;
 	}
 
-	.search-top {
-		width: min(7rem, 30vw);
+	.list-head {
+		flex-wrap: wrap;
+		align-items: center;
+		padding-inline: 1rem;
+		gap: 0.571rem;
+	}
+
+	.list-head h1 {
+		min-width: 0;
+		flex: 1 1 auto;
+		font-size: 1.071rem;
+	}
+
+	.list-head .actions {
+		flex: 0 0 auto;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: 0.286rem;
+		margin-left: auto;
+	}
+
+	.list-head .actions .btn {
+		white-space: nowrap;
+		flex-shrink: 0;
 	}
 
 	.content {
@@ -1164,8 +1246,33 @@ body {
 	}
 
 	.issue-row {
+		grid-template-columns: minmax(0, 1fr) auto auto;
+		grid-template-areas:
+			'title title title'
+			'. labels status';
+		align-items: center;
 		gap: 0.571rem;
 		padding: 0.571rem 1rem;
+	}
+
+	.issue-row .title {
+		grid-area: title;
+		align-self: start;
+	}
+
+	.issue-row .labels {
+		grid-area: labels;
+		justify-self: end;
+		max-width: 100%;
+		min-width: 0;
+		flex-shrink: 1;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+
+	.issue-row > .chip {
+		grid-area: status;
+		justify-self: end;
 	}
 
 	.issue-row .updated {
