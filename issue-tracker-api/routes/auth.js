@@ -1,4 +1,4 @@
-import { hashPassword, verifyPassword, sessionExpiresAt } from '../src/lib/auth.js';
+import { hashPassword, verifyPassword, sessionExpiresAt, requireAuth } from '../src/lib/auth.js';
 
 /**
  * Handles all /auth routes:
@@ -6,14 +6,15 @@ import { hashPassword, verifyPassword, sessionExpiresAt } from '../src/lib/auth.
  * POST /auth/register
  * POST /auth/login
  * POST /auth/logout
+ * GET  /auth/validate
  *
  * @param {Request} request - The incoming Worker request.
  * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
  * @returns {Promise<Response>}
  *   201 — user registered successfully
- *   200 — user logged in successfully
+ *   200 — user logged in, logged out, token validated
  *   400 — missing/invalid required fields, or no session token on logout
- *   401 — invalid credentials, invalid session token, or already-expired session
+ *   401 — invalid credentials, invalid or expired session token
  *   409 — email or username already in use
  *   404 — route not matched
  */
@@ -128,6 +129,9 @@ export async function handleAuth(request, env) {
 			return Response.json({ error: 'Invalid email or password' }, { status: 401 });
 		}
 
+		// clean up any expired sessions for this user before creating a new one.
+		await env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND expires_at < datetime('now')").bind(user.id).run();
+
 		// create new token and expiration date
 		const token = crypto.randomUUID();
 		const expires_at = sessionExpiresAt();
@@ -160,6 +164,15 @@ export async function handleAuth(request, env) {
 		}
 
 		return Response.json({ success: true });
+	}
+
+	// GET /auth/validate
+	// success: 200 { valid: true }
+	if (url.pathname === '/auth/validate' && method === 'GET') {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		return Response.json({ valid: true });
 	}
 
 	return Response.json({ error: 'Not Found' }, { status: 404 });
