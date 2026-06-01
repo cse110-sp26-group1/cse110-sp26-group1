@@ -185,6 +185,7 @@ async function initTeamsPage() {
 			card.setAttribute('mark', mark);
 			card.setAttribute('color', '220');
 			card.setAttribute('role', team.role);
+			card.setAttribute('bio', team.bio ?? '');
 			card.setAttribute('user-initials', getUserInitials());
 			return card;
 		});
