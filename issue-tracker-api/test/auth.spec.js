@@ -96,27 +96,16 @@ describe('Auth Endpoint Testing Suite', () => {
 			});
 
 			// Tests session row insertion
-			it('inserts a session row into the DB matching the returned token', async () => {
+			it('inserts a session row with the correct token, user_id, and a future expires_at', async () => {
 				// response object from the POST /auth/register request
 				const res = await registerUser();
+
 				// make sure registration succeeded before touching DB
-				expect(res.status).toBe(201);
-
-				// token from response
-				const { token } = await res.json();
-
-				// find session that matches the token and check it exists
-				const session = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(token).first();
-				expect(session).not.toBeNull();
-			});
-
-			it('inserts a session row with the correct token, user_id, and a future expires_at', async () => {
-				const res = await registerUser();
 				expect(res.status).toBe(201);
 
 				const { token, expires_at } = await res.json();
 
-				// look up the session row by token
+				// find session that matches the token and check it exists
 				const session = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(token).first();
 				expect(session).not.toBeNull();
 
@@ -317,8 +306,7 @@ describe('Auth Endpoint Testing Suite', () => {
 	describe('POST /auth/login', () => {
 		describe('Success Cases', () => {
 			// Tests return values
-			it('returns a non-empty token and expires_at on valid credentials', async () => {
-				// seed a user to log in with
+			it('returns a non-empty token and a future expires_at on valid credentials', async () => {
 				await registerUser();
 
 				const res = await SELF.fetch(LOGIN_URL, {
@@ -335,13 +323,12 @@ describe('Auth Endpoint Testing Suite', () => {
 				expect(typeof data.token).toBe('string');
 				expect(data.token.length).toBeGreaterThan(0);
 
-				// check expires_at is a non-empty string
-				expect(typeof data.expires_at).toBe('string');
-				expect(data.expires_at.length).toBeGreaterThan(0);
+				// expires_at comes back as an ISO string and confirm it's ahead of now.
+				expect(new Date(data.expires_at).getTime()).toBeGreaterThan(Date.now());
 			});
 
 			// Tests session row insertion
-			it('inserts a session row into the DB matching the returned token', async () => {
+			it('inserts a session row with the correct token, user_id, and a future expires_at', async () => {
 				await registerUser();
 
 				const res = await SELF.fetch(LOGIN_URL, {
@@ -351,26 +338,20 @@ describe('Auth Endpoint Testing Suite', () => {
 				});
 				expect(res.status).toBe(200);
 
-				const { token } = await res.json();
-				// find session that matches the token and check it exists
+				const { token, expires_at } = await res.json();
+
 				const session = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(token).first();
 				expect(session).not.toBeNull();
-			});
 
-			// Tests token expiration date is valid
-			it('returns an expires_at timestamp set in the future', async () => {
-				await registerUser();
+				// token in DB matches what was returned in the response
+				expect(session.token).toBe(token);
 
-				const res = await SELF.fetch(LOGIN_URL, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ email: VALID_USER.email, password: VALID_USER.password }),
-				});
-				expect(res.status).toBe(200);
+				// user_id in session references the correct user
+				const user = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(VALID_USER.email).first();
+				expect(session.user_id).toBe(user.id);
 
-				const { expires_at } = await res.json();
-				// expires_at comes back as an ISO string — confirm it's ahead of now.
-				expect(new Date(expires_at).getTime()).toBeGreaterThan(Date.now());
+				// expires_at in DB matches what was returned in the response
+				expect(session.expires_at).toBe(expires_at);
 			});
 		});
 
