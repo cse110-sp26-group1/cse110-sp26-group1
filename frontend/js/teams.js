@@ -1,4 +1,5 @@
 import { fetchTeams, createTeam, requireAuth, acceptInvite, rejectInvite, fetchInvites } from './api.js';
+import { getUserInitials } from './user-profile.js';
 
 import './components/team-card.js';
 
@@ -47,44 +48,10 @@ function showToast(msg) {
 	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
-document.querySelectorAll('.accept-btn').forEach((btn) => {
-	btn.addEventListener('click', async (e) => {
-		const teamSlug = e.target.dataset.slug;
-		const originalText = e.target.textContent;
-
-		e.target.textContent = 'Accepting...';
-		e.target.disabled = true;
-
-		try {
-			await acceptInvite(teamSlug);
-			showToast('Invitation accepted!');
-
-			// Remove the invite from the screen
-			e.target.closest('.invite').remove();
-
-			// Re-render the grid to show the newly unlocked team
-			initTeamsPage();
-		} catch {
-			showToast('Failed to accept invite.');
-			e.target.textContent = originalText;
-			e.target.disabled = false;
-		}
-	});
-});
-
-document.querySelectorAll('.decline-btn').forEach((btn) => {
-	btn.addEventListener('click', (e) => {
-		e.target.closest('.invite').remove();
-		showToast('Invitation declined.');
-	});
-});
-
 document.getElementById('confirm-create').addEventListener('click', async () => {
 	const nameEl = document.getElementById('team-name');
-	const _bioEl = document.getElementById('team-bio'); // add bio support next (STRETCH GOAL)
 
 	const name = nameEl.value.trim();
-	const _bio = _bioEl.value.trim();
 
 	if (!name) {
 		nameEl.focus();
@@ -97,12 +64,6 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 	confirmBtn.disabled = true;
 
 	try {
-		const words = name.split(' ');
-		let mark = words[0].substring(0, 2).toUpperCase();
-		if (words.length > 1) {
-			mark = (words[0][0] + words[1][0]).toUpperCase();
-		}
-
 		const newTeam = await createTeam({
 			team_name: name,
 		});
@@ -122,7 +83,8 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 });
 
 /**
- *
+ * Loads pending invites, renders the rows from API data, then attaches the
+ * accept/decline listeners to the newly-created buttons.
  */
 async function loadInvites() {
 	const section = document.getElementById('invites-section');
@@ -163,6 +125,7 @@ async function loadInvites() {
 		)
 		.join('');
 
+	// stay in HTML while the rows reflect the latest API state.
 	section.querySelector('h3').insertAdjacentHTML('afterend', list);
 
 	section.querySelectorAll('.accept-btn').forEach((btn) => {
@@ -183,6 +146,7 @@ async function loadInvites() {
 		});
 	});
 
+	// success keeps the UI from drifting away from the stored invite state.
 	section.querySelectorAll('.decline-btn').forEach((btn) => {
 		btn.addEventListener('click', async (e) => {
 			const inviteId = Number(e.target.dataset.inviteId);
@@ -203,7 +167,7 @@ async function loadInvites() {
 }
 
 /**
- *
+ * Loads the user's teams and rebuilds the dashboard grid from API data.
  */
 async function initTeamsPage() {
 	try {
@@ -221,6 +185,7 @@ async function initTeamsPage() {
 			card.setAttribute('mark', mark);
 			card.setAttribute('color', '220');
 			card.setAttribute('role', team.role);
+			card.setAttribute('user-initials', getUserInitials());
 			return card;
 		});
 
@@ -239,3 +204,39 @@ async function initTeamsPage() {
 }
 
 initTeamsPage();
+
+// ============================================================
+// Teams Dashboard Logic
+// ============================================================
+
+const sortTrigger = document.getElementById('sort-teams-trigger');
+const sortMenu = document.getElementById('sort-teams-menu');
+
+if (sortTrigger && sortMenu) {
+	// Toggle the sorting menu visibility
+	sortTrigger.addEventListener('click', (e) => {
+		e.stopPropagation();
+		sortMenu.classList.toggle('open');
+	});
+
+	// Close menu when clicking outside
+	document.addEventListener('click', () => sortMenu.classList.remove('open'));
+
+	// Handle filled circle update when a sort is selected
+	sortMenu.querySelectorAll('.sort-item').forEach((item) => {
+		item.addEventListener('click', () => {
+			// Remove active state (and filled circle) from all items
+			sortMenu.querySelectorAll('.sort-item').forEach((el) => el.classList.remove('active'));
+
+			// Add active state to selected item
+			item.classList.add('active');
+
+			// Update the trigger button text to reflect current sort view
+			const sortName = item.textContent.trim();
+			sortTrigger.textContent = `Sort: ${sortName.toLowerCase()} ▾`;
+
+			sortMenu.classList.remove('open');
+			showToast(`Sorting teams by ${sortName.toLowerCase()}`);
+		});
+	});
+}

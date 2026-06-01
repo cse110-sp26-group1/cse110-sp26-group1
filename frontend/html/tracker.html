@@ -5,6 +5,7 @@
 		<title>Issues - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
+			// Keep this before CSS so the saved theme is applied before first paint.
 			try {
 				if (localStorage.getItem('theme') === 'dark') {
 					document.documentElement.classList.add('dark');
@@ -22,8 +23,8 @@
 			<div class="left">
 				<a href="teams.html" title="Back to teams"><div class="logo"></div></a>
 				<div class="crumbs">
+					<!-- Removed "/" separator and "Views" link  -->
 					<a href="teams.html">Teams</a>
-					<span class="sep">/</span>
 				</div>
 				<div class="team-switch" id="team-switch">
 					<span class="mark"></span>
@@ -70,6 +71,40 @@
 					</button>
 				</div>
 				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
+				<!-- Notification inbox button -->
+				<div class="notif-wrap" id="notif-wrap">
+					<button class="btn ghost icon notif-btn" id="notif-btn" aria-label="Notifications" title="Notifications">
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+							<path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+						</svg>
+						<span class="notif-badge" id="notif-badge" hidden>0</span>
+					</button>
+					<div class="notif-dropdown" id="notif-dropdown" hidden>
+						<div class="notif-head">
+							<strong>Notifications</strong>
+							<button class="notif-mark-all" id="notif-mark-all">Mark all read</button>
+						</div>
+						<div class="notif-tabs" id="notif-tabs">
+							<button class="notif-tab active" data-filter="all">All</button>
+							<button class="notif-tab" data-filter="issues">Issues</button>
+						</div>
+						<div class="notif-list" id="notif-list"></div>
+						<div class="notif-foot">
+							<button class="notif-view-all" id="notif-view-all">View all notifications</button>
+						</div>
+					</div>
+				</div>
 				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
 				<div class="user-switch" id="user-switch">
 					<button
@@ -78,10 +113,8 @@
 						id="user-avatar"
 						aria-haspopup="true"
 						aria-expanded="false"
-						title="Ada Lovelace"
-					>
-						AL
-					</button>
+						title="Account"
+					></button>
 					<div class="user-dropdown" id="user-dropdown" role="menu">
 						<button type="button" class="item" id="sign-out-btn" role="menuitem">Sign out</button>
 					</div>
@@ -91,69 +124,56 @@
 
 		<!-- ============ APP ============ -->
 		<div class="app">
+			<div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
 			<!-- SIDEBAR -->
 			<aside class="sidebar">
+				<!-- Removed "Views" Nav Section  -->
+
+				<!-- Status filters match backend values one-to-one (Resolved and Closed are separate). -->
 				<div class="nav-section">
-					<div class="label"><span>Views</span></div>
-					<div class="nav-item active" data-group="view" data-val="all">
-						<span class="ic sq fill"></span> All issues <span class="count" id="cnt-all">0</span>
+					<div class="label-sm">STATUS</div>
+					<!-- Items use .active and .indicator to drive the filled circle logic -->
+					<div class="filter-item active" data-group="status" data-val="Open">
+						<span class="indicator"></span> Open <span class="count" id="cnt-open">0</span>
+					</div>
+					<div class="filter-item" data-group="status" data-val="In Progress">
+						<span class="indicator"></span> In progress <span class="count" id="cnt-prog">0</span>
+					</div>
+					<div class="filter-item" data-group="status" data-val="Resolved">
+						<span class="indicator"></span> Resolved <span class="count" id="cnt-resolved">0</span>
+					</div>
+					<div class="filter-item" data-group="status" data-val="Closed">
+						<span class="indicator"></span> Closed <span class="count" id="cnt-closed">0</span>
 					</div>
 				</div>
 
+				<!-- Tag filters rendered from TAGS in constants.js -->
 				<div class="nav-section">
-					<div class="label"><span>Status</span></div>
-					<div class="nav-item" data-group="status" data-val="Open">
-						<span class="ic"></span> Open <span class="count" id="cnt-open">0</span>
-					</div>
-					<div class="nav-item" data-group="status" data-val="In Progress">
-						<span class="ic fill"></span> In progress <span class="count" id="cnt-prog">0</span>
-					</div>
-					<div class="nav-item" data-group="status" data-val="Resolved">
-						<span class="ic"></span> Done <span class="count" id="cnt-done">0</span>
-					</div>
+					<div class="label-sm">TAGS</div>
+					<div id="tag-filters"></div>
 				</div>
 
+				<!-- Category filters rendered from CATEGORIES in constants.js -->
 				<div class="nav-section">
-					<div class="label"><span>Priority</span></div>
-					<div class="nav-item pri-urgent" data-group="priority" data-val="Critical">
-						<span class="ic dot"></span> Urgent <span class="count" id="cnt-crit">0</span>
-					</div>
-					<div class="nav-item pri-high" data-group="priority" data-val="High">
-						<span class="ic dot"></span> High <span class="count" id="cnt-high">0</span>
-					</div>
-					<div class="nav-item pri-med" data-group="priority" data-val="Medium">
-						<span class="ic dot"></span> Medium <span class="count" id="cnt-med">0</span>
-					</div>
-					<div class="nav-item pri-low" data-group="priority" data-val="Low">
-						<span class="ic dot"></span> Low <span class="count" id="cnt-low">0</span>
-					</div>
+					<div class="label-sm">CATEGORY</div>
+					<div id="category-filters"></div>
 				</div>
 
-				<div class="nav-section">
-					<div class="label"><span>Tags</span></div>
-					<div class="nav-item" data-group="tag" data-val="bug">
-						<span class="ic dot label-bug"></span> bug <span class="count" id="cnt-bug">0</span>
-					</div>
-					<div class="nav-item" data-group="tag" data-val="ui">
-						<span class="ic dot label-ui"></span> ui <span class="count" id="cnt-ui">0</span>
-					</div>
-					<div class="nav-item" data-group="tag" data-val="infra">
-						<span class="ic dot label-infra"></span> infra <span class="count" id="cnt-infra">0</span>
-					</div>
-					<div class="nav-item" data-group="tag" data-val="auth">
-						<span class="ic dot label-auth"></span> auth <span class="count" id="cnt-auth">0</span>
-					</div>
-					<div class="nav-item" data-group="tag" data-val="perf">
-						<span class="ic dot label-perf"></span> perf <span class="count" id="cnt-perf">0</span>
-					</div>
-				</div>
-
-				<div class="nav-section">
-					<div class="label" style="display: flex; justify-content: space-between; align-items: center">
-						<span>Team</span>
-						<button class="btn ghost sm" id="open-invite-modal" style="padding: 0 6px" title="Invite user">+</button>
+				<!-- Compact invite control sits on the same row as the Team label -->
+				<div class="nav-section team-section">
+					<div class="team-header">
+						<span class="label-sm">Team</span>
+						<button class="btn sm invite-btn" id="open-invite-modal" type="button" title="Invite user">Invite user</button>
 					</div>
 					<div class="members"></div>
+				</div>
+
+				<!-- Notifications sidebar row (DES-08) -->
+				<div class="nav-section">
+					<div class="notif-sidebar-row" id="notif-sidebar-row">
+						<span>Notifications</span>
+						<span class="count notif-sidebar-count" id="notif-sidebar-count" hidden>0</span>
+					</div>
 				</div>
 
 				<div class="skill-card">
@@ -169,33 +189,36 @@
 				<!-- LIST -->
 				<div class="list-pane">
 					<div class="list-head">
-						<h1>All issues <span class="count" id="total-count">23</span></h1>
+						<!-- Total issues count header -->
+						<h1>All issues <span class="count" id="total-count">0</span></h1>
 						<div class="actions">
-							<button class="btn" id="toggle-detail" title="Toggle detail pane">⇆ Detail</button>
+							<!-- Detail toggle button -->
+							<button class="btn" id="toggle-detail" title="Toggle detail pane">⇌ Details</button>
 							<button class="btn primary" id="new-issue">+ New issue</button>
 						</div>
 					</div>
 
 					<div class="filter-bar">
+						<button
+							type="button"
+							class="btn ghost icon sidebar-toggle"
+							id="sidebar-toggle"
+							aria-label="Toggle filters sidebar"
+							aria-expanded="false"
+							title="Toggle sidebar"
+						>
+							›
+						</button>
 						<div class="filter-group">
-							<span class="label">Sort</span>
+							<span class="label-sm">SORT</span>
+							<!-- Multiple sort triggers -->
+							<!-- Client-side sort only; priority is not filtered in the sidebar -->
 							<button class="sort-btn on" data-sort="priority">priority <span class="arrow">↓</span></button>
 							<button class="sort-btn" data-sort="updated">updated</button>
-							<button class="sort-btn" data-sort="difficulty">difficulty</button>
-						</div>
-						<div class="filter-divider"></div>
-						<!-- Tags: Do we need this ? -->
-						<div class="filter-group">
-							<span class="label">Tags</span>
-							<button class="chip-btn on" data-tag="all">all</button>
-							<button class="chip-btn" data-tag="bug">bug</button>
-							<button class="chip-btn" data-tag="ui">ui</button>
-							<button class="chip-btn" data-tag="infra">infra</button>
-							<button class="chip-btn" data-tag="auth">auth</button>
-							<button class="chip-btn" data-tag="perf">perf</button>
 						</div>
 					</div>
 
+					<!-- Issue list where tags and shrink logic will be rendered -->
 					<div class="list" id="issue-list">
 						<!-- groups + rows are JS-rendered -->
 					</div>
@@ -205,6 +228,7 @@
 				<div class="divider" id="divider"></div>
 
 				<!-- DETAIL -->
+				<!-- Details pane is targeted by JS for rendering view/edit modes -->
 				<div class="detail" id="detail">
 					<!-- JS-rendered -->
 				</div>
@@ -224,7 +248,7 @@
 						<input class="input" id="new-title" placeholder="One short line — what's wrong?" />
 					</div>
 
-					<div style="display: flex; gap: 12px; margin-bottom: 12px">
+					<div style="display: flex; gap: 0.857rem; margin-bottom: 0.857rem">
 						<div class="field" style="flex: 1; margin-bottom: 0">
 							<label>Priority</label>
 							<select class="input" id="new-priority">
@@ -235,12 +259,9 @@
 							</select>
 						</div>
 						<div class="field" style="flex: 1; margin-bottom: 0">
+							<!-- Selected category is sent to the backend category enum -->
 							<label>Category</label>
-							<select class="input" id="new-category">
-								<option value="Bug">Bug</option>
-								<option value="Feature">Feature</option>
-								<option value="Task">Task</option>
-							</select>
+							<select class="input" id="new-tag"></select>
 						</div>
 						<div class="field" style="flex: 1; margin-bottom: 0">
 							<label>Assignee</label>
@@ -250,14 +271,16 @@
 						</div>
 					</div>
 
-					<div style="display: flex; gap: 12px; margin-bottom: 12px">
+					<div style="display: flex; gap: 0.857rem; margin-bottom: 0.857rem">
 						<div class="field" style="flex: 1; margin-bottom: 0">
 							<label>Difficulty (1-3)</label>
 							<input type="number" class="input" id="new-difficulty" min="1" max="3" placeholder="e.g. 2" />
 						</div>
 						<div class="field" style="flex: 2; margin-bottom: 0">
-							<label>Tags (comma separated)</label>
-							<input type="text" class="input" id="new-tags" placeholder="ui, bug, frontend" />
+							<label>Tags</label>
+							<!-- Options are rendered from TAGS (constants.js) so only valid tags can be picked -->
+							<div class="tag-picker" id="tag-picker"></div>
+							<div class="hint">Pick from your team's label set.</div>
 						</div>
 					</div>
 					<div class="field">
@@ -286,15 +309,29 @@
 		</div>
 
 		<div class="backdrop" id="invite-backdrop">
-			<div class="modal" style="max-width: 400px">
+			<div class="modal" style="max-width: 28.571rem">
 				<div class="modal-head">
 					<h3>Invite to team</h3>
 					<p>Send an invitation to a colleague.</p>
 				</div>
 				<div class="modal-body">
-					<div class="field">
+					<div class="field" id="invite-field">
 						<label>Username or Email <span class="req">*</span></label>
-						<input class="input" id="invite-input" placeholder="e.g. ada@example.com or adalovelace" />
+						<input class="input" id="invite-input" placeholder="e.g. ada@example.com or adalovelace" autocomplete="off" />
+						<p class="field-error" id="invite-error" hidden></p>
+					</div>
+					<div class="field" style="margin-bottom: 0">
+						<label>Or share a join link</label>
+						<div style="display: flex; gap: 0.571rem">
+							<input
+								class="input"
+								id="invite-link-display"
+								readonly
+								style="font-size: 0.857rem; color: var(--muted); background: var(--surface-2); cursor: default"
+							/>
+							<button class="btn sm" id="copy-invite-link" style="flex-shrink: 0; white-space: nowrap">Copy link</button>
+						</div>
+						<div class="hint">Share this link with colleagues so they can find their pending invitation.</div>
 					</div>
 				</div>
 				<div class="modal-foot">
@@ -307,8 +344,8 @@
 		<div class="toast" id="toast"></div>
 
 		<script src="../js/theme.js"></script>
-		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
-		<script src="../js/user-menu.js"></script>
+		<script type="module" src="../js/user-menu.js"></script>
 		<script type="module" src="../js/tracker.js"></script>
+		<script type="module" src="../js/notif-ui.js"></script>
 	</body>
 </html>

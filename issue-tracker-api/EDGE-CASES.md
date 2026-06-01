@@ -40,3 +40,11 @@ Sessions that expire while the token is lost (deleted localStorage, different de
 |---|---|
 | Concurrent login race condition | Two simultaneous logins from same user could insert two sessions. Extremely unlikely at this scale. |
 | Multiple active sessions per user | A user logged in on two devices has two session rows. Harmless — both expire naturally. |
+
+
+---
+
+Testing TODO:
+
+2. Login — login token is separate from register token — when a user registers and then logs in, there should be 2 sessions in the DB. Currently we don't verify that login creates a new session rather than reusing the existing one.
+3. Logout — only deletes the correct session — if a user has multiple sessions and logs out of one, the others should remain. Not tested.

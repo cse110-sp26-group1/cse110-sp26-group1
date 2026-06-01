@@ -5,6 +5,45 @@ import { processIssue } from '../src/llm.js';
 const ISSUE_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const ISSUE_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 const ALLOWED_CATEGORIES = ['Bug', 'Feature', 'Task'];
+const ALLOWED_TAGS = [
+	'ui',
+	'backend',
+	'database',
+	'authentication',
+	'performance',
+	'security',
+	'testing',
+	'documentation',
+	'integration',
+	'enhancement',
+	'research',
+];
+const ALLOWED_DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Unknown'];
+
+/**
+ * @param {unknown} tags
+ * @returns {string | null} Error message, or null if valid / omitted.
+ */
+function getTagsValidationError(tags) {
+	if (tags === undefined || tags === null) return null;
+	if (!Array.isArray(tags) || !tags.every((t) => typeof t === 'string')) {
+		return 'Invalid tags format';
+	}
+	const invalid = tags.filter((t) => !ALLOWED_TAGS.includes(t));
+	if (invalid.length > 0) {
+		return `Invalid tag(s): ${invalid.join(', ')}. Must be one of: ${ALLOWED_TAGS.join(', ')}`;
+	}
+	return null;
+}
+
+/**
+ * @param {unknown} tags
+ * @returns {string[]}
+ */
+function sanitizeTags(tags) {
+	if (!Array.isArray(tags)) return [];
+	return tags.filter((t) => typeof t === 'string' && ALLOWED_TAGS.includes(t));
+}
 
 /**
  * Picks the user value if present, otherwise the LLM value if it's in the
@@ -83,12 +122,13 @@ export async function handleIssues(request, env) {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
 
-		const teamId = Number(url.searchParams.get('team_id'));
-		if (!teamId) {
+		const teamIdParam = url.searchParams.get('team_id');
+		if (teamIdParam === null || teamIdParam.trim() === '') {
 			return Response.json({ error: 'team_id query param required' }, { status: 400 });
 		}
 
-		if (!Number.isInteger(teamId) || teamId <= 0) {
+		const teamId = Number(teamIdParam);
+		if (Number.isNaN(teamId) || !Number.isInteger(teamId) || teamId <= 0) {
 			return Response.json({ error: 'Invalid team_id format. Must be a positive integer.' }, { status: 400 });
 		}
 
@@ -107,30 +147,47 @@ export async function handleIssues(request, env) {
 
 		const statusParam = url.searchParams.get('status');
 		if (statusParam !== null) {
+			if (!ISSUE_STATUSES.includes(statusParam)) {
+				return Response.json({ error: 'Invalid status format. Must be one of: Open, In Progress, Resolved, Closed.' }, { status: 400 });
+			}
 			query += ' AND status = ?';
 			bindings.push(statusParam);
 		}
 
 		const priorityParam = url.searchParams.get('priority');
 		if (priorityParam !== null) {
+			if (!ISSUE_PRIORITIES.includes(priorityParam)) {
+				return Response.json({ error: 'Invalid priority format. Must be one of: Low, Medium, High, Critical.' }, { status: 400 });
+			}
 			query += ' AND priority = ?';
 			bindings.push(priorityParam);
 		}
 
 		const assignedToParam = url.searchParams.get('assigned_to');
 		if (assignedToParam !== null) {
+			const assignedTo = Number(assignedToParam);
+			if (Number.isNaN(assignedTo) || !Number.isInteger(assignedTo) || assignedTo <= 0) {
+				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
+			}
 			query += ' AND assigned_to = ?';
-			bindings.push(Number(assignedToParam));
+			bindings.push(assignedTo);
 		}
 
 		const categoryParam = url.searchParams.get('category');
 		if (categoryParam !== null) {
+			if (!ALLOWED_CATEGORIES.includes(categoryParam)) {
+				return Response.json({ error: 'Invalid category format. Must be one of: Bug, Feature, Task.' }, { status: 400 });
+			}
 			query += ' AND category = ?';
 			bindings.push(categoryParam);
 		}
 
 		const difficultyParam = url.searchParams.get('difficulty');
 		if (difficultyParam !== null) {
+			// NEW VALIDATION GUARD
+			if (!ALLOWED_DIFFICULTIES.includes(difficultyParam)) {
+				return Response.json({ error: 'Invalid difficulty format. Must be one of: Easy, Medium, Hard.' }, { status: 400 });
+			}
 			query += ' AND difficulty = ?';
 			bindings.push(difficultyParam);
 		}
@@ -285,26 +342,24 @@ export async function handleIssues(request, env) {
 
 		// Point 2 Change: Mid-flight workspace membership validation when an assignment is requested during initialization
 		//Checks valid assigned member for new issue
+		// Validate assigned_to field if provided (automatically handles both JSON and Multipart via body.assigned_to)
 		let assignedTo = null;
-		if (body.assigned_to !== undefined && body.assigned_to !== null) {
+		if (body.assigned_to !== undefined && body.assigned_to !== null && body.assigned_to !== '') {
 			assignedTo = Number(body.assigned_to);
-			if (!Number.isInteger(assignedTo) || assignedTo <= 0) {
+			if (Number.isNaN(assignedTo) || !Number.isInteger(assignedTo) || assignedTo <= 0) {
 				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
 			}
 
+			// Core verification: Lock down assignment to workspace group boundaries
 			const assigneeMembership = await requireTeamMember(env, assignedTo, parsedTeamId);
 			if (assigneeMembership.error) {
 				return Response.json({ error: 'Invalid assignment. Assignee must be an established member of the team.' }, { status: 400 });
 			}
 		}
 
-		// Point 6 Change: Strict Array Schema Validation for Tags in POST payload
-		// Assures type-safety to prevent runtime exceptions upon JSON parsing of malicious payloads.
-		//Checks that tag is array not invalid object type to protect GET fetches that parse tags with JSON.parse; if tags is provided in the body, it must be an array of strings. If it's not, return a 400 error indicating invalid format. This validation ensures that the tags field adheres to the expected structure, preventing potential issues during data processing and retrieval.
-		if (body.tags !== undefined && body.tags !== null) {
-			if (!Array.isArray(body.tags) || !body.tags.every((t) => typeof t === 'string')) {
-				return Response.json({ error: 'Invalid tags format' }, { status: 400 });
-			}
+		const tagsValidationError = getTagsValidationError(body.tags);
+		if (tagsValidationError) {
+			return Response.json({ error: tagsValidationError }, { status: 400 });
 		}
 
 		const status = body.status?.trim();
@@ -341,7 +396,9 @@ export async function handleIssues(request, env) {
 		const finalCategory = pickEnum(category, llm.category, ALLOWED_CATEGORIES, 'Bug');
 		const finalDifficulty = body.difficulty || (llm.difficulty && llm.difficulty !== 'null' ? llm.difficulty : null);
 		const finalSummary = coerceText(body.summary, llm.summary);
-		const finalTags = JSON.stringify(coerceArray(body.tags, llm.tags));
+		const mergedTags = coerceArray(body.tags, llm.tags);
+		const finalTagsList = body.tags !== undefined && body.tags !== null ? mergedTags : sanitizeTags(mergedTags);
+		const finalTags = JSON.stringify(finalTagsList);
 
 		const finalEntryPoint = coerceText(body.details?.entry_point, llm.entry_point ?? llm.details?.entry_point);
 		const finalErrorType = coerceText(body.details?.error_type, llm.error_type ?? llm.details?.error_type);
@@ -467,26 +524,46 @@ export async function handleIssues(request, env) {
 		}
 
 		// Validation rules for Point 1
+		// Symmetrical validation splitting to satisfy both pre-existing type tests and new length cap filters
 		if (body.title !== undefined) {
 			if (typeof body.title !== 'string' || body.title.trim() === '') {
 				return Response.json({ error: 'Invalid title format. Must be a non-empty string.' }, { status: 400 });
 			}
+			if (body.title.length > 255) {
+				return Response.json({ error: 'Invalid title format. Must be a non-empty string under 256 characters.' }, { status: 400 });
+			}
 		}
 
-		// Enforce non-empty constraint if description is optionally supplied for a slide update
 		if (body.description !== undefined) {
 			if (typeof body.description !== 'string' || body.description.trim() === '') {
 				return Response.json({ error: 'Invalid description format. Must be a non-empty string.' }, { status: 400 });
 			}
+			if (body.description.length > 10000) {
+				return Response.json({ error: 'Invalid description format. Must be a non-empty string under 10001 characters.' }, { status: 400 });
+			}
 		}
 
-		// Point 6 Change: Strict Array Schema Validation for Tags in PATCH payload
-		// Rejects variations to guard downstream workflows when updating tags.
-		//Checks that tag is array not invalid object type to protect GET fetches that parse tags with JSON.parse; if invalid, returns a 400 error indicating invalid tags format. This ensures that the tags field maintains consistent data structure for proper handling in retrieval and display logic.
-		if (body.tags !== undefined && body.tags !== null) {
-			if (!Array.isArray(body.tags) || !body.tags.every((t) => typeof t === 'string')) {
-				return Response.json({ error: 'Invalid tags format' }, { status: 400 });
+		if (body.summary !== undefined && body.summary !== null) {
+			if (typeof body.summary !== 'string' || body.summary.length > 5000) {
+				return Response.json({ error: 'Invalid summary format. Must be a string under 5001 characters.' }, { status: 400 });
 			}
+		}
+
+		if (body.affected_files !== undefined && body.affected_files !== null) {
+			if (!Array.isArray(body.affected_files) || !body.affected_files.every((f) => typeof f === 'string')) {
+				return Response.json({ error: 'Invalid affected_files format. Must be an array of strings.' }, { status: 400 });
+			}
+			if (body.affected_files.length > 25 || !body.affected_files.every((f) => f.trim() !== '' && f.length <= 255)) {
+				return Response.json(
+					{ error: 'Invalid affected_files format. Must be an array of non-empty strings (max 25 files, max 255 chars each).' },
+					{ status: 400 },
+				);
+			}
+		}
+
+		const tagsValidationError = getTagsValidationError(body.tags);
+		if (tagsValidationError) {
+			return Response.json({ error: tagsValidationError }, { status: 400 });
 		}
 
 		// Strictly validate type matching for affected_files array syntax representation
@@ -509,17 +586,24 @@ export async function handleIssues(request, env) {
 		if (category && !ALLOWED_CATEGORIES.includes(category)) {
 			return Response.json({ error: `Invalid category. Must be one of: ${ALLOWED_CATEGORIES.join(', ')}` }, { status: 400 });
 		}
+		// NEW VALIDATION GUARD FOR DIFFICULTY
+		if (body.difficulty !== undefined && body.difficulty !== null) {
+			const difficultyStr = typeof body.difficulty === 'string' ? body.difficulty.trim() : '';
+			if (!ALLOWED_DIFFICULTIES.includes(difficultyStr)) {
+				return Response.json({ error: 'Invalid difficulty value' }, { status: 400 });
+			}
+		}
 
 		let assignedTo = null;
-		if (body.assigned_to !== undefined) {
+		if (body.assigned_to !== undefined && body.assigned_to !== null && body.assigned_to !== '') {
 			assignedTo = Number(body.assigned_to);
-			if (!Number.isInteger(assignedTo) || assignedTo <= 0) {
+			if (Number.isNaN(assignedTo) || !Number.isInteger(assignedTo) || assignedTo <= 0) {
 				return Response.json({ error: 'Invalid assigned_to format. Must be a positive integer.' }, { status: 400 });
 			}
 
 			// Point 2 Change: Mid-flight workspace membership validation when an assignment update is requested
-			//Checks if issue is assigned to member of same team before allowing assignment update; if not, returns a 400 error indicating invalid assignment. This ensures that issues cannot be assigned to users who are not part of the issue's team, maintaining data integrity and proper access control.
-			//Checks valid assigned member for issue update
+			// Checks if issue is assigned to member of same team before allowing assignment update; if not, returns a 400 error indicating invalid assignment. This ensures that issues cannot be assigned to users who are not part of the issue's team, maintaining data integrity and proper access control.
+			// Checks valid assigned member for issue update
 			const assigneeMembership = await requireTeamMember(env, assignedTo, issue.team_id);
 			if (assigneeMembership.error) {
 				return Response.json({ error: 'Invalid assignment. Assignee must be an established member of the team.' }, { status: 400 });

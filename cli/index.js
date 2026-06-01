@@ -12,8 +12,12 @@ const args = process.argv.slice(2);
 const command = args[0];
 const validStatuses = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
+const validCategories = ['Bug', 'Feature', 'Task'];
 
-// Parse flags like --status=investigating
+/**
+ * Parsed CLI flags in key=value format.
+ * @type {Record<string, string>}
+ */
 const flags = {};
 args.slice(1).forEach((arg) => {
 	if (arg.startsWith('--')) {
@@ -22,11 +26,12 @@ args.slice(1).forEach((arg) => {
 	}
 });
 
-// Positional argument (e.g. the issue ID)
 const id = args[1];
 
 /**
+ * Prints the supported CLI commands and their expected usage.
  *
+ * @returns {void}
  */
 function printUsage() {
 	console.error('Usage:');
@@ -34,14 +39,23 @@ function printUsage() {
 	console.error('  allegro logout');
 	console.error('  allegro list_teams');
 	console.error('  allegro list_issues --team_id=<team_id> [--status=xxx] [--priority=xxx] [--assigned_to=xxx]');
+	console.error(
+		'  allegro create_issue --team_id=<team_id> --title=<title> [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]',
+	);
 	console.error('  allegro get_issue <id>');
-	console.error('  allegro update_issue <id> --status=xxx --priority=xxx [--assigned_to=xxx]');
+	console.error(
+		'  allegro update_issue <id> [--title=<title>] [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]',
+	);
 	console.error('  allegro resolve_issue <id>');
 }
 
 /**
+ * Builds a URL query string from a set of optional CLI flags.
  *
- * @param queryFlags
+ * Empty, null, and undefined values are omitted from the final query string.
+ *
+ * @param {Record<string, string | undefined>} queryFlags - Key-value pairs to serialize.
+ * @returns {string} The serialized query string, including the leading `?` when needed.
  */
 function buildQueryString(queryFlags) {
 	const params = new URLSearchParams();
@@ -57,9 +71,33 @@ function buildQueryString(queryFlags) {
 }
 
 /**
+ * Parses a CLI flag value as a JSON array and exits on malformed input.
  *
- * @param issues
- * @param statusFilterApplied
+ * @param {Record<string, string>} sourceFlags - Parsed CLI flags.
+ * @param {string} key - Flag name to parse.
+ * @returns {unknown[] | undefined} Parsed array value, or undefined when the flag is absent.
+ */
+function parseArrayFlag(sourceFlags, key) {
+	if (!sourceFlags[key]) return undefined;
+	try {
+		const parsed = JSON.parse(sourceFlags[key]);
+		if (!Array.isArray(parsed)) throw new Error();
+		return parsed;
+	} catch {
+		console.error(`Invalid ${key}. Must be a JSON array, e.g. --${key}='["a","b"]'`);
+		process.exit(1);
+	}
+}
+
+/**
+ * Formats the issue list response for terminal output, so that it
+ * shows a brief summary with id, title, summary, category, tags and status fields
+ *
+ * By default, resolved and closed issues are hidden so the CLI shows active issues.
+ *
+ * @param {unknown} issues - Raw issue list returned by the API.
+ * @param {boolean} statusFilterApplied - Whether the user explicitly requested a status filter.
+ * @returns {unknown} A compact list of issues, or the original value if the response is not an array.
  */
 function formatIssueList(issues, statusFilterApplied) {
 	if (!Array.isArray(issues)) {
@@ -82,9 +120,28 @@ function formatIssueList(issues, statusFilterApplied) {
 	return formattedIssues.filter((issue) => issue.status !== 'Resolved' && issue.status !== 'Closed');
 }
 
-// Helper: load saved token
 /**
+ * Formats a single issue response for terminal output by omitting
+ * internal fields that are not useful to CLI consumers.
  *
+ * @param {unknown} issue - Raw issue returned by the API.
+ * @returns {unknown} The issue without `token_usage`, or the original value if not an object.
+ */
+function formatIssue(issue) {
+	if (!issue || typeof issue !== 'object') {
+		return issue;
+	}
+
+	const { token_usage, ...formattedIssue } = issue;
+	return formattedIssue;
+}
+
+/**
+ * Loads the saved session token from the local CLI config file.
+ *
+ * Exits the process if the user is not currently logged in.
+ *
+ * @returns {string} The saved bearer token.
  */
 function getToken() {
 	if (!fs.existsSync(CONFIG_FILE)) {
@@ -96,7 +153,10 @@ function getToken() {
 }
 
 /**
+ * Prompts the user for a password in the terminal and masks input with `*`.
  *
+ *
+ * @returns {Promise<string>} The password entered by the user.
  */
 function promptForPassword() {
 	return new Promise((resolve, reject) => {
@@ -152,12 +212,16 @@ function promptForPassword() {
 	});
 }
 
-// Helper: make API requests
 /**
+ * Sends an authenticated request to the Allegro backend API.
  *
- * @param method
- * @param endpoint
- * @param body
+ * The saved session token is attached as a bearer token, and JSON responses are parsed
+ * automatically when possible.
+ *
+ * @param {string} method - HTTP method to send.
+ * @param {string} endpoint - API path relative to the configured base URL.
+ * @param {Record<string, unknown> | null} [body=null] - Optional JSON request body.
+ * @returns {Promise<{ ok: boolean, data: unknown }>} Parsed API response and status flag.
  */
 async function request(method, endpoint, body = null) {
 	const token = getToken();
@@ -265,26 +329,11 @@ if (command === 'login') {
 		process.exit(1);
 	}
 	console.log(JSON.stringify(formatIssueList(data, Boolean(flags.status)), null, 2));
-} else if (command === 'get_issue') {
-	if (!id) {
-		console.error('Usage: allegro get_issue <id>');
-		process.exit(1);
-	}
-
-	const { ok, data } = await request('GET', `/issues/${id}`);
-	if (!ok) {
-		console.error('Error:', data);
-		process.exit(1);
-	}
-	console.log(JSON.stringify(data, null, 2));
-} else if (command === 'update_issue') {
-	if (!id) {
-		console.error('Usage: allegro update_issue <id> --status=<status> --priority=<priority>');
-		process.exit(1);
-	}
-
-	if (!flags.status && !flags.priority && !flags.assigned_to) {
-		console.error('Provide at least one field to update: --status, --priority, or --assigned_to');
+} else if (command === 'create_issue') {
+	if (!flags.team_id || !flags.title) {
+		console.error(
+			'Usage: allegro create_issue --team_id=<team_id> --title=<title> [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]',
+		);
 		process.exit(1);
 	}
 
@@ -298,10 +347,117 @@ if (command === 'login') {
 		process.exit(1);
 	}
 
-	const { ok, data } = await request('PATCH', `/issues/${id}`, {
+	if (flags.category && !validCategories.includes(flags.category)) {
+		console.error(`Invalid category. Must be one of: ${validCategories.join(', ')}`);
+		process.exit(1);
+	}
+
+	const body = {
+		team_id: Number(flags.team_id),
+		title: flags.title,
+		...(flags.summary && { summary: flags.summary }),
 		...(flags.status && { status: flags.status }),
 		...(flags.priority && { priority: flags.priority }),
-		...(flags.assigned_to && { assigned_to: flags.assigned_to }),
+		...(flags.category && { category: flags.category }),
+		...(flags.difficulty && { difficulty: flags.difficulty }),
+		...(flags.tags && { tags: parseArrayFlag(flags, 'tags') }),
+		...(flags.entry_point && { entry_point: flags.entry_point }),
+		...(flags.error_type && { error_type: flags.error_type }),
+		...(flags.error_message && { error_message: flags.error_message }),
+		...(flags.stack_trace && { stack_trace: parseArrayFlag(flags, 'stack_trace') }),
+		...(flags.affected_files && { affected_files: parseArrayFlag(flags, 'affected_files') }),
+		...(flags.expected_behavior && { expected_behavior: flags.expected_behavior }),
+		...(flags.actual_behavior && { actual_behavior: flags.actual_behavior }),
+		...(flags.missing_information && { missing_information: flags.missing_information }),
+		...(flags.steps_to_reproduce && { steps_to_reproduce: flags.steps_to_reproduce }),
+		...(flags.hypothesis && { hypothesis: flags.hypothesis }),
+		...(flags.resolution_notes && { resolution_notes: flags.resolution_notes }),
+	};
+
+	const { ok, data } = await request('POST', '/agents', body);
+	if (!ok) {
+		console.error('Error:', data);
+		process.exit(1);
+	}
+	console.log('Issue created successfully!');
+} else if (command === 'get_issue') {
+	if (!id) {
+		console.error('Usage: allegro get_issue <id>');
+		process.exit(1);
+	}
+
+	const { ok, data } = await request('GET', `/agents/${id}`);
+	if (!ok) {
+		console.error('Error:', data);
+		process.exit(1);
+	}
+	console.log(JSON.stringify(formatIssue(data), null, 2));
+} else if (command === 'update_issue') {
+	if (!id) {
+		console.error(
+			'Usage: allegro update_issue <id> [--title=<title>] [--summary=xxx] [--priority=xxx] [--status=xxx] [--category=xxx] [--difficulty=xxx] [--tags=\'["a","b"]\'] [--entry_point=xxx] [--error_type=xxx] [--error_message=xxx] [--stack_trace=\'["..."]\'] [--affected_files=\'["..."]\'] [--expected_behavior=xxx] [--actual_behavior=xxx] [--missing_information=xxx] [--steps_to_reproduce=xxx] [--hypothesis=xxx] [--resolution_notes=xxx]',
+		);
+		process.exit(1);
+	}
+
+	if (
+		!flags.title &&
+		!flags.summary &&
+		!flags.status &&
+		!flags.priority &&
+		!flags.category &&
+		!flags.difficulty &&
+		!flags.tags &&
+		!flags.entry_point &&
+		!flags.error_type &&
+		!flags.error_message &&
+		!flags.stack_trace &&
+		!flags.affected_files &&
+		!flags.expected_behavior &&
+		!flags.actual_behavior &&
+		!flags.missing_information &&
+		!flags.steps_to_reproduce &&
+		!flags.hypothesis &&
+		!flags.resolution_notes
+	) {
+		console.error('Provide at least one agent-updatable field.');
+		process.exit(1);
+	}
+
+	if (flags.status && !validStatuses.includes(flags.status)) {
+		console.error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+		process.exit(1);
+	}
+
+	if (flags.priority && !validPriorities.includes(flags.priority)) {
+		console.error(`Invalid priority. Must be one of: ${validPriorities.join(', ')}`);
+		process.exit(1);
+	}
+
+	if (flags.category && !validCategories.includes(flags.category)) {
+		console.error(`Invalid category. Must be one of: ${validCategories.join(', ')}`);
+		process.exit(1);
+	}
+
+	const { ok, data } = await request('PATCH', `/agents/${id}`, {
+		...(flags.title && { title: flags.title }),
+		...(flags.summary && { summary: flags.summary }),
+		...(flags.status && { status: flags.status }),
+		...(flags.priority && { priority: flags.priority }),
+		...(flags.category && { category: flags.category }),
+		...(flags.difficulty && { difficulty: flags.difficulty }),
+		...(flags.tags && { tags: parseArrayFlag(flags, 'tags') }),
+		...(flags.entry_point && { entry_point: flags.entry_point }),
+		...(flags.error_type && { error_type: flags.error_type }),
+		...(flags.error_message && { error_message: flags.error_message }),
+		...(flags.stack_trace && { stack_trace: parseArrayFlag(flags, 'stack_trace') }),
+		...(flags.affected_files && { affected_files: parseArrayFlag(flags, 'affected_files') }),
+		...(flags.expected_behavior && { expected_behavior: flags.expected_behavior }),
+		...(flags.actual_behavior && { actual_behavior: flags.actual_behavior }),
+		...(flags.missing_information && { missing_information: flags.missing_information }),
+		...(flags.steps_to_reproduce && { steps_to_reproduce: flags.steps_to_reproduce }),
+		...(flags.hypothesis && { hypothesis: flags.hypothesis }),
+		...(flags.resolution_notes && { resolution_notes: flags.resolution_notes }),
 	});
 	if (!ok) {
 		console.error('Error:', data);
@@ -314,7 +470,7 @@ if (command === 'login') {
 		process.exit(1);
 	}
 
-	const { ok, data } = await request('PATCH', `/issues/${id}`, {
+	const { ok, data } = await request('PATCH', `/agents/${id}`, {
 		status: 'Resolved',
 	});
 	if (!ok) {
