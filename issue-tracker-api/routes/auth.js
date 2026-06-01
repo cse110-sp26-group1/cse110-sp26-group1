@@ -96,7 +96,7 @@ export async function handleAuth(request, env) {
 		// insert new row into the sessions table that references the new user's id.
 		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(row.id, token, expires_at).run();
 
-		return Response.json({ success: true, token, expires_at }, { status: 201 });
+		return Response.json({ success: true, token, expires_at, first_name: firstName, last_name: lastName }, { status: 201 });
 	}
 
 	// POST /auth/login
@@ -121,8 +121,8 @@ export async function handleAuth(request, env) {
 
 		const email = body.email.trim();
 
-		// look up the user row that matches the user's email, return just the user id and password hash to the user variable.
-		const user = await env.DB.prepare('SELECT id, password_hash FROM users WHERE email = ?').bind(email).first();
+		// look up the user row that matches the user's email.
+		const user = await env.DB.prepare('SELECT id, password_hash, first_name, last_name FROM users WHERE email = ?').bind(email).first();
 
 		// if no user was found matching that email or password is incorrect, return error.
 		if (!user || !(await verifyPassword(body.password, user.password_hash))) {
@@ -139,7 +139,7 @@ export async function handleAuth(request, env) {
 		// insert new row into the sessions table that references the user's id.
 		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(user.id, token, expires_at).run();
 
-		return Response.json({ token, expires_at }, { status: 200 });
+		return Response.json({ token, expires_at, first_name: user.first_name, last_name: user.last_name }, { status: 200 });
 	}
 
 	// POST /auth/logout
