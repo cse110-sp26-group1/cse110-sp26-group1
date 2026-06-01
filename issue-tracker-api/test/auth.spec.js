@@ -352,6 +352,36 @@ describe('Auth Endpoint Testing Suite', () => {
 				// expires_at in DB matches what was returned in the response
 				expect(session.expires_at).toBe(expires_at);
 			});
+
+			// Tests expired session cleanup on login
+			it('deletes expired sessions for the user on login', async () => {
+				await registerUser();
+
+				// get the user's id
+				const user = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(VALID_USER.email).first();
+
+				// manually insert an already-expired session row for this user
+				const expiredToken = crypto.randomUUID();
+				await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)')
+					.bind(user.id, expiredToken, '2000-01-01T00:00:00.000Z')
+					.run();
+
+				// confirm the expired session exists before login
+				const before = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(expiredToken).first();
+				expect(before).not.toBeNull();
+
+				// login, this should trigger the expired session cleanup
+				const res = await SELF.fetch(LOGIN_URL, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ email: VALID_USER.email, password: VALID_USER.password }),
+				});
+				expect(res.status).toBe(200);
+
+				// expired session should now be gone
+				const after = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(expiredToken).first();
+				expect(after).toBeNull();
+			});
 		});
 
 		describe('Failure Cases', () => {
