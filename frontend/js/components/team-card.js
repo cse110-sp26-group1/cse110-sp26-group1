@@ -35,8 +35,7 @@ class TeamCard extends HTMLElement {
 	 * @returns {string[]}
 	 */
 	static get observedAttributes() {
-		// Added status attributes to support issue-aware dashboard
-		return ['team-id', 'name', 'mark', 'color', 'role', 'open', 'prog', 'done', 'user-initials'];
+		return ['team-id', 'name', 'mark', 'color', 'role', 'bio', 'user-initials'];
 	}
 
 	#rendered = false;
@@ -66,17 +65,14 @@ class TeamCard extends HTMLElement {
 		const mark = this.getAttribute('mark') ?? '';
 		const color = this.getAttribute('color') ?? '0';
 		const role = this.getAttribute('role') ?? 'Member';
-
-		// Status values
-		const openCount = this.getAttribute('open') ?? '0';
-		const progCount = this.getAttribute('prog') ?? '0';
-		const doneCount = this.getAttribute('done') ?? '0';
+		const bio = this.getAttribute('bio') ?? '';
 		const userInitials = this.getAttribute('user-initials') ?? getUserInitials();
 
 		const link = this.querySelector('a.team');
 		const teamMark = this.querySelector('.team-mark');
 		const title = this.querySelector('h2');
 		const subtitleEl = this.querySelector('.slug');
+		const bioEl = this.querySelector('.team-bio');
 		const avatarEl = this.querySelector('.avatar');
 
 		if (link) link.href = `tracker.html?team_id=${teamId}`;
@@ -91,21 +87,17 @@ class TeamCard extends HTMLElement {
 
 		if (subtitleEl) subtitleEl.textContent = role === 'admin' ? 'Workspace Admin' : 'Workspace Member';
 
-		// Ensure initials match the current user
 		if (avatarEl) avatarEl.textContent = userInitials;
 
-		// Enabling stats display
-		const statsEl = this.querySelector('.stats');
-		if (statsEl) {
-			statsEl.style.display = 'grid'; // Remove 'none' to show counts
-
-			const openEl = this.querySelector('.open-count');
-			const progEl = this.querySelector('.prog-count');
-			const doneEl = this.querySelector('.done-count');
-
-			if (openEl) openEl.textContent = openCount;
-			if (progEl) progEl.textContent = progCount;
-			if (doneEl) doneEl.textContent = doneCount;
+		if (bioEl) {
+			const trimmedBio = bio.trim();
+			if (trimmedBio) {
+				bioEl.textContent = trimmedBio;
+				bioEl.classList.remove('empty');
+			} else {
+				bioEl.textContent = 'No bio yet.';
+				bioEl.classList.add('empty');
+			}
 		}
 	}
 }
