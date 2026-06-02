@@ -40,8 +40,3 @@ On each login, all expired sessions for that user are deleted before the new ses
 
 
 ---
-
-Testing TODO:
-
-2. Login — login token is separate from register token — when a user registers and then logs in, there should be 2 sessions in the DB. Currently we don't verify that login creates a new session rather than reusing the existing one.
-3. Logout — only deletes the correct session — if a user has multiple sessions and logs out of one, the others should remain. Not tested.
