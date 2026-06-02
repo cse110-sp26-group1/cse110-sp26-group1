@@ -18,10 +18,9 @@ In person meeting to review progress made from Sprint 4 and discuss Sprint 5 Pla
 - Ben
 - Noah
 - Jonathan
+- Ailyn (joined via zoom, left early)
 
 ### Absent:
-
-- Ailyn
 
 ### Time and Place:
 
