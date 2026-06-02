@@ -58,7 +58,7 @@ main {
 	color: var(--muted);
 }
 
-/* search row */
+/* controls row */
 .hero-actions {
 	display: flex;
 	gap: 0.571rem;
@@ -67,16 +67,6 @@ main {
 .new-team-caption {
 	margin: 0.286rem 0 0;
 	font-size: 0.893rem;
-}
-
-.search-row {
-	display: flex;
-	gap: 0.714rem;
-	margin-bottom: 1.714rem;
-}
-
-.search-row .input {
-	max-width: min(22.857rem, 100%);
 }
 
 /* team grid */
@@ -313,36 +303,4 @@ team-card {
 .invite strong {
 	font-weight: 600;
 	color: var(--ink);
-}
-
-/* Task 4: Consistent UI for sorting indicators on the teams page */
-.sort-item {
-	display: flex;
-	align-items: center;
-	padding: 0.429rem 0.857rem;
-	font-size: 0.929rem;
-	border-radius: var(--r-1);
-	cursor: pointer;
-	color: var(--ink-2);
-}
-
-/* The circle indicator to be used in the "Sort: recent" dropdown */
-.sort-item .circle {
-	width: 0.714rem;
-	height: 0.714rem;
-	border-radius: 50%;
-	border: 0.107rem solid var(--line-strong);
-	margin-right: 0.714rem;
-	flex-shrink: 0;
-}
-
-/* Logic for the filled-in circle when a sort is selected */
-.sort-item.active {
-	background: var(--surface-3);
-	font-weight: 500;
-}
-
-.sort-item.active .circle {
-	background: currentcolor;
-	border-color: transparent;
 }
