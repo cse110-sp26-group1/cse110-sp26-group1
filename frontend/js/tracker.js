@@ -726,19 +726,19 @@ function renderDetail() {
 
 			<div class="detail-body">
 				<div class="ai-content-block">
-					<span class="label-sm">Summary</span>
+					<span class="label-sm"><strong>Summary</strong></span>
 					<p class="issue-section-body">${formatIssueText(i.summary)}</p>
 				</div>
 				<div class="ai-content-block" style="margin-top:1.714rem">
-					<span class="label-sm">Steps to reproduce</span>
+					<span class="label-sm"><strong>Steps to reproduce</strong></span>
 					${formatStepsToReproduce(i.steps_to_reproduce)}
 				</div>
 				<div class="ai-content-block" style="margin-top:1.714rem">
-					<span class="label-sm">Hypothesis</span>
+					<span class="label-sm"><strong>Hypothesis</strong></span>
 					<p class="issue-section-body">${formatIssueText(i.hypothesis)}</p>
 				</div>
 				<div class="ai-content-block" style="margin-top:1.714rem">
-					<span class="label-sm">Details</span>
+					<span class="label-sm"><strong>Details</strong></span>
 					<p class="issue-section-body">${formatIssueText(i.description, 'No description provided.')}</p>
 				</div>
 			</div>`;
@@ -767,10 +767,10 @@ function renderDetail() {
 				<div class="meta-col">
 					<span class="label-sm">PRIORITY</span>
 					<select class="input sm" id="edit-priority">
-						<option ${i.priority === 'Critical' ? 'selected' : ''}>Critical</option>
-						<option ${i.priority === 'High' ? 'selected' : ''}>High</option>
-						<option ${i.priority === 'Medium' ? 'selected' : ''}>Medium</option>
 						<option ${i.priority === 'Low' ? 'selected' : ''}>Low</option>
+						<option ${i.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+						<option ${i.priority === 'High' ? 'selected' : ''}>High</option>
+						<option ${i.priority === 'Critical' ? 'selected' : ''}>Critical</option>
 					</select>
 				</div>
 				<div class="meta-col">
