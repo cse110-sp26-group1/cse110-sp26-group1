@@ -1,7 +1,7 @@
 const PBKDF2_ITERATIONS = 100000;
 
-// User session lasts for 24 hours of inactivity before they need to login again.
-const SESSION_TTL_HOURS = 24;
+// User session lasts for a week of inactivity before they need to login again.
+const SESSION_TTL_HOURS = 168;
 
 // ----- Password hashing (Web Crypto / PBKDF2 — no external deps) -----
 
@@ -64,7 +64,7 @@ export async function requireAuth(request, env) {
 	if (!session) {
 		return { error: Response.json({ error: 'Invalid session' }, { status: 401 }) };
 	}
-	// token exists but has passed its 24hr expiry — delete it to keep the table clean
+	// token exists but has passed its expiry, delete it to keep the table clean
 	if (new Date(session.expires_at) < new Date()) {
 		await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
 		return { error: Response.json({ error: 'Session expired' }, { status: 401 }) };
@@ -74,7 +74,7 @@ export async function requireAuth(request, env) {
 }
 
 /**
- * Returns an ISO 8601 timestamp 24 hours from now, used as the session expiry.
+ * Returns an ISO 8601 timestamp SESSION_TTL_HOURS from now, used as the session expiry.
  * @returns {string} UTC ISO string for the session expiry time.
  */
 export function sessionExpiresAt() {
