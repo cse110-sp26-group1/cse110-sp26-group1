@@ -43,6 +43,7 @@
 - still hand checked to verify everything and handwrote all of the comments for toggle password.
 Amberly:
 - fix linting 
+- used ai to help with getting LLM response
 
 
 ---

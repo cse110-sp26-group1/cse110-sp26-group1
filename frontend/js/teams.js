@@ -48,39 +48,6 @@ function showToast(msg) {
 	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
-document.querySelectorAll('.accept-btn').forEach((btn) => {
-	btn.addEventListener('click', async (e) => {
-		const teamSlug = e.target.dataset.slug;
-		const originalText = e.target.textContent;
-
-		e.target.textContent = 'Accepting...';
-		e.target.disabled = true;
-
-		try {
-			await acceptInvite(teamSlug);
-			showToast('Invitation accepted!');
-
-			// Remove the invite from the screen
-			e.target.closest('.invite').remove();
-
-			// Re-render the grid to show the newly unlocked team
-			// The accepted invite creates team membership server-side.
-			initTeamsPage();
-		} catch {
-			showToast('Failed to accept invite.');
-			e.target.textContent = originalText;
-			e.target.disabled = false;
-		}
-	});
-});
-
-document.querySelectorAll('.decline-btn').forEach((btn) => {
-	btn.addEventListener('click', (e) => {
-		e.target.closest('.invite').remove();
-		showToast('Invitation declined.');
-	});
-});
-
 document.getElementById('confirm-create').addEventListener('click', async () => {
 	const nameEl = document.getElementById('team-name');
 
@@ -116,7 +83,8 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 });
 
 /**
- * Loads pending invites and wires accept/decline actions after rendering them.
+ * Loads pending invites, renders the rows from API data, then attaches the
+ * accept/decline listeners to the newly-created buttons.
  */
 async function loadInvites() {
 	const section = document.getElementById('invites-section');
@@ -157,7 +125,6 @@ async function loadInvites() {
 		)
 		.join('');
 
-	// Invites are inserted after the heading so the static section shell can
 	// stay in HTML while the rows reflect the latest API state.
 	section.querySelector('h3').insertAdjacentHTML('afterend', list);
 
@@ -179,6 +146,7 @@ async function loadInvites() {
 		});
 	});
 
+	// success keeps the UI from drifting away from the stored invite state.
 	section.querySelectorAll('.decline-btn').forEach((btn) => {
 		btn.addEventListener('click', async (e) => {
 			const inviteId = Number(e.target.dataset.inviteId);

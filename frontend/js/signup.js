@@ -1,4 +1,4 @@
-import { createAccount, login, requireNoAuth } from './api.js';
+import { createAccount, login, requireNoAuth, getPostAuthRedirect } from './api.js';
 import { saveStoredUser, userFromApiProfile } from './user-profile.js';
 import { initPasswordToggles } from './view-password.js';
 
@@ -6,12 +6,18 @@ requireNoAuth();
 initPasswordToggles(); // wires up the eye button next to the password field
 
 const authForm = document.getElementById('auth-form');
+const loginLink = document.querySelector('.auth-switch a');
+const redirectParam = new URLSearchParams(location.search).get('redirect');
 
 const firstEl = document.getElementById('first-name');
 const lastEl = document.getElementById('last-name');
 const usernameEl = document.getElementById('username');
 const emailEl = document.getElementById('email');
 const passwordEl = document.getElementById('password');
+
+if (loginLink && redirectParam) {
+	loginLink.href = `login.html?redirect=${encodeURIComponent(redirectParam)}`;
+}
 
 /**
  * Handles create-account form submit. Registers the user, then immediately
@@ -67,7 +73,7 @@ async function handleSignupSubmit(e) {
 			saveStoredUser({ first_name, last_name, username, email });
 		}
 
-		location.href = 'teams.html';
+		location.href = getPostAuthRedirect();
 	} catch (err) {
 		if (err.message?.includes('409')) {
 			usernameEl.setCustomValidity('Username or email is already in use');
