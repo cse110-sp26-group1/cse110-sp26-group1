@@ -1,4 +1,4 @@
-import { PRI_ORDER, STATUS_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
+import { PRI_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
 
 import { fetchIssues, createIssue, updateIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers, leaveTeam } from './api.js';
@@ -365,9 +365,19 @@ function renderList() {
 	}
 
 	if (state.sort === 'priority') {
-		items.sort((a, b) => PRI_ORDER[a.priority] - PRI_ORDER[b.priority] || STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+		items.sort((a, b) => {
+			const byPriority = PRI_ORDER[a.priority] - PRI_ORDER[b.priority];
+			if (byPriority !== 0) return byPriority;
+			const aTime = Date.parse(a.updated_at || a.created_at || 0);
+			const bTime = Date.parse(b.updated_at || b.created_at || 0);
+			return bTime - aTime || b.id - a.id;
+		});
 	} else if (state.sort === 'updated') {
-		items.sort((a, b) => ISSUES.indexOf(a) - ISSUES.indexOf(b));
+		items.sort((a, b) => {
+			const aTime = Date.parse(a.updated_at || a.created_at || 0);
+			const bTime = Date.parse(b.updated_at || b.created_at || 0);
+			return bTime - aTime || b.id - a.id;
+		});
 	}
 
 	totalCountEl.textContent = items.length;
@@ -651,7 +661,7 @@ function rowHtml(i) {
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
 
 	// Tag Shrink Logic
-	const maxTags = 2;
+	const maxTags = window.matchMedia('(width <= 640px)').matches ? 1 : 2;
 	const visibleTags = (i.tags || []).slice(0, maxTags);
 	const moreCount = (i.tags || []).length - maxTags;
 
@@ -847,6 +857,9 @@ const toggleDetailBtn = document.getElementById('toggle-detail');
 const appEl = document.querySelector('.app');
 const sidebarToggle = document.getElementById('sidebar-toggle');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+const searchWrap = document.querySelector('.search-wrap');
+const topbarSearchSlot = document.getElementById('topbar-search-slot');
+const sidebarSearchSlot = document.getElementById('sidebar-search-slot');
 const MOBILE_BP = 640;
 const TABLET_BP = 760;
 const SIDEBAR_BP = 980;
@@ -857,14 +870,14 @@ let sidebarOpen = false;
  *
  */
 function isMobileViewport() {
-	return window.innerWidth <= MOBILE_BP;
+	return window.matchMedia(`(width <= ${MOBILE_BP}px)`).matches;
 }
 
 /**
  *
  */
 function isSidebarCollapsible() {
-	return window.innerWidth <= SIDEBAR_BP;
+	return window.matchMedia(`(width <= ${SIDEBAR_BP}px)`).matches;
 }
 
 /** Overlay drawer for filters sidebar on narrow viewports. */
@@ -918,7 +931,7 @@ function syncContentGrid() {
 		content.style.removeProperty('grid-template-columns');
 		return;
 	}
-	if (window.innerWidth <= TABLET_BP) {
+	if (window.matchMedia(`(width <= ${TABLET_BP}px)`).matches) {
 		content.style.removeProperty('grid-template-columns');
 		return;
 	}
@@ -928,11 +941,21 @@ function syncContentGrid() {
 	}
 }
 
+/** Move issue search between top bar (wide) and top of sidebar drawer (narrow). */
+function syncSearchPlacement() {
+	if (!searchWrap || !topbarSearchSlot || !sidebarSearchSlot) return;
+	const target = isMobileViewport() ? sidebarSearchSlot : topbarSearchSlot;
+	if (searchWrap.parentElement !== target) {
+		target.appendChild(searchWrap);
+	}
+}
+
 /**
  * for mobile view
  */
 function syncLayout() {
 	syncMobileLayout();
+	syncSearchPlacement();
 	syncContentGrid();
 	syncSidebarLayout();
 }
@@ -963,6 +986,7 @@ window.addEventListener('mousemove', (e) => {
 	content.style.gridTemplateColumns = `${pct}% 0.429rem 1fr`;
 });
 window.addEventListener('resize', syncLayout);
+window.matchMedia(`(width <= ${MOBILE_BP}px)`).addEventListener('change', renderList);
 syncLayout();
 
 sidebarToggle?.addEventListener('click', toggleSidebar);
