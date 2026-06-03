@@ -1,11 +1,11 @@
-import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
+import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import worker from '../src';
 import sqlSchemaRaw from '../schema.sql?raw';
 
 const REGISTER_URL = 'http://localhost/auth/register';
 const LOGIN_URL = 'http://localhost/auth/login';
 const LOGOUT_URL = 'http://localhost/auth/logout';
+const VALIDATE_URL = 'http://localhost/auth/validate';
 
 const VALID_USER = {
 	username: 'jdoe',
@@ -75,7 +75,7 @@ describe('Auth Endpoint Testing Suite', () => {
 	describe('POST /auth/register', () => {
 		describe('Success Cases', () => {
 			// Test return values
-			it('returns success: true, a non-empty token, and a non-empty expires_at on valid input', async () => {
+			it('returns success: true, a non-empty token, expires_at, and correct user object on valid input', async () => {
 				// response object from the POST /auth/register request
 				const res = await registerUser();
 				expect(res.status).toBe(201);
@@ -93,30 +93,25 @@ describe('Auth Endpoint Testing Suite', () => {
 				// check if the expires_at field is a non-empty string
 				expect(typeof data.expires_at).toBe('string');
 				expect(data.expires_at.length).toBeGreaterThan(0);
+
+				// check user object fields match what was registered
+				expect(data.user.username).toBe(VALID_USER.username);
+				expect(data.user.email).toBe(VALID_USER.email);
+				expect(data.user.first_name).toBe(VALID_USER.first_name);
+				expect(data.user.last_name).toBe(VALID_USER.last_name);
 			});
 
 			// Tests session row insertion
-			it('inserts a session row into the DB matching the returned token', async () => {
+			it('inserts a session row with the correct token, user_id, and a future expires_at', async () => {
 				// response object from the POST /auth/register request
 				const res = await registerUser();
+
 				// make sure registration succeeded before touching DB
-				expect(res.status).toBe(201);
-
-				// token from response
-				const { token } = await res.json();
-
-				// find session that matches the token and check it exists
-				const session = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(token).first();
-				expect(session).not.toBeNull();
-			});
-
-			it('inserts a session row with the correct token, user_id, and a future expires_at', async () => {
-				const res = await registerUser();
 				expect(res.status).toBe(201);
 
 				const { token, expires_at } = await res.json();
 
-				// look up the session row by token
+				// find session that matches the token and check it exists
 				const session = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(token).first();
 				expect(session).not.toBeNull();
 
@@ -317,8 +312,7 @@ describe('Auth Endpoint Testing Suite', () => {
 	describe('POST /auth/login', () => {
 		describe('Success Cases', () => {
 			// Tests return values
-			it('returns a non-empty token and expires_at on valid credentials', async () => {
-				// seed a user to log in with
+			it('returns a non-empty token, a future expires_at, and correct user object on valid credentials', async () => {
 				await registerUser();
 
 				const res = await SELF.fetch(LOGIN_URL, {
@@ -335,13 +329,18 @@ describe('Auth Endpoint Testing Suite', () => {
 				expect(typeof data.token).toBe('string');
 				expect(data.token.length).toBeGreaterThan(0);
 
-				// check expires_at is a non-empty string
-				expect(typeof data.expires_at).toBe('string');
-				expect(data.expires_at.length).toBeGreaterThan(0);
+				// expires_at comes back as an ISO string and confirm it's ahead of now.
+				expect(new Date(data.expires_at).getTime()).toBeGreaterThan(Date.now());
+
+				// check user object fields match what was registered
+				expect(data.user.username).toBe(VALID_USER.username);
+				expect(data.user.email).toBe(VALID_USER.email);
+				expect(data.user.first_name).toBe(VALID_USER.first_name);
+				expect(data.user.last_name).toBe(VALID_USER.last_name);
 			});
 
 			// Tests session row insertion
-			it('inserts a session row into the DB matching the returned token', async () => {
+			it('inserts a session row with the correct token, user_id, and a future expires_at', async () => {
 				await registerUser();
 
 				const res = await SELF.fetch(LOGIN_URL, {
@@ -351,16 +350,40 @@ describe('Auth Endpoint Testing Suite', () => {
 				});
 				expect(res.status).toBe(200);
 
-				const { token } = await res.json();
-				// find session that matches the token and check it exists
+				const { token, expires_at } = await res.json();
+
 				const session = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(token).first();
 				expect(session).not.toBeNull();
+
+				// token in DB matches what was returned in the response
+				expect(session.token).toBe(token);
+
+				// user_id in session references the correct user
+				const user = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(VALID_USER.email).first();
+				expect(session.user_id).toBe(user.id);
+
+				// expires_at in DB matches what was returned in the response
+				expect(session.expires_at).toBe(expires_at);
 			});
 
-			// Tests token expiration date is valid
-			it('returns an expires_at timestamp set in the future', async () => {
+			// Tests expired session cleanup on login
+			it('deletes expired sessions for the user on login', async () => {
 				await registerUser();
 
+				// get the user's id
+				const user = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(VALID_USER.email).first();
+
+				// manually insert an already-expired session row for this user
+				const expiredToken = crypto.randomUUID();
+				await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)')
+					.bind(user.id, expiredToken, '2000-01-01T00:00:00.000Z')
+					.run();
+
+				// confirm the expired session exists before login
+				const before = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(expiredToken).first();
+				expect(before).not.toBeNull();
+
+				// login, this should trigger the expired session cleanup
 				const res = await SELF.fetch(LOGIN_URL, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -368,9 +391,9 @@ describe('Auth Endpoint Testing Suite', () => {
 				});
 				expect(res.status).toBe(200);
 
-				const { expires_at } = await res.json();
-				// expires_at comes back as an ISO string — confirm it's ahead of now.
-				expect(new Date(expires_at).getTime()).toBeGreaterThan(Date.now());
+				// expired session should now be gone
+				const after = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(expiredToken).first();
+				expect(after).toBeNull();
 			});
 		});
 
@@ -509,6 +532,70 @@ describe('Auth Endpoint Testing Suite', () => {
 				const res = await SELF.fetch(LOGOUT_URL, {
 					method: 'POST',
 					headers: { Authorization: `Bearer ${token}` },
+				});
+				expect(res.status).toBe(401);
+			});
+		});
+	});
+
+	// ==========================================
+	// GET /auth/validate Testing
+	// ==========================================
+	describe('GET /auth/validate', () => {
+		describe('Success Cases', () => {
+			// Tests return value for a valid token
+			it('200: returns { valid: true } for a valid token', async () => {
+				const token = await getToken();
+
+				const res = await SELF.fetch(VALIDATE_URL, {
+					method: 'GET',
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				expect(res.status).toBe(200);
+				const data = await res.json();
+				expect(data.valid).toBe(true);
+			});
+		});
+
+		describe('Failure Cases', () => {
+			// Tests for missing or malformed token
+			it('401: rejects request with no Authorization header', async () => {
+				const res = await SELF.fetch(VALIDATE_URL, { method: 'GET' });
+				expect(res.status).toBe(401);
+			});
+
+			it('401: rejects malformed Authorization header', async () => {
+				const res = await SELF.fetch(VALIDATE_URL, {
+					method: 'GET',
+					headers: { Authorization: 'notavalidtoken' },
+				});
+				expect(res.status).toBe(401);
+			});
+
+			// Tests for tokens that don't exist in the DB
+			it('401: rejects a token not in the DB', async () => {
+				const res = await SELF.fetch(VALIDATE_URL, {
+					method: 'GET',
+					headers: { Authorization: 'Bearer fake-token-that-does-not-exist' },
+				});
+				expect(res.status).toBe(401);
+			});
+
+			// Tests for expired token
+			it('401: rejects an expired token', async () => {
+				await registerUser();
+				const user = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(VALID_USER.email).first();
+
+				// manually insert an already-expired session
+				const expiredToken = crypto.randomUUID();
+				await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)')
+					.bind(user.id, expiredToken, '2000-01-01T00:00:00.000Z')
+					.run();
+
+				const res = await SELF.fetch(VALIDATE_URL, {
+					method: 'GET',
+					headers: { Authorization: `Bearer ${expiredToken}` },
 				});
 				expect(res.status).toBe(401);
 			});

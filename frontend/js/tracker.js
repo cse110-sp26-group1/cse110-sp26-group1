@@ -268,6 +268,29 @@ function issueMatchesCategory(issue, category) {
 }
 
 /**
+ * Collects the issue fields users expect the tracker search to match.
+ * @param {object} issue Issue data from the API.
+ * @returns {string}
+ */
+function buildIssueSearchText(issue) {
+	return [
+		issue.title,
+		issue.description,
+		issue.summary,
+		issue.hypothesis,
+		issue.steps_to_reproduce,
+		issue.status,
+		issue.priority,
+		issue.category,
+		...(issue.tags || []),
+		...(issue.affected_files || []),
+	]
+		.filter(Boolean)
+		.join(' ')
+		.toLowerCase();
+}
+
+/**
  * Populates the new-issue category dropdown from CATEGORIES.
  */
 function populateNewTagSelect() {
@@ -362,6 +385,10 @@ function renderList() {
 	}
 	if (state.category !== 'all') {
 		items = items.filter((i) => issueMatchesCategory(i, state.category));
+	}
+	if (state.query) {
+		const query = state.query.toLowerCase();
+		items = items.filter((i) => buildIssueSearchText(i).includes(query));
 	}
 
 	if (state.sort === 'priority') {
