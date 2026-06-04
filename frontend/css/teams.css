@@ -2,17 +2,20 @@ body {
 	min-height: 100vh;
 }
 
-/* top bar */
+/* top bar  */
 .topbar {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 1rem 2rem;
+	min-height: 4rem;
+	box-sizing: border-box;
+	padding: 0.571rem 1rem;
 	border-bottom: 0.071rem solid var(--line);
 	background: var(--bg);
 	position: sticky;
 	top: 0;
 	z-index: 5;
+	gap: 0.857rem;
 }
 
 .brand {
@@ -123,30 +126,6 @@ team-card {
 	font-size: 1.071rem;
 	letter-spacing: 0.02em;
 	flex: 0 0 auto;
-}
-
-.team-mark.c1 {
-	background: oklch(92% 0.04 38deg);
-	color: oklch(40% 0.12 38deg);
-	border-color: oklch(85% 0.05 38deg);
-}
-
-.team-mark.c2 {
-	background: oklch(92% 0.04 200deg);
-	color: oklch(38% 0.1 200deg);
-	border-color: oklch(85% 0.05 200deg);
-}
-
-.team-mark.c3 {
-	background: oklch(93% 0.04 130deg);
-	color: oklch(38% 0.1 130deg);
-	border-color: oklch(85% 0.05 130deg);
-}
-
-.team-mark.c4 {
-	background: oklch(92% 0.04 320deg);
-	color: oklch(40% 0.1 320deg);
-	border-color: oklch(85% 0.05 320deg);
 }
 
 .team h2 {

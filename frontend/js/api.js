@@ -328,10 +328,20 @@ export async function fetchIssue(id) {
  * and appends it to the description automatically.
  * Required fields: title, team_id, description.
  * @param {FormData|object} data Issue payload, with FormData used for attachments.
+ * @param {boolean|null} testMode Bypasses the LLM for predictable testing. Defaults to true if omitted/null.
  * @returns {Promise<{ success: boolean }>}
  */
-export async function createIssue(data) {
+export async function createIssue(data, testMode = null) {
+	const isTestMode = testMode !== false;
+
 	const isFormData = data instanceof FormData;
+
+	if (isFormData) {
+		data.set('test_mode', String(isTestMode));
+	} else {
+		data = { ...data, test_mode: isTestMode };
+	}
+
 	return request('/issues', {
 		method: 'POST',
 		body: isFormData ? data : JSON.stringify(data),
