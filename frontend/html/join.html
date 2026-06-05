@@ -4,6 +4,7 @@
 		<meta charset="utf-8" />
 		<title>Join a workspace - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" href="../imgs/file.svg" type="image/svg+xml" />
 		<script>
 			try {
 				if (localStorage.getItem('theme') === 'dark') {
@@ -20,7 +21,9 @@
 	<body>
 		<header class="topbar">
 			<div class="brand">
-				<a href="teams.html"><div class="logo"></div></a>
+				<a href="teams.html" aria-label="Allegro home"
+					><img class="logo" src="../imgs/file.svg" alt="" width="24" height="24" decoding="async"
+				/></a>
 				<span class="name">Allegro</span>
 			</div>
 			<div class="user-menu">
@@ -76,7 +79,6 @@
 				<div id="join-empty" class="join-state" hidden>
 					<div class="join-empty-icon">✉</div>
 					<p>You have no pending invitations.</p>
-					<a href="teams.html" class="btn primary" style="margin-top: 0.857rem">Go to your teams</a>
 				</div>
 			</div>
 
