@@ -61,7 +61,7 @@ The detailed task logic belongs in `SKILLS.md`.
 ### Windows Users
 
 - Open a terminal as an administrator.
-- [Download NVM for Windows here, then click "Download from GitHub"](https://www.nvmnode.com/guide/download.html#google_vignette).
+- [Go here for the NVM installation guide for Windows, then click "Download from GitHub"](https://www.nvmnode.com/guide/download.html#google_vignette).
 - Verify your NVM installation by running `nvm version`.
 - Run `nvm install 18`.
 - Run `nvm use 18`.
