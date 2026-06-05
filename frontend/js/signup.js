@@ -75,7 +75,7 @@ async function handleSignupSubmit(e) {
 
 		location.href = getPostAuthRedirect();
 	} catch (err) {
-		if (err.message?.includes('409')) {
+		if (err.status === 409) {
 			usernameEl.setCustomValidity('Username or email is already in use');
 			usernameEl.reportValidity();
 		} else {
