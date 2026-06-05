@@ -101,15 +101,16 @@ export async function handleTeams(request, env) {
 		}
 
 		const now = new Date().toISOString();
+		const bio = body.bio && typeof body.bio === 'string' ? body.bio.trim() : null;
 
 		// Create the team first.
 		const result = await env.DB.prepare(
 			`
-                INSERT INTO teams (team_name, created_at)
-                VALUES (?, ?)
+                INSERT INTO teams (team_name, bio, created_at)
+                VALUES (?, ?, ?)
             `,
 		)
-			.bind(body.team_name.trim(), now)
+			.bind(body.team_name.trim(), bio, now)
 			.run();
 
 		const newTeamId = result.meta.last_row_id;

@@ -4,6 +4,7 @@
 		<meta charset="utf-8" />
 		<title>Your teams - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" href="../imgs/file.svg" type="image/svg+xml" />
 		<script>
 			// Keep this before CSS so the saved theme is applied before first paint.
 			try {
@@ -20,7 +21,7 @@
 	<body>
 		<header class="topbar">
 			<div class="brand">
-				<div class="logo"></div>
+				<img class="logo" src="../imgs/file.svg" alt="" width="24" height="24" decoding="async" aria-hidden="true" />
 				<span class="name">Allegro</span>
 			</div>
 			<div class="user-menu">
@@ -29,7 +30,7 @@
 				<div class="user-switch" id="user-switch">
 					<button
 						type="button"
-						class="avatar user-avatar"
+						class="avatar sm user-avatar"
 						id="user-avatar"
 						aria-haspopup="true"
 						aria-expanded="false"
@@ -48,23 +49,7 @@
 					<h1>Your teams</h1>
 				</div>
 				<div class="hero-actions">
-					<!--Commenting out until implemented-->
-					<!--<button class="btn">Join with code</button>-->
 					<button class="btn primary" id="create-team">+ New team</button>
-				</div>
-			</div>
-
-			<div class="search-row">
-				<input class="input" placeholder="Search teams…" />
-
-				<!-- Unified Sorting Dropdown UI -->
-				<div style="position: relative">
-					<button class="btn" id="sort-teams-trigger">Sort: recent ▾</button>
-					<div class="user-dropdown" id="sort-teams-menu" style="min-width: 160px; right: 0">
-						<div class="sort-item active"><span class="circle"></span> Recent</div>
-						<div class="sort-item"><span class="circle"></span> Alphabetical</div>
-						<div class="sort-item"><span class="circle"></span> Activity</div>
-					</div>
 				</div>
 			</div>
 
@@ -78,7 +63,7 @@
 				</button>
 			</div>
 
-			<section class="invites" id="invites-section">
+			<section class="invites" id="invites-section" hidden>
 				<h3>Pending invitations</h3>
 			</section>
 		</main>
@@ -97,6 +82,7 @@
 					<div class="field">
 						<label>Short bio <span class="optional-label">(optional)</span></label>
 						<textarea class="textarea" id="team-bio" placeholder="What does this team work on?"></textarea>
+						<div class="hint">This is used to give the AI summarization layer extra context about your stack and goals.</div>
 					</div>
 				</div>
 				<div class="modal-foot">

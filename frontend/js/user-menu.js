@@ -24,7 +24,16 @@ if (userSwitch && userAvatar && userDropdown && signOutBtn) {
 
 	userAvatar.addEventListener('click', (e) => {
 		e.stopPropagation();
-		setOpen(!userDropdown.classList.contains('open'));
+		const opening = !userDropdown.classList.contains('open');
+		if (opening) {
+			document.dispatchEvent(new CustomEvent('topbar:open', { detail: 'user-menu' }));
+		}
+		setOpen(opening);
+	});
+
+	// Close this dropdown when another topbar module announces it is opening.
+	document.addEventListener('topbar:open', (e) => {
+		if (e.detail !== 'user-menu') setOpen(false);
 	});
 
 	userDropdown.addEventListener('click', (e) => e.stopPropagation());

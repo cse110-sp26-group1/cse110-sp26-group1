@@ -2,6 +2,9 @@ import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import sqlSchemaRaw from '../schema.sql?raw';
 
+/**
+ *
+ */
 async function cleanDatabase() {
 	await env.DB.exec(`
     DELETE FROM sessions;
@@ -13,6 +16,11 @@ async function cleanDatabase() {
   `);
 }
 
+/**
+ *
+ * @param username
+ * @param email
+ */
 async function createTestUser(username, email) {
 	const row = await env.DB.prepare(
 		`INSERT INTO users (username, first_name, last_name, email, password_hash)
@@ -23,6 +31,12 @@ async function createTestUser(username, email) {
 	return row.id;
 }
 
+/**
+ *
+ * @param userId
+ * @param token
+ * @param ttlHours
+ */
 async function createTestSession(userId, token, ttlHours = 24) {
 	const expiryDate = new Date();
 	expiryDate.setHours(expiryDate.getHours() + ttlHours);
@@ -31,6 +45,11 @@ async function createTestSession(userId, token, ttlHours = 24) {
 		.run();
 }
 
+/**
+ *
+ * @param teamName
+ * @param creatorId
+ */
 async function createTestTeam(teamName, creatorId = null) {
 	const row = await env.DB.prepare(`INSERT INTO teams (team_name) VALUES (?) RETURNING id`).bind(teamName).first();
 	const teamId = row.id;
@@ -42,10 +61,23 @@ async function createTestTeam(teamName, creatorId = null) {
 	return teamId;
 }
 
+/**
+ *
+ * @param userId
+ * @param teamId
+ * @param role
+ */
 async function createTeamMembership(userId, teamId, role = 'member') {
 	await env.DB.prepare('INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)').bind(teamId, userId, role).run();
 }
 
+/**
+ *
+ * @param teamId
+ * @param inviterId
+ * @param invitedId
+ * @param status
+ */
 async function createTestInvite(teamId, inviterId, invitedId, status = 'pending') {
 	const row = await env.DB.prepare(
 		`INSERT INTO invites (team_id, inviter_user_id, invited_user_id, status, created_at)
@@ -56,6 +88,10 @@ async function createTestInvite(teamId, inviterId, invitedId, status = 'pending'
 	return row.id;
 }
 
+/**
+ *
+ * @param token
+ */
 function authHeaders(token) {
 	return {
 		Authorization: `Bearer ${token}`,
