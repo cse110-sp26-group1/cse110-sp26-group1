@@ -1,5 +1,6 @@
-import { fetchTeams, createTeam, requireAuth, acceptInvite, rejectInvite, fetchInvites } from './api.js';
+import { fetchTeams, createTeam, requireAuth, acceptInvite, rejectInvite, fetchInvites, fetchTeamMembers } from './api.js';
 import { getUserInitials } from './user-profile.js';
+import { formatInviteDate } from './helpers.js';
 
 import './components/team-card.js';
 
@@ -8,6 +9,8 @@ requireAuth(); // forces the user to sign up if this page is accessed without cr
 const backdrop = document.getElementById('create-backdrop');
 const teamNameEl = document.getElementById('team-name');
 const toast = document.getElementById('toast');
+
+const MAX_BIO_LENGTH = 50;
 
 /**
  * Opens the create-team modal and focuses the team-name input.
@@ -50,8 +53,10 @@ function showToast(msg) {
 
 document.getElementById('confirm-create').addEventListener('click', async () => {
 	const nameEl = document.getElementById('team-name');
+	const bioEl = document.getElementById('team-bio');
 
 	const name = nameEl.value.trim();
+	const bio = bioEl.value.trim();
 
 	if (!name) {
 		nameEl.focus();
@@ -66,6 +71,7 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 	try {
 		const newTeam = await createTeam({
 			team_name: name,
+			bio: bio,
 		});
 
 		showToast(`Workspace created! Redirecting...`);
@@ -138,9 +144,9 @@ async function loadInvites() {
 		<div class="info">
 			<div class="team-mark">${inv.team_name.substring(0, 2).toUpperCase()}</div>
 			<div>
-			<p><strong>${inv.team_name}</strong> · invited by ${inv.inviter_username}</p>
-			<p>Invited ${inv.created_at}</p>
-			</div>
+            <p><strong>${inv.team_name}</strong> · invited by ${inv.inviter_username}</p>
+            <p>Invited ${formatInviteDate(inv.created_at)}</p>
+            </div>
 		</div>
 		<div class="actions">
 			<button class="btn sm decline-btn" data-invite-id="${inv.id}">Decline</button>
@@ -203,20 +209,35 @@ async function initTeamsPage() {
 		const grid = document.getElementById('team-grid');
 		const createBtnHtml = grid.querySelector('.team.new').outerHTML;
 
-		const teamCards = teams.map((team) => {
-			const card = document.createElement('team-card');
-			card.setAttribute('team-id', String(team.id));
-			card.setAttribute('name', team.team_name);
+		const teamCards = await Promise.all(
+			teams.map(async (team) => {
+				const card = document.createElement('team-card');
+				card.setAttribute('team-id', String(team.id));
+				card.setAttribute('name', team.team_name);
 
-			const words = team.team_name.trim().split(' ');
-			const mark = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : team.team_name.substring(0, 2).toUpperCase();
-			card.setAttribute('mark', mark);
-			card.setAttribute('color', '220');
-			card.setAttribute('role', team.role);
-			card.setAttribute('bio', team.bio ?? '');
-			card.setAttribute('user-initials', getUserInitials());
-			return card;
-		});
+				const words = team.team_name.trim().split(' ');
+				const mark = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : team.team_name.substring(0, 2).toUpperCase();
+				card.setAttribute('mark', mark);
+				card.setAttribute('color', '220');
+				card.setAttribute('role', team.role);
+
+				let bioText = team.bio ?? '';
+				if (bioText.length > MAX_BIO_LENGTH) {
+					// bio truncation
+					bioText = bioText.substring(0, MAX_BIO_LENGTH).trim() + '...';
+				}
+				card.setAttribute('bio', bioText);
+				try {
+					const members = await fetchTeamMembers(team.id);
+					const topMembers = members.slice(0, 4);
+					card.setAttribute('members', JSON.stringify(topMembers));
+				} catch {
+					card.setAttribute('members', '[]');
+				}
+
+				return card;
+			}),
+		);
 
 		grid.replaceChildren(...teamCards);
 		grid.insertAdjacentHTML('beforeend', createBtnHtml);

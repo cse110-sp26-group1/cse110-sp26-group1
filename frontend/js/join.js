@@ -1,4 +1,5 @@
 import { requireAuth, fetchInvites, acceptInvite, rejectInvite, fetchTeamMembers } from './api.js';
+import { parseTimestamp, formatInviteDate } from './helpers.js';
 
 requireAuth();
 
@@ -66,9 +67,10 @@ function showPreview(inv, members) {
 	previewMarkEl.className = `team-mark ${markColor(inv.team_id)}`;
 
 	previewNameEl.textContent = teamName;
+
 	const inviter = String(inv.inviter_username ?? '');
-	const sent = new Date(inv.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-	previewMetaEl.textContent = inviter ? `Invited by ${inviter} · ${sent}` : sent;
+	const sent = formatInviteDate(inv.created_at);
+	previewMetaEl.textContent = inviter ? `Invited by ${inviter} · ${sent}` : `Invited ${sent}`;
 
 	// Member avatar stack (up to 6)
 	const visible = members.slice(0, 6);
@@ -176,7 +178,7 @@ function renderInviteList(invites) {
 		summary.append(nameEl, ` · invited by ${String(inv.inviter_username ?? '')}`);
 
 		const sentEl = document.createElement('p');
-		sentEl.textContent = `Sent ${new Date(inv.created_at).toLocaleDateString()}`;
+		sentEl.textContent = `Sent ${formatInviteDate(inv.created_at)}`;
 
 		details.append(summary, sentEl);
 		info.append(markEl, details);

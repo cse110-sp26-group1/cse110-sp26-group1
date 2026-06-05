@@ -286,6 +286,8 @@ export async function handleIssues(request, env) {
 				error_message: formData.get('error_message'),
 			};
 
+			body.test_mode = formData.get('test_mode') === 'true';
+
 			const stackTraceRaw = formData.get('stack_trace');
 			if (stackTraceRaw) {
 				try {
@@ -340,6 +342,9 @@ export async function handleIssues(request, env) {
 		const membership = await requireTeamMember(env, auth.userId, parsedTeamId);
 		if (membership.error) return membership.error;
 
+		const teamRecord = await env.DB.prepare('SELECT bio FROM teams WHERE id = ?').bind(parsedTeamId).first();
+		const teamBioContext = teamRecord?.bio ? `\n\n--- Team Context ---\n${teamRecord.bio}` : '';
+
 		// Point 2 Change: Mid-flight workspace membership validation when an assignment is requested during initialization
 		//Checks valid assigned member for new issue
 		// Validate assigned_to field if provided (automatically handles both JSON and Multipart via body.assigned_to)
@@ -382,9 +387,24 @@ export async function handleIssues(request, env) {
 		// raw title + description. Failures (missing key, network, parse error)
 		// are non-fatal — we just fall back to user-supplied values + defaults.
 		let llm = {};
-		if (env.DEEPSEEK_API) {
+
+		if (body.test_mode) {
+			// Predictable mock payload for testing
+			llm = {
+				summary: '[TEST MODE] Predictable summary generated without hitting the LLM.',
+				status: 'Open',
+				priority: 'Low',
+				category: 'Task',
+				difficulty: 'Easy',
+				tags: ['testing'],
+				hypothesis: 'This issue was processed using the predictable test bypass.',
+				steps_to_reproduce: ['1. Enable test_mode', '2. Submit issue', '3. Receive mock data'],
+				expected_behavior: 'The LLM tool call is bypassed entirely.',
+				actual_behavior: 'Predictable mock data is seamlessly returned.',
+			};
+		} else if (env.DEEPSEEK_API) {
 			try {
-				const rawInput = `${body.title.trim()}\n\n${body.description.trim()}`;
+				const rawInput = `${body.title.trim()}\n\n${body.description.trim()}${teamBioContext}`;
 				llm = await processIssue(rawInput, env.DEEPSEEK_API);
 			} catch (error) {
 				console.error('LLM enrichment failed:', error?.message ?? error);
