@@ -89,6 +89,29 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 });
 
 /**
+ * Updates the red notification badge on the "Pending invites" button.
+ * Creates the badge node on first use and removes it when count drops to 0.
+ * @param {number} count Number of pending invites to display.
+ */
+function updatePendingInvitesBadge(count) {
+	const btn = document.getElementById('view-invites');
+	if (!btn) return;
+	let badge = btn.querySelector('.invite-badge');
+	if (count > 0) {
+		if (!badge) {
+			badge = document.createElement('span');
+			badge.className = 'invite-badge';
+			btn.appendChild(badge);
+		}
+		badge.textContent = String(count);
+		btn.classList.add('has-invites');
+	} else {
+		if (badge) badge.remove();
+		btn.classList.remove('has-invites');
+	}
+}
+
+/**
  * Loads pending invites, renders the rows from API data, then attaches the
  * accept/decline listeners to the newly-created buttons.
  */
@@ -101,15 +124,18 @@ async function loadInvites() {
 		invites = await fetchInvites();
 	} catch {
 		section.hidden = true;
+		updatePendingInvitesBadge(0);
 		return;
 	}
 
 	if (!invites.length) {
 		section.hidden = true;
+		updatePendingInvitesBadge(0);
 		return;
 	}
 
 	section.hidden = false;
+	updatePendingInvitesBadge(invites.length);
 
 	const list = invites
 		.map(
@@ -162,7 +188,9 @@ async function loadInvites() {
 				await rejectInvite(inviteId);
 				e.target.closest('.invite').remove();
 				showToast('Invitation declined.');
-				if (!section.querySelectorAll('.invite').length) section.hidden = true;
+				const remaining = section.querySelectorAll('.invite').length;
+				if (!remaining) section.hidden = true;
+				updatePendingInvitesBadge(remaining);
 			} catch {
 				showToast('Failed to decline invite.');
 				e.target.textContent = 'Decline';
