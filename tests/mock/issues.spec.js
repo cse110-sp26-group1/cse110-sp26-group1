@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { setupApp } from './helpers/mock-api.js';
+import { setupApp } from '../helpers/mock-api.js';
 
 /**
  * Seeds a small but realistic set of issues across statuses, priorities, and tags

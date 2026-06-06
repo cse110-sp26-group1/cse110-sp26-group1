@@ -118,6 +118,7 @@ function updatePendingInvitesBadge(count) {
 async function loadInvites() {
 	const section = document.getElementById('invites-section');
 	if (!section) return;
+	section.querySelectorAll('.invite').forEach((row) => row.remove());
 
 	let invites;
 	try {

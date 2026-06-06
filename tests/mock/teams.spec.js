@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { setupApp } from './helpers/mock-api.js';
+import { setupApp } from '../helpers/mock-api.js';
 
 test.describe('Teams dashboard', () => {
 	test('renders team cards from the API with names and roles', async ({ page }) => {
@@ -38,6 +38,66 @@ test.describe('Teams dashboard', () => {
 		await expect(link).toHaveAttribute('href', `tracker.html?team_id=${session.team.id}`);
 		await link.click();
 		await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${session.team.id}`));
+	});
+
+	test('member leaves a team from the tracker menu and loses the team card', async ({ page }) => {
+		const { state, session } = await setupApp(page, { role: 'member' });
+		if (!session) throw new Error('seed required');
+		state.users.push({
+			id: 200,
+			username: 'workspace_admin',
+			email: 'workspace-admin@example.test',
+			first_name: 'Workspace',
+			last_name: 'Admin',
+			password: 'pw',
+		});
+		state.memberships.push({ team_id: session.team.id, user_id: 200, role: 'admin' });
+
+		await page.goto(`/html/tracker.html?team_id=${session.team.id}`);
+		await expect(page.locator('#team-label')).toHaveText(session.team.team_name);
+
+		page.once('dialog', (dialog) => dialog.accept());
+		await page.locator('#team-switch').click();
+		const [leaveResponse] = await Promise.all([
+			page.waitForResponse((res) => res.url().endsWith(`/teams/${session.team.id}/leave`) && res.request().method() === 'DELETE'),
+			page.locator('#team-menu [data-action="leave-team"]').click(),
+		]);
+		expect(leaveResponse.status()).toBe(200);
+
+		await expect(page).toHaveURL(/teams\.html/);
+		await expect(page.locator('team-card').filter({ hasText: session.team.team_name })).toHaveCount(0);
+		expect(state.memberships.find((m) => m.team_id === session.team.id && m.user_id === session.user.id)).toBeUndefined();
+		expect(state.memberships.find((m) => m.team_id === session.team.id && m.user_id === 200)).toBeDefined();
+	});
+
+	test('admin cannot leave a team that still has members', async ({ page }) => {
+		const { state, session } = await setupApp(page);
+		if (!session) throw new Error('seed required');
+		state.users.push({
+			id: 201,
+			username: 'workspace_member',
+			email: 'workspace-member@example.test',
+			first_name: 'Workspace',
+			last_name: 'Member',
+			password: 'pw',
+		});
+		state.memberships.push({ team_id: session.team.id, user_id: 201, role: 'member' });
+
+		await page.goto(`/html/tracker.html?team_id=${session.team.id}`);
+		await expect(page.locator('#team-label')).toHaveText(session.team.team_name);
+
+		page.once('dialog', (dialog) => dialog.accept());
+		await page.locator('#team-switch').click();
+		const [leaveResponse] = await Promise.all([
+			page.waitForResponse((res) => res.url().endsWith(`/teams/${session.team.id}/leave`) && res.request().method() === 'DELETE'),
+			page.locator('#team-menu [data-action="leave-team"]').click(),
+		]);
+		expect(leaveResponse.status()).toBe(409);
+
+		await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${session.team.id}`));
+		await expect(page.locator('#toast')).toContainText('Admins cannot leave');
+		expect(state.memberships.find((m) => m.team_id === session.team.id && m.user_id === session.user.id)).toBeDefined();
+		expect(state.memberships.find((m) => m.team_id === session.team.id && m.user_id === 201)).toBeDefined();
 	});
 
 	test('create-team modal validates the name and creates a new team', async ({ page }) => {
@@ -79,7 +139,7 @@ test.describe('Teams dashboard', () => {
 		expect(state.teams.find((t) => t.team_name === 'Rocket Squad')).toBeDefined();
 	});
 
-	test('shows the pending-invites badge with the correct count', async ({ page }) => {
+	test('shows pending invitations for each inviting team', async ({ page }) => {
 		const { state, session } = await setupApp(page);
 		if (!session) throw new Error('seed required');
 
@@ -111,8 +171,11 @@ test.describe('Teams dashboard', () => {
 
 		await page.goto('/html/teams.html');
 
-		const inviteBtn = page.locator('#view-invites');
-		await expect(inviteBtn.locator('.invite-badge')).toHaveText('2');
+		const section = page.locator('#invites-section');
+		await expect(section).toBeVisible();
+		await expect(section.locator('.invite')).toHaveCount(2);
+		await expect(section).toContainText('Hearth OS');
+		await expect(section).toContainText('Side Quest');
 	});
 
 	test('shows the pending-invitations section listing all invites by team', async ({ page }) => {

@@ -22,6 +22,9 @@ import { handleAuth } from '../routes/auth.js';
 
 const ALLOWED_ORIGINS = [
 	'http://localhost:3000',
+	'http://127.0.0.1:3000',
+	'http://localhost:4173',
+	'http://127.0.0.1:4173',
 	'https://cse110-sp26-group1.github.io',
 	// 'https://issue-tracker-api.your-subdomain.workers.dev',
 ];

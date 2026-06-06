@@ -4,6 +4,52 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = Number(process.env.PLAYWRIGHT_PORT) || 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
+// When E2E_REAL_API=1, Playwright runs ONLY the real-backend specs under
+// tests/real/ against a live Cloudflare Worker (default http://127.0.0.1:8787).
+// Otherwise it runs the mocked suite at the repo root and ignores tests/real/.
+const REAL_API_MODE = process.env.E2E_REAL_API === '1';
+
+// Mock mode runs the full browser matrix; real mode runs Chromium-only for
+// desktop specs to keep wall-clock runtime down (mocked suite already covers
+// browser permutations) and the mobile-chrome project for mobile specs.
+const mockProjects = [
+	{
+		name: 'chromium',
+		use: { ...devices['Desktop Chrome'] },
+		testIgnore: [/mobile\.spec\.js$/, /real[\\/]/],
+	},
+	{
+		name: 'firefox',
+		use: { ...devices['Desktop Firefox'] },
+		testIgnore: [/mobile\.spec\.js$/, /real[\\/]/],
+	},
+	{
+		name: 'webkit',
+		use: { ...devices['Desktop Safari'] },
+		testIgnore: [/mobile\.spec\.js$/, /real[\\/]/],
+	},
+	{
+		name: 'mobile-chrome',
+		use: { ...devices['Pixel 5'] },
+		testMatch: /mobile\.spec\.js$/,
+	},
+];
+
+const realProjects = [
+	{
+		name: 'chromium-real',
+		use: { ...devices['Desktop Chrome'] },
+		testDir: './tests/real',
+		testIgnore: /mobile\.real\.spec\.js$/,
+	},
+	{
+		name: 'mobile-chrome-real',
+		use: { ...devices['Pixel 5'] },
+		testDir: './tests/real',
+		testMatch: /mobile\.real\.spec\.js$/,
+	},
+];
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
@@ -20,41 +66,15 @@ export default defineConfig({
 		trace: 'on-first-retry',
 	},
 
-	projects: [
-		// Desktop projects skip mobile.spec.js — those tests assume a narrow viewport.
-		{
-			name: 'chromium',
-			use: { ...devices['Desktop Chrome'] },
-			testIgnore: /mobile\.spec\.js$/,
-		},
-		{
-			name: 'firefox',
-			use: { ...devices['Desktop Firefox'] },
-			testIgnore: /mobile\.spec\.js$/,
-		},
-		{
-			name: 'webkit',
-			use: { ...devices['Desktop Safari'] },
-			testIgnore: /mobile\.spec\.js$/,
-		},
-		// One mobile project — runs ONLY tests/mobile.spec.js so we don't duplicate
-		// the desktop suite at the Pixel 5 viewport.
-		{
-			name: 'mobile-chrome',
-			use: { ...devices['Pixel 5'] },
-			testMatch: /mobile\.spec\.js$/,
-		},
-	],
+	projects: REAL_API_MODE ? realProjects : mockProjects,
 
 	/* Serve the static frontend (vanilla HTML/CSS/JS) with python3's built-in
-	 * http.server. The API itself is mocked via Playwright route handlers, so we
-	 * never hit the production Cloudflare Worker during tests. */
+	 * http.server. In real-API mode the same static server is used; the frontend
+	 * is just pointed at a different API origin via window.__ALLEGRO_API_BASE__. */
 	webServer: {
 		command: `python3 -m http.server ${PORT} --bind 127.0.0.1 --directory frontend`,
 		url: BASE_URL,
 		reuseExistingServer: !process.env.CI,
-		// stderr is piped (not ignored) so server startup failures are visible
-		// locally and in CI instead of being silently swallowed.
 		stdout: 'ignore',
 		stderr: 'pipe',
 		timeout: 30_000,

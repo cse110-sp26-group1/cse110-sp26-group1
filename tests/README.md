@@ -1,130 +1,116 @@
 # Playwright E2E Tests
 
-End-to-end test suite for the Allegro issue tracker **frontend**.
+End-to-end test suite for the Allegro issue tracker **frontend**, with two
+modes: a fast mocked suite for dense UI coverage, and a real-backend suite that
+drives the same UI against the live Cloudflare Worker + D1.
 
-> **What this is:** a mocked frontend E2E suite. Every request to the
-> Cloudflare Worker API is intercepted by `tests/helpers/mock-api.js` and
-> served from in-memory state. These tests verify that the UI behaves
-> correctly against a *well-defined API contract* — they do not exercise
-> any real backend code.
+| Suite | Files | What it does |
+| --- | --- | --- |
+| **Mock** (default) | `tests/mock/*.spec.js` | Intercepts every Worker request via `page.route()` and answers from `tests/helpers/mock-api.js`. Fast, deterministic, browser-matrix-friendly. |
+| **Real** (opt-in) | `tests/real/*.real.spec.js` | No mocks. Calls the real `/auth`, `/teams`, `/invites`, `/issues` routes. Default origin `http://127.0.0.1:8787` (local Wrangler + D1). |
 
-Three desktop browsers (chromium, firefox, webkit) plus one mobile project
-(Pixel 5, runs only `mobile.spec.js`).
+The two suites do not overlap in a single run. `npm run test:e2e` runs only
+the mocked specs; `npm run test:e2e:real` sets `E2E_REAL_API=1` and runs only
+the real specs.
 
-## Test files (`tests/`)
-
-| File | What it covers |
-| --- | --- |
-| `auth.spec.js` | Login/signup forms, validation, 401 / 409 error UI, `?redirect=` param, password toggle, `requireAuth` / `requireNoAuth` gating, sign-out clearing storage. Duplicate-signup test asserts the error lands on the username field (not password) and never appears as a generic "Sign-up failed". |
-| `navigation.spec.js` | Signed-out root visit MUST land on `login.html` (strict assertion — fails if a regression lets `teams.html` render for anon users); signed-in root visit goes to `teams.html`. Dark-mode persistence across pages, topbar logo → teams. |
-| `teams.spec.js` | Team-card list from API, navigation to tracker, create-team modal validation + happy path (asserts toast, redirect, and outgoing POST payload), pending-invites badge count, invites section listing. |
-| `invites.spec.js` | Accept removes the row, **decrements the visible badge count**, and the newly-joined team appears as a card. Decline path; `join.html` empty / list / preview / invalid-code views; preview "Join workspace" → accept + redirect; code-entry validation; tracker invite modal happy path + 404 / email-format errors; invite link generation. |
-| `issues.spec.js` | Priority-grouped list, click → detail rendered, 404 state for bad team_id, status/tag/category filters, search filter + clear, sort toggle changes grouping, create modal validation + happy path, edit save + validation, `j` keyboard nav. |
-| `notifications.spec.js` | Creating an issue produces a `new_issue` notification in localStorage under the per-user key. (The notification dropdown UI is currently commented out in `tracker.html`, so only the storage layer is tested.) |
-| `mobile.spec.js` | **Mobile-chrome project only.** Tracker filter-sidebar drawer (open/close/backdrop), search input relocates to the sidebar drawer at narrow widths and still filters the list, mobile master/detail flow (full-screen issue detail + back button), teams hero actions remain hittable on a narrow viewport. |
-
-## Helper (`tests/helpers/mock-api.js`)
-
-In-memory mock that intercepts the hardcoded production URL via `page.route()`.
-Implements `/auth/*`, `/teams/*`, `/invites/*`, `/issues/*` against a shared
-state object. Tests can mutate `state` between requests, and the mock returns
-realistic responses (correct status codes, JSON shapes). A sessionStorage marker
-makes the auth-init script idempotent so sign-out flows aren't immediately
-re-authed.
-
-## Config
-
-- `playwright.config.js`: serves `frontend/` with `python3 -m http.server` on
-  `127.0.0.1:4173`; runs chromium/firefox/webkit on every file and a
-  `mobile-chrome` project (Pixel 5) on `mobile.spec.js` only. WebServer `stderr`
-  is piped (not ignored) so startup failures are visible in local runs and CI.
-  Retries 2× on CI.
-- `package.json`: `test:e2e`, `test:e2e:ui`, `test:e2e:headed` scripts.
-- The existing `.github/workflows/playwright.yml` does `npx playwright test`,
-  so it picks all of this up.
-
-## Decisions
-
-- **No app changes.** The hardcoded `API_BASE` in `frontend/js/api.js` is
-  intercepted by Playwright, so production code is untouched.
-- **API mocked, not local wrangler.** Spinning up wrangler + a local D1 for E2E
-  would be more infra than the frontend suite needs. The backend has its own
-  vitest suite that hits a real D1 (see `issue-tracker-api/test/*.spec.js`).
-- **User-visible assertions come first.** Each important flow asserts on
-  visible UI (text on screen, badge count, URL, toast). Mock-state checks are
-  kept as a secondary cross-check — they catch a UI that lies (e.g. removes
-  a row without calling the API), but they never stand alone as the primary
-  proof. Request-payload assertions are used where it matters that the UI
-  sent the *correct* data (e.g. create-team).
-
-## Run
+## Running
 
 ```sh
-npm run test:e2e                                # headless, all projects (incl. mobile)
+npm run test:e2e                                # mocked suite, all projects (incl. mobile)
 npm run test:e2e -- --project=chromium          # one desktop browser
 npm run test:e2e -- --project=mobile-chrome     # mobile-only
+
+npm run test:e2e:real                           # real-backend suite (chromium-real + mobile-chrome-real)
+E2E_API_BASE=http://127.0.0.1:8787 npm run test:e2e:real     # explicit origin
+
+npm run test:e2e:all                            # mocked, then real
 npm run test:e2e:ui                             # Playwright UI runner
 npm run test:e2e:headed                         # see the browser
 ```
 
-## What this suite still misses
+Before `test:e2e:real`, start a local Wrangler + D1 backend:
 
-Because every API call is mocked, the following classes of bug **cannot** be
-caught here. They need separate coverage:
+```sh
+cd issue-tracker-api
+wrangler d1 execute issue-tracker-db --local --file=./schema.sql
+npm run dev    # serves http://127.0.0.1:8787
+```
 
-- **API contract drift** — the mock can lag behind the real Worker. If the
-  Worker changes a response shape or status code, these tests will keep
-  passing against the stale mock while production breaks.
-- **CORS** — the real Worker's CORS headers and preflight behavior are
-  bypassed entirely. The mock just answers `OPTIONS` with `access-control-allow-origin: *`.
-- **Worker behavior** — auth token expiry, rate limiting, request validation,
-  any business logic that lives in the Worker itself.
-- **D1 / database behavior** — schema migrations, cascade deletes, unique
-  constraints, transaction semantics, JOIN correctness.
-- **Real auth / session integration** — token expiry, refresh flow, the
-  `/auth/validate` round-trip, cookie/CORS interplay.
-- **LLM enrichment on issue create** — backend-only, requires the live Worker.
-- **Drag-to-resize divider**, **file attachment upload on new issue**.
-- **Notification dropdown UI on tracker** — the dropdown markup is commented
-  out in `tracker.html`, so `notifications.spec.js` only exercises the
-  per-user localStorage layer.
-- **Theme FOUC script** — runs before module scripts; covered indirectly
-  via the dark-mode persistence test.
+> ⚠️ **Do not point `E2E_API_BASE` at the deployed Worker for routine runs.**
+> Each real-mode test creates persistent users, teams, and issues; only teams
+> and issues get cleaned up via DELETE routes. Users accumulate forever because
+> the backend has no user-delete route. Use a local D1 unless you know what
+> you're doing.
 
-## Future integration coverage
+## Mock-suite files (`tests/`)
 
-The single biggest gap above is **contract drift between the mock and the
-real Worker**. The recommended next step is a tiny local Worker/D1 smoke
-suite (a few tests, not a full second copy of the E2E suite) that boots
-`wrangler dev` against an in-memory D1 and exercises:
+| File | What it covers |
+| --- | --- |
+| `auth.spec.js` | Login/signup forms, validation, 401 / 409 error UI, `?redirect=` param, password toggle, `requireAuth` / `requireNoAuth` gating, sign-out clearing storage. Duplicate-signup test asserts the friendly error banner appears without leaking "Sign-up failed" or raw HTTP status text. |
+| `navigation.spec.js` | Signed-out root visit MUST land on `login.html` (strict assertion — fails if a regression lets `teams.html` render for anon users); signed-in root visit goes to `teams.html`. Dark-mode persistence across pages, topbar logo → teams. |
+| `teams.spec.js` | Team-card list from API, navigation to tracker, tracker-menu leave-team flow for members, admin leave restriction, create-team modal validation + happy path, pending-invites section count/listing. |
+| `invites.spec.js` | Accept/decline, pending-invite row decrement, `join.html` empty / list / preview / invalid-code views, tracker invite modal happy path + duplicate / 404 / email-format errors. |
+| `issues.spec.js` | Priority-grouped list, click → detail, 404 state for bad team_id, status/tag/category filters, search filter + clear, sort toggle, create modal validation + happy path, edit save + validation, `j` keyboard nav. |
+| `notifications.spec.js` | Creating an issue produces a `new_issue` notification in localStorage. |
+| `mobile.spec.js` | **Mobile-chrome project only.** Tracker filter-sidebar drawer, relocated search input, mobile master/detail with back button, teams new-team action and pending-invites section on a narrow viewport. |
 
-1. `POST /auth/register` → `POST /auth/login` → `GET /auth/validate` happy path
-2. `POST /teams` → `GET /teams` → `GET /teams/:id` happy path
-3. `POST /teams/:id/invite` → `GET /invites` → `PATCH /invites/:id/accept` happy path
-4. `POST /issues` → `GET /issues?team_id=…` → `PATCH /issues/:id` happy path
-5. A handful of error cases (401 on missing token, 409 on duplicate signup,
-   404 on bad ids)
+## Real-suite files (`tests/real/`)
 
-If those pass against the real Worker, the Playwright mock's contract is
-validated. If they fail, the mock is out of date and these E2E tests are
-giving false confidence.
+Each file is the real-backend counterpart to the mocked spec of the same name.
+They follow the same UI assertions but seed data through real HTTP API calls,
+use unique generated users/teams/issues, and delete created teams (which
+cascade to issues) in `finally` blocks.
 
-This was deliberately deferred — adding `wrangler dev` + D1 to the test
-runner is a non-trivial setup and is best done as its own task. The backend
-already has a vitest suite under `issue-tracker-api/test/` that hits a real
-D1; the missing piece is the wiring that keeps the mock's response shapes
-in sync with what the live Worker actually returns.
+| File | What it covers |
+| --- | --- |
+| `auth.real.spec.js` | Real `/auth/register`, `/auth/login`, `/auth/logout` flows, `?redirect=` preservation, duplicate-signup 409 friendly banner, password toggle. |
+| `teams.real.spec.js` | Listing teams via `/teams`, admin vs member role rendering (via an accepted invite from a second user), tracker-menu leave-team flow for members, admin leave restriction with backend membership checks, create-team modal and POST payload, pending-invites section, navigation to tracker. |
+| `invites.real.spec.js` | Two-user invite flow end-to-end: send through tracker, fetch as invitee, accept removes the row + adds the team card; decline; `join.html` empty / list / preview / invalid-code / accept / code-entry validation; tracker invite modal happy path + duplicate + 404 + email-format error. |
+| `issues.real.spec.js` | Real `/issues` seed with `test_mode=true` (predictable LLM bypass), priority grouping, filter/search/sort, create modal validation + happy path, assignee persistence, text/log attachment persistence, edit save + validation, delete via UI, `j` keyboard nav. |
+| `navigation.real.spec.js` | Signed-out root → `login.html`, signed-in root → `teams.html`, dark-mode persistence, tracker logo → teams. |
+| `notifications.real.spec.js` | Creating an issue through the real API produces a `new_issue` notification under the per-user localStorage key. |
+| `mobile.real.spec.js` | **`mobile-chrome-real` project only.** Sidebar drawer, search relocation, mobile master/detail, mobile teams hero actions. |
+
+## Helpers
+
+- `tests/helpers/mock-api.js` — in-memory fixtures + `page.route()` interceptor that emulates the Worker. Used only by mock specs.
+- `tests/helpers/real-api.js` — HTTP client for the real backend (`registerRealUser`, `loginRealUser`, `createRealTeam`, `inviteRealUser`, `acceptRealInvite`, `createRealIssue`, `updateRealIssue`, `deleteRealIssue`, `fetchRealTeams`, `fetchRealIssues`, …) plus browser-side bootstrap: `configureRealApiPage` and `setBrowserSession` flip `window.__ALLEGRO_API_BASE__` before module scripts run, and the frontend's `resolveApiBase()` reads that override. Used only by real specs.
+
+## Config
+
+- `playwright.config.js`:
+  - Static frontend served by `python3 -m http.server` on `127.0.0.1:4173`.
+  - Default mode: `chromium`, `firefox`, `webkit` for desktop specs (excluding `tests/real/`); `mobile-chrome` for `mobile.spec.js`.
+  - Real-API mode (`E2E_REAL_API=1`): `chromium-real` for `tests/real/*.real.spec.js` (excluding mobile); `mobile-chrome-real` for `mobile.real.spec.js`. Browser matrix is intentionally narrower — the mocked suite already covers cross-browser permutations.
+  - WebServer `stderr` is piped so startup failures are visible in CI.
+  - Retries 2× on CI.
+
+- `package.json` scripts:
+  - `test:e2e` — mocked suite
+  - `test:e2e:real` — real-backend suite (`E2E_REAL_API=1`)
+  - `test:e2e:all` — both
+  - `test:e2e:ui` / `test:e2e:headed`
+
+## Decisions
+
+- **Default tests stay mocked.** The cross-browser matrix needs determinism and speed.
+- **Real backend tests live in `tests/real/`** and are a strict superset of the mock specs' user-visible assertions. They never import `tests/helpers/mock-api.js` and never install `page.route()` for API mocking.
+- **Real specs share the same `API_BASE` constant.** `frontend/js/api.js` keeps the production URL; `setBrowserSession()` / `configureRealApiPage()` set `window.__ALLEGRO_API_BASE__` and `localStorage.allegro_api_base` so `resolveApiBase()` routes calls to `E2E_API_BASE` instead.
+- **Issue creation uses backend test mode.** Real specs flip `allegro_e2e_test_mode=1`, so UI issue creation sends `test_mode=true`. The backend returns predictable LLM-shaped fields without calling DeepSeek.
+- **User-visible assertions come first.** UI text, badge counts, URLs, and toasts are the primary proofs. API-state cross-checks (`fetchRealInvites`, etc.) are kept as secondary verification — they catch a UI that lies (e.g. removes a row without calling the API), but never stand alone.
+- **Persistent workflows get API-state assertions in real mode.** Issue create/edit/delete, assignment, attachment upload, invite duplicate handling, and team leave all verify backend state after the UI action.
+- **Real-mode browser matrix is narrower than mock-mode.** Running every real test against Firefox + WebKit would multiply database churn without buying coverage the mock matrix doesn't already give us.
+- **Cleanup runs in `finally`.** Teams (and the issues that cascade with them) are deleted after every real test. Users persist — there is no `/auth/delete` route — which is one more reason to use a local D1.
+
+## Limitations and known gaps
+
+- **No user delete.** Real-mode runs accumulate user rows. Wipe the local D1 periodically (`wrangler d1 execute issue-tracker-db --local --file=./schema.sql` re-runs the schema and drops nothing; to reset, delete `.wrangler/state/v3/d1/`).
+- **LLM behavior is bypassed.** Real-mode issue creation forces `test_mode=true` for predictability. Live LLM enrichment is not covered by either suite.
+- **Drag-to-resize divider** and **file attachment upload** are not covered in either mode.
+- **Notification dropdown UI** is commented out in `tracker.html`. Only the localStorage layer is tested.
+- **Theme FOUC script** runs before module scripts; covered indirectly via the dark-mode persistence test.
 
 ## Regressions covered
 
-- **Duplicate-account signup error placement** (`auth.spec.js`):
-  signup.js once used `err.message.includes('409')` to detect duplicates,
-  which broke when the backend changed wording and surfaced a misleading
-  password-field error. The fix uses `err.status === 409`. The test asserts
-  the exact message lands on the username field, the password field is
-  untouched, and the generic "Sign-up failed" fallback never appears for a
-  409 response.
-- **Signed-out users reaching `teams.html`** (`navigation.spec.js`):
-  the root-redirect test now requires the URL to end on `login.html` with
-  the redirect param preserved. It will fail if `requireAuth()` regresses
-  and lets `teams.html` render for an unauthenticated visitor.
+- **Duplicate-account signup error copy** (`auth.spec.js`, `auth.real.spec.js`): signup.js once used `err.message.includes('409')` to detect duplicates, which broke when the backend changed wording. The tests assert the friendly banner appears and the generic "Sign-up failed" fallback/raw status never appears for a 409 response.
+- **Signed-out users reaching `teams.html`** (`navigation.spec.js`, `navigation.real.spec.js`): the root-redirect test now requires the URL to end on `login.html` with the redirect param preserved.

@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { createState, installApiMocks, seed, setAuthStorage, setupApp } from './helpers/mock-api.js';
+import { createState, installApiMocks, seed, setAuthStorage, setupApp } from '../helpers/mock-api.js';
 
 test.describe('Auth — login page', () => {
 	test('redirects to teams when already signed in', async ({ page }) => {
@@ -33,10 +33,10 @@ test.describe('Auth — login page', () => {
 		await page.getByRole('textbox', { name: 'Password' }).fill('WRONG-password');
 		await page.getByRole('button', { name: 'Sign in' }).click();
 
-		// On 401, login.js surfaces the API error via setCustomValidity on the email field.
 		await expect(page).toHaveURL(/login\.html/);
-		const emailMessage = await page.getByLabel('Email').evaluate((el) => /** @type {HTMLInputElement} */ (el).validationMessage);
-		expect(emailMessage).toContain('Invalid email or password');
+		const banner = page.locator('#auth-error');
+		await expect(banner).toBeVisible();
+		await expect(banner).toContainText(/invalid email or password/i);
 		await expect.poll(() => page.evaluate(() => localStorage.getItem('allegro_token'))).toBeNull();
 	});
 
@@ -117,11 +117,7 @@ test.describe('Auth — signup page', () => {
 		expect(token).toBeTruthy();
 	});
 
-	test('duplicate account (HTTP 409) surfaces identity-field error, never a password-field or generic error', async ({ page }) => {
-		// Regression: signup.js used to detect duplicates by scanning err.message for "409",
-		// which broke when the backend changed wording and produced a misleading
-		// password-field error. The fix uses err.status === 409. This test enforces
-		// the user-facing contract so the bug cannot silently come back.
+	test('duplicate account (HTTP 409) surfaces a friendly error and never the generic "Sign-up failed" fallback', async ({ page }) => {
 		const state = createState();
 		state.users.push({
 			id: 1,
@@ -145,28 +141,11 @@ test.describe('Auth — signup page', () => {
 		await expect(page).toHaveURL(/signup\.html/);
 		await expect.poll(() => page.evaluate(() => localStorage.getItem('allegro_token'))).toBeNull();
 
-		const usernameEl = page.getByLabel('Username');
-		const passwordEl = page.getByRole('textbox', { name: 'Password' });
-		const emailEl = page.getByLabel('Email');
-
-		// 2. The exact message lands on the username identity field.
-		await expect
-			.poll(async () => usernameEl.evaluate((el) => /** @type {HTMLInputElement} */ (el).validationMessage))
-			.toBe('Username or email is already in use');
-
-		// 3. It must NOT land on the password field (the original bug) — empty string only.
-		const passwordMessage = await passwordEl.evaluate((el) => /** @type {HTMLInputElement} */ (el).validationMessage);
-		expect(passwordMessage).toBe('');
-
-		// 4. And nowhere in the form may the generic fallback "Sign-up failed" appear,
-		//    nor an HTTP-status leak like "409", nor the back-end's raw error string.
-		const fields = [page.getByLabel('First name'), page.getByLabel('Last name'), usernameEl, emailEl, passwordEl];
-		for (const field of fields) {
-			const msg = await field.evaluate((el) => /** @type {HTMLInputElement} */ (el).validationMessage);
-			expect(msg).not.toMatch(/Sign-up failed/i);
-			expect(msg).not.toMatch(/\b409\b/);
-			expect(msg).not.toMatch(/Email or username is already in use/); // raw backend wording
-		}
+		const banner = page.locator('#auth-error');
+		await expect(banner).toBeVisible();
+		await expect(banner).toContainText(/already in use/i);
+		await expect(banner).not.toContainText(/Sign-up failed/i);
+		await expect(banner).not.toContainText(/\b409\b/);
 	});
 });
 

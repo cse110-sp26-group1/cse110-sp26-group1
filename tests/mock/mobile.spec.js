@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { setupApp } from './helpers/mock-api.js';
+import { setupApp } from '../helpers/mock-api.js';
 
 // These tests run ONLY in the `mobile-chrome` project (Pixel 5 viewport, 393×851).
 // The desktop projects skip this file entirely via playwright.config.js's testMatch,
@@ -151,7 +151,7 @@ test.describe('Mobile — tracker master/detail', () => {
 });
 
 test.describe('Mobile — teams page', () => {
-	test('hero actions (Pending invites + New team) remain visible and usable', async ({ page }) => {
+	test('new-team action and pending invites remain visible and usable', async ({ page }) => {
 		const { state, session } = await setupApp(page);
 		if (!session) throw new Error('seed required');
 		state.invites.push({
@@ -166,12 +166,12 @@ test.describe('Mobile — teams page', () => {
 
 		await page.goto('/html/teams.html');
 
-		const pending = page.locator('#view-invites');
 		const newTeam = page.getByRole('button', { name: '+ New team' });
-		await expect(pending).toBeVisible();
 		await expect(newTeam).toBeVisible();
-		// Badge is still rendered at narrow viewport.
-		await expect(pending.locator('.invite-badge')).toHaveText('1');
+		const invitesSection = page.locator('#invites-section');
+		await expect(invitesSection).toBeVisible();
+		await expect(invitesSection.locator('.invite')).toHaveCount(1);
+		await expect(invitesSection).toContainText(session.team.team_name);
 
 		// Tapping "New team" actually opens the modal (proves the button is hittable).
 		await newTeam.click();

@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { setupApp } from './helpers/mock-api.js';
+import { setupApp } from '../helpers/mock-api.js';
 
 test.describe('Invites — teams page', () => {
 	test("accepting an invite: row disappears, badge decrements, team appears in the user's team list", async ({ page }) => {
@@ -37,8 +37,9 @@ test.describe('Invites — teams page', () => {
 		await page.goto('/html/teams.html');
 
 		// Pre-conditions visible to the user:
-		const badge = page.locator('#view-invites .invite-badge');
-		await expect(badge).toHaveText('2');
+		const section = page.locator('#invites-section');
+		await expect(section).toBeVisible();
+		await expect(section.locator('.invite')).toHaveCount(2);
 		const acceptedRow = page.locator(`#invites-section .invite[data-invite-id="999"]`);
 		const otherRow = page.locator(`#invites-section .invite[data-invite-id="1000"]`);
 		await expect(acceptedRow).toBeVisible();
@@ -52,12 +53,9 @@ test.describe('Invites — teams page', () => {
 		// 1. The accepted row disappears from the pending-invite list.
 		await expect(acceptedRow).toHaveCount(0);
 		// 2. The other invite is still present (we didn't accidentally clear the wrong row).
-		//    Use .first() because teams.js's loadInvites() re-appends rather than replacing
-		//    on re-render, so the row may end up duplicated — that's a separate UI bug,
-		//    not what this test is guarding.
-		await expect(otherRow.first()).toBeVisible();
-		// 3. The pending-invite badge decrements from 2 to 1 (visible UI count, not state).
-		await expect(badge).toHaveText('1');
+		await expect(otherRow).toBeVisible();
+		// 3. The pending-invite list decrements from 2 to exactly 1 row.
+		await expect(section.locator('.invite')).toHaveCount(1);
 		// 4. The newly-joined team renders in the team grid as a card the user can click.
 		const newTeamCard = page.locator('team-card[name="Hearth OS"]');
 		await expect(newTeamCard).toHaveCount(1);
@@ -85,15 +83,14 @@ test.describe('Invites — teams page', () => {
 		});
 
 		await page.goto('/html/teams.html');
-		const badge = page.locator('#view-invites .invite-badge');
-		await expect(badge).toHaveText('1');
+		const section = page.locator('#invites-section');
+		await expect(section).toBeVisible();
+		await expect(section.locator('.invite')).toHaveCount(1);
 
 		await page.locator('#invites-section .invite[data-invite-id="999"]').getByRole('button', { name: 'Accept' }).click();
 
-		// Badge node is removed entirely when count hits zero.
-		await expect(badge).toHaveCount(0);
 		// Section also hides when there are no remaining invites.
-		await expect(page.locator('#invites-section')).toBeHidden();
+		await expect(section).toBeHidden();
 	});
 
 	test('decline removes the invite row and surfaces a toast', async ({ page }) => {
@@ -301,13 +298,40 @@ test.describe('Invites — tracker invite modal', () => {
 		await expect(err).toContainText(/valid email/i);
 	});
 
-	test('invite link in the modal points back to join.html for this team', async ({ page }) => {
-		const { session } = await setupApp(page);
+	test('keeps the modal open and recipient value intact when a duplicate pending invite is rejected', async ({ page }) => {
+		const { state, session } = await setupApp(page);
 		if (!session) throw new Error('seed required');
+		state.users.push({
+			id: 4242,
+			username: 'priya',
+			email: 'priya@example.com',
+			first_name: 'Priya',
+			last_name: 'Rao',
+			password: 'pw',
+		});
+		state.invites.push({
+			id: 5050,
+			team_id: session.team.id,
+			team_name: session.team.team_name,
+			inviter_username: session.user.username,
+			status: 'pending',
+			invited_user_id: 4242,
+			inviter_user_id: session.user.id,
+			created_at: '2025-05-20',
+		});
 
 		await page.goto(`/html/tracker.html?team_id=${session.team.id}`);
 		await page.getByRole('button', { name: 'Invite user' }).click();
-		const link = page.locator('#invite-link-display');
-		await expect(link).toHaveValue(new RegExp(`join\\.html\\?team_id=${session.team.id}$`));
+		await page.getByPlaceholder(/ada@example|adalovelace/i).fill('priya');
+		await page.getByRole('button', { name: 'Send invite' }).click();
+
+		const err = page.locator('#invite-error');
+		await expect(err).toBeVisible();
+		await expect(err).toContainText('already has a pending invite');
+		await expect(page.locator('#invite-backdrop')).toHaveClass(/open/);
+		await expect(page.getByPlaceholder(/ada@example|adalovelace/i)).toHaveValue('priya');
+		expect(state.invites.filter((i) => i.invited_user_id === 4242 && i.team_id === session.team.id && i.status === 'pending')).toHaveLength(
+			1,
+		);
 	});
 });

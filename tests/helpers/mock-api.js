@@ -398,6 +398,22 @@ export async function installApiMocks(page, state) {
 
 			if (sub === 'leave' && method === 'DELETE') {
 				if (requireAuth() === null) return;
+				const membership = state.memberships.find((m) => m.team_id === teamId && m.user_id === state._tokenUserId);
+				if (!membership) return json(route, 403, { error: 'Forbidden' });
+
+				const members = state.memberships.filter((m) => m.team_id === teamId);
+				if (membership.role === 'admin' && members.length > 1) {
+					return json(route, 409, { error: 'Admins cannot leave a team that still has members. Delete the team instead.' });
+				}
+
+				if (membership.role === 'admin') {
+					state.teams = state.teams.filter((t) => t.id !== teamId);
+					state.memberships = state.memberships.filter((m) => m.team_id !== teamId);
+					state.issues = state.issues.filter((i) => i.team_id !== teamId);
+					state.invites = state.invites.filter((i) => i.team_id !== teamId);
+					return json(route, 200, { success: true, message: 'Left team and deleted empty team' });
+				}
+
 				state.memberships = state.memberships.filter((m) => !(m.team_id === teamId && m.user_id === state._tokenUserId));
 				return json(route, 200, { success: true, message: 'Left team' });
 			}

@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { setupApp } from './helpers/mock-api.js';
+import { setupApp } from '../helpers/mock-api.js';
 
 test.describe('Notifications', () => {
 	test('creating an issue produces a notification entry in localStorage', async ({ page }) => {

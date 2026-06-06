@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { setupApp } from './helpers/mock-api.js';
+import { setupApp } from '../helpers/mock-api.js';
 
 test.describe('Navigation & shell', () => {
 	test('signed-out visit to root lands on login.html (NOT teams.html) and preserves redirect', async ({ page }) => {
