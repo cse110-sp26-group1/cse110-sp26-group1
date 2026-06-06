@@ -37,9 +37,40 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
+  real-api-changes:
+    name: Detect Real API E2E Changes
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.changed-files.outputs.should-run }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check changed files
+        id: changed-files
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_files="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)"
+          echo "$changed_files"
+
+          if echo "$changed_files" | grep -Eq '^(frontend/|issue-tracker-api/|tests/|playwright\.config\.js$|package(-lock)?\.json$|\.github/workflows/playwright\.yml$)'; then
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should-run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   real-api-e2e:
     name: Real API E2E
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: real-api-changes
+    if: ${{ needs.real-api-changes.outputs.should-run == 'true' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
 
