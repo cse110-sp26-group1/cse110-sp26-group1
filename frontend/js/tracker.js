@@ -380,6 +380,15 @@ populateNewTagSelect();
 populateTagPicker();
 
 /**
+ * Checks whether backend issue creation should request predictable test-mode
+ * enrichment instead of live LLM processing.
+ * @returns {boolean} True when E2E test mode is enabled for this browser session.
+ */
+function isE2ETestMode() {
+	return globalThis.__ALLEGRO_E2E_TEST_MODE__ === true || localStorage.getItem('allegro_e2e_test_mode') === '1';
+}
+
+/**
  * Filters, sorts, groups, and re-renders the issue list.
  */
 function renderList() {
@@ -1110,11 +1119,17 @@ document.getElementById('toggle-detail').addEventListener('click', toggleDetail)
 // ============================================================
 const deleteBackdrop = document.getElementById('delete-backdrop');
 
+/**
+ *
+ */
 function openDeleteConfirm() {
 	deleteBackdrop?.classList.add('open');
 	setTimeout(() => document.getElementById('confirm-delete')?.focus(), 30);
 }
 
+/**
+ *
+ */
 function closeDeleteConfirm() {
 	deleteBackdrop?.classList.remove('open');
 }
@@ -1336,7 +1351,7 @@ confirmNewBtn.addEventListener('click', async () => {
 	try {
 		showToast('Creating and analyzing issue...');
 
-		const response = await createIssue(formData);
+		const response = await createIssue(formData, isE2ETestMode());
 
 		ISSUES = await fetchIssues(state.currentTeamId);
 
