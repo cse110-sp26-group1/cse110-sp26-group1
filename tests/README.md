@@ -15,6 +15,17 @@ the real specs.
 
 ## Running
 
+> **These tests are not part of CI.** Run them locally before opening or merging a PR that touches `frontend/`, `issue-tracker-api/`, `tests/`, or `playwright.config.js`. The mocked suite is the bar for every such PR; the real-backend suite is the bar for anything touching API contracts, auth, invites, or issue persistence.
+
+First-time setup (or after a clean clone):
+
+```sh
+npm ci
+npx playwright install --with-deps
+```
+
+Then:
+
 ```sh
 npm run test:e2e                                # mocked suite, all projects (incl. mobile)
 npm run test:e2e -- --project=chromium          # one desktop browser
@@ -28,13 +39,16 @@ npm run test:e2e:ui                             # Playwright UI runner
 npm run test:e2e:headed                         # see the browser
 ```
 
-Before `test:e2e:real`, start a local Wrangler + D1 backend:
+Before `test:e2e:real`, start a local Wrangler + D1 backend in a separate terminal:
 
 ```sh
 cd issue-tracker-api
-wrangler d1 execute issue-tracker-db --local --file=./schema.sql
-npm run dev    # serves http://127.0.0.1:8787
+npm ci                                          # first time only
+npx wrangler d1 execute issue-tracker-db --local --file=./schema.sql
+npm run dev                                     # serves http://127.0.0.1:8787
 ```
+
+Confirm it's up with `curl http://127.0.0.1:8787/health` before running the real suite.
 
 > ⚠️ **Do not point `E2E_API_BASE` at the deployed Worker for routine runs.**
 > Each real-mode test creates persistent users, teams, and issues; only teams
