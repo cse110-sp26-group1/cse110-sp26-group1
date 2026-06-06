@@ -1,5 +1,16 @@
 // api.js
 const API_BASE = 'https://issue-tracker-api.amorbuks25.workers.dev';
+
+/**
+ * Resolves the API origin for this browser session.
+ * Playwright real-backend tests can set `window.__ALLEGRO_API_BASE__` before
+ * module scripts run; local manual testing can use localStorage.
+ * @returns {string} API origin with trailing slashes removed.
+ */
+function resolveApiBase() {
+	const override = globalThis.__ALLEGRO_API_BASE__ || localStorage.getItem('allegro_api_base');
+	return String(override || API_BASE).replace(/\/+$/, '');
+}
 /**
  * Checks if the user is authenticated and redirects to the login page if not.
  * Preserves the current URL as a `?redirect=` param so login can send the user back to the page they were trying to reach.
@@ -71,7 +82,7 @@ export async function request(endpoint, options = {}) {
 	};
 
 	try {
-		const response = await fetch(`${API_BASE}${endpoint}`, config);
+		const response = await fetch(`${resolveApiBase()}${endpoint}`, config);
 
 		if (!response.ok) {
 			// Try to parse server error messages if available
