@@ -1,33 +1,28 @@
-const templateUrl = new URL('../../html/components/issue-row.html', import.meta.url);
+import { STATUS_NAME } from '../constants.js';
+import { loadHtmlTemplate } from './load-template.js';
 
 let issueRowTemplate;
 
+/**
+ * Loads the issue row markup from the shared HTML component file.
+ * @returns {Promise<HTMLTemplateElement>}
+ */
 async function loadIssueRowTemplate() {
 	if (issueRowTemplate) return issueRowTemplate;
-
-	const response = await fetch(templateUrl);
-	if (!response.ok) {
-		throw new Error(`Failed to load issue row template (${response.status})`);
-	}
-
-	const html = await response.text();
-	const doc = new DOMParser().parseFromString(html, 'text/html');
-	issueRowTemplate = doc.getElementById('issue-row-template');
-
-	if (!issueRowTemplate) {
-		throw new Error('issue-row-template not found in issue-row.html');
-	}
-
+	issueRowTemplate = await loadHtmlTemplate(import.meta.url, '../../html/components/issue-row.html', 'issue-row-template');
 	return issueRowTemplate;
 }
 
+/** A single issue list item displayed on the tracker page. */
 class IssueRow extends HTMLElement {
+	/** @returns {string[]} */
 	static get observedAttributes() {
 		return ['issue-title', 'summary', 'status', 'updated-date', 'updated-time', 'tags'];
 	}
 
 	#rendered = false;
 
+	/** Clones the issue row template on first connect. */
 	connectedCallback() {
 		if (this.#rendered) {
 			this.#update();
@@ -42,10 +37,12 @@ class IssueRow extends HTMLElement {
 		this.#update();
 	}
 
+	/** Re-renders when an observed attribute changes. */
 	attributeChangedCallback() {
 		if (this.#rendered) this.#update();
 	}
 
+	/** Syncs template nodes from element attributes. */
 	#update() {
 		const titleEl = this.querySelector('.title-text');
 		const summaryEl = this.querySelector('.summary-text');
@@ -59,7 +56,6 @@ class IssueRow extends HTMLElement {
 		if (statusEl) {
 			const status = this.getAttribute('status') ?? 'Open';
 			const statusKey = status === 'In Progress' ? 'prog' : status.toLowerCase();
-			const STATUS_NAME = { Open: 'Open', 'In Progress': 'In Progress', Resolved: 'Resolved', Closed: 'Closed' };
 
 			statusEl.textContent = STATUS_NAME[status] || status;
 			statusEl.className = `chip status-chip st-${statusKey}`;
@@ -77,7 +73,9 @@ class IssueRow extends HTMLElement {
 			const visibleTags = tags.slice(0, maxTags);
 			const moreCount = tags.length - maxTags;
 
-			labelsEl.innerHTML = visibleTags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('') + (moreCount > 0 ? `<span class="chip tag-more">+${moreCount}</span>` : '');
+			labelsEl.innerHTML =
+				visibleTags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('') +
+				(moreCount > 0 ? `<span class="chip tag-more">+${moreCount}</span>` : '');
 		}
 	}
 }

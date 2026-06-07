@@ -5,16 +5,7 @@
 		<title>Issues - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" href="../imgs/file.svg" type="image/svg+xml" />
-		<script>
-			// Keep this before CSS so the saved theme is applied before first paint.
-			try {
-				if (localStorage.getItem('theme') === 'dark') {
-					document.documentElement.classList.add('dark');
-				}
-			} catch {
-				/* localStorage unavailable */
-			}
-		</script>
+		<script src="../js/theme-init.js"></script>
 		<link rel="stylesheet" href="../css/global.css" />
 		<link rel="stylesheet" href="../css/tracker.css" />
 	</head>
@@ -34,29 +25,7 @@
 					<span id="team-label">Loading...</span>
 					<span class="chev">▾</span>
 
-					<div class="team-menu" id="team-menu">
-						<div class="item active" data-slug="studio-ai">
-							<span class="mark c1">SA</span>
-							Studio · AI Tools
-						</div>
-						<div class="item" data-slug="group-eight">
-							<span class="mark c2">G8</span>
-							Group 8 · Capstone
-						</div>
-						<div class="item" data-slug="side-quest">
-							<span class="mark c3">SQ</span>
-							Side Quest
-						</div>
-						<div class="item" data-slug="hearth-os">
-							<span class="mark c4">HO</span>
-							Hearth OS
-						</div>
-						<div class="divider"></div>
-						<div class="item" data-action="all-teams">
-							<span class="mark all-teams-mark">+</span>
-							All teams &amp; settings
-						</div>
-					</div>
+					<div class="team-menu" id="team-menu"></div>
 				</div>
 			</div>
 			<div class="right">
@@ -76,44 +45,8 @@
 					</div>
 				</div>
 				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
-				<!-- Notification inbox button -->
-				<!--
-				<div class="notif-wrap" id="notif-wrap">
-					<button class="btn ghost icon notif-btn" id="notif-btn" aria-label="Notifications" title="Notifications">
-						<svg
-							width="16"
-							height="16"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
-							<path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
-						</svg>
-						<span class="notif-badge" id="notif-badge" hidden>0</span>
-					</button>
-					<div class="notif-dropdown" id="notif-dropdown" hidden>
-						<div class="notif-head">
-							<strong>Notifications</strong>
-							<button class="notif-mark-all" id="notif-mark-all">Mark all read</button>
-						</div>
-						<div class="notif-tabs" id="notif-tabs">
-							<button class="notif-tab active" data-filter="all">All</button>
-							<button class="notif-tab" data-filter="issues">Issues</button>
-						</div>
-						<div class="notif-list" id="notif-list"></div>
-						<div class="notif-foot">
-							<button class="notif-view-all" id="notif-view-all">View all notifications</button>
-						</div>
-					</div>
-				</div>
-				-->
 
-				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
+				<!-- User avatar + sign-out dropdown (wired in helpers.js) -->
 				<div class="user-switch" id="user-switch">
 					<button
 						type="button"
@@ -141,16 +74,16 @@
 				<div class="nav-section team-section">
 					<div class="team-header">
 						<span class="label-sm">Team</span>
-						<button class="btn sm invite-btn" id="open-invite-modal" type="button" title="Invite user">Invite user</button>
+						<button class="btn sm invite-btn" id="open-invite-modal" type="button" title="Invite user" disabled>Invite user</button>
 					</div>
 					<div class="members"></div>
 				</div>
 
 				<!-- Status filters match backend values one-to-one (Resolved and Closed are separate). -->
 				<div class="nav-section">
-					<div class="label-sm">STATUS</div>
+					<div class="label-sm">Status</div>
 					<!-- Items use .active and .indicator to drive the filled circle logic -->
-					<div class="filter-item active" data-group="status" data-val="Open">
+					<div class="filter-item" data-group="status" data-val="Open">
 						<span class="indicator"></span> Open <span class="count" id="cnt-open">0</span>
 					</div>
 					<div class="filter-item" data-group="status" data-val="In Progress">
@@ -166,25 +99,15 @@
 
 				<!-- Tag filters rendered from TAGS in constants.js -->
 				<div class="nav-section">
-					<div class="label-sm">TAGS</div>
+					<div class="label-sm">Tags</div>
 					<div id="tag-filters"></div>
 				</div>
 
 				<!-- Category filters rendered from CATEGORIES in constants.js -->
 				<div class="nav-section">
-					<div class="label-sm">CATEGORY</div>
+					<div class="label-sm">Category</div>
 					<div id="category-filters"></div>
 				</div>
-
-				<!-- Notifications sidebar row (DES-08) -->
-				<!--
-				<div class="nav-section">
-					<div class="notif-sidebar-row" id="notif-sidebar-row">
-						<span>Notifications</span>
-						<span class="count notif-sidebar-count" id="notif-sidebar-count" hidden>0</span>
-					</div>
-				</div>
-				-->
 
 				<div class="skill-card">
 					<div class="ic-md">.md</div>
@@ -204,7 +127,7 @@
 						<div class="actions">
 							<!-- Detail toggle button -->
 							<button class="btn" id="toggle-detail" title="Toggle detail pane">⇌ Details</button>
-							<button class="btn primary" id="new-issue">+ New issue</button>
+							<button class="btn primary" id="new-issue" disabled>+ New issue</button>
 						</div>
 					</div>
 
@@ -220,7 +143,7 @@
 							›
 						</button>
 						<div class="filter-group">
-							<span class="label-sm">SORT</span>
+							<span class="label-sm">Sort</span>
 							<!-- Multiple sort triggers -->
 							<!-- Client-side sort only; priority is not filtered in the sidebar -->
 							<button class="sort-btn on" data-sort="priority">priority <span class="arrow">↓</span></button>
@@ -335,9 +258,9 @@
 		</div>
 
 		<div class="backdrop" id="delete-backdrop">
-            <div class="modal modal-small">
-                <div class="modal-head">
-                    <h3>Delete issue?</h3>
+			<div class="modal modal-small">
+				<div class="modal-head">
+					<h3>Delete issue?</h3>
 					<p>This removes the issue from the database. You can cancel if you changed your mind.</p>
 				</div>
 				<div class="modal-foot">
@@ -349,8 +272,6 @@
 
 		<div class="toast" id="toast"></div>
 
-		<script src="../js/theme.js"></script>
-		<script type="module" src="../js/user-menu.js"></script>
 		<script type="module" src="../js/tracker.js"></script>
 	</body>
 </html>

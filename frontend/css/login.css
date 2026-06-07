@@ -55,17 +55,6 @@ body {
 	letter-spacing: -0.01em;
 }
 
-.brand .ver {
-	font-family: var(--mono);
-	font-size: 0.75rem;
-	color: var(--muted);
-	margin-left: 0.286rem;
-}
-
-.login-theme-toggle {
-	margin-left: auto;
-}
-
 /* === title === */
 
 /* styles for the title
@@ -89,33 +78,6 @@ p.sub {
 	text-align: center;
 }
 
-/* === tabs-seg === */
-.tabs-seg {
-	display: inline-flex;
-	background: var(--surface-2);
-	border: 0.071rem solid var(--line);
-	border-radius: 0.571rem;
-	padding: 0.214rem;
-	margin-bottom: 1.571rem;
-}
-
-.tabs-seg button {
-	background: transparent;
-	border: none;
-	padding: 0.429rem 1rem;
-	font-size: 0.929rem;
-	font-weight: 500;
-	color: var(--muted);
-	border-radius: 0.429rem;
-	cursor: pointer;
-}
-
-.tabs-seg button.on {
-	background: var(--surface);
-	color: var(--ink);
-	box-shadow: var(--shadow-1);
-}
-
 /* styles for the second row
 * displays the forgot password and help links
 */
@@ -130,19 +92,6 @@ p.sub {
 	justify-content: center;
 	padding: 0.786rem;
 	font-size: 1rem;
-}
-
-/* === legal === */
-
-/* styles for the privacy and terms
-* displays the privacy and terms
-*/
-
-.legal {
-	margin-top: 1.714rem;
-	font-size: 0.821rem;
-	color: var(--muted);
-	text-align: center;
 }
 
 .password-wrapper {
@@ -230,14 +179,14 @@ p.sub {
 
 /* Authentication Error Banner */
 #auth-error {
-	color: var(--danger, #d93025);
-	background: var(--danger-bg, #fce8e6);
+	color: var(--danger);
+	background: var(--danger-bg);
 	padding: 0.75rem;
-	border-radius: 6px;
+	border-radius: 0.429rem;
 	margin-bottom: 1.14rem;
 	font-size: 0.857rem;
 	text-align: center;
-	border: 1px solid #f2bbba;
+	border: 0.071rem solid oklch(55% 0.18 25deg / 25%);
 }
 
 /* Ensure it completely disappears when the hidden attribute is present */

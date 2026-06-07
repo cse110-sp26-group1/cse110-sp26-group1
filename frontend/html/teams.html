@@ -5,16 +5,7 @@
 		<title>Your teams - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" href="../imgs/file.svg" type="image/svg+xml" />
-		<script>
-			// Keep this before CSS so the saved theme is applied before first paint.
-			try {
-				if (localStorage.getItem('theme') === 'dark') {
-					document.documentElement.classList.add('dark');
-				}
-			} catch {
-				/* localStorage unavailable */
-			}
-		</script>
+		<script src="../js/theme-init.js"></script>
 		<link rel="stylesheet" href="../css/global.css" />
 		<link rel="stylesheet" href="../css/teams.css" />
 	</head>
@@ -26,7 +17,7 @@
 			</div>
 			<div class="user-menu">
 				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
-				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
+				<!-- User avatar + sign-out dropdown -->
 				<div class="user-switch" id="user-switch">
 					<button
 						type="button"
@@ -69,18 +60,18 @@
 		</main>
 
 		<div class="backdrop" id="create-backdrop">
-			<div class="modal">
+			<div class="modal modal-small">
 				<div class="modal-head">
 					<h3>Create a new team</h3>
 					<p>You'll be the first member. Invite others after.</p>
 				</div>
 				<div class="modal-body">
 					<div class="field">
-						<label>Team name <span class="req">*</span></label>
+						<label for="team-name">Team name <span class="req">*</span></label>
 						<input class="input" id="team-name" placeholder="e.g. Roost Robotics" />
 					</div>
 					<div class="field">
-						<label>Short bio <span class="optional-label">(optional)</span></label>
+						<label for="team-bio">Short bio <span class="optional-label">(optional)</span></label>
 						<textarea class="textarea" id="team-bio" placeholder="What does this team work on?"></textarea>
 						<div class="hint">This is used to give the AI summarization layer extra context about your stack and goals.</div>
 					</div>
@@ -94,9 +85,6 @@
 
 		<div class="toast" id="toast"></div>
 
-		<script src="../js/theme.js"></script>
-		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
-		<script type="module" src="../js/user-menu.js"></script>
 		<script type="module" src="../js/teams.js"></script>
 	</body>
 </html>

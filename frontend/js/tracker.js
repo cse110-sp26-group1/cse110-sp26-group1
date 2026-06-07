@@ -1,14 +1,35 @@
-import { CLI_SKILL_MD_URL, PRI_ORDER, STATUS_NAME, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
-
-import { fetchIssues, createIssue, updateIssue, deleteIssue } from './api.js';
-import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers, leaveTeam } from './api.js';
+import { CLI_SKILL_MD_URL, PRI_ORDER, TAGS, CATEGORIES } from './constants.js';
+import {
+	fetchIssues,
+	createIssue,
+	updateIssue,
+	deleteIssue,
+	requireAuth,
+	inviteToTeam,
+	fetchTeams,
+	fetchTeamMembers,
+	leaveTeam,
+} from './api.js';
+import {
+	formatRelativeDate,
+	formatDateTime,
+	escapeHtml,
+	showToast,
+	getTeamMark,
+	getUserInitials,
+	getUserDisplayName,
+	initTheme,
+	initUserMenu,
+} from './helpers.js';
 import './components/issue-row.js';
 
-requireAuth(); // forces the user to sign up if this page is accessed without credentials
+initTheme();
+initUserMenu();
 
 // Sidebar filters: status, tag, and category (priority is sortable, not filterable here).
 const state = {
 	sort: 'priority',
+	sortDir: 'desc', // 'desc' (default) or 'asc'
 	tag: 'all',
 	status: 'all',
 	category: 'all',
@@ -22,12 +43,11 @@ const state = {
 };
 
 let ISSUES = [];
+let trackerReady = false;
 
 const inviteBackdrop = document.getElementById('invite-backdrop');
 const confirmInviteBtn = document.getElementById('confirm-invite');
 const inviteInput = document.getElementById('invite-input');
-const inviteLinkDisplay = document.getElementById('invite-link-display');
-const copyInviteLinkBtn = document.getElementById('copy-invite-link');
 const openInviteModalBtn = document.getElementById('open-invite-modal');
 
 const listEl = document.getElementById('issue-list');
@@ -37,27 +57,30 @@ const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file-input');
 const fileList = document.getElementById('file-list');
 
+const detailEl = document.getElementById('detail');
+const sidebarEl = document.querySelector('.sidebar');
+
+const deleteBackdrop = document.getElementById('delete-backdrop');
+
 // helpers for invite listeners below
 /**
  * Opens the invite modal only after a team has been resolved from the URL.
- * Also populates the copyable join link for the current team.
+ * @returns {void}
  */
 function openInvite() {
+	if (!trackerReady) return;
 	if (!state.currentTeamId) {
 		showToast('No active team selected.');
 		return;
 	}
 	inviteBackdrop.classList.add('open');
 
-	if (inviteLinkDisplay) {
-		inviteLinkDisplay.value = new URL(`join.html?team_id=${state.currentTeamId}`, window.location.href).href;
-	}
-
 	setTimeout(() => inviteInput.focus(), 30);
 }
 
 /**
  * Closes the invite modal and clears the draft recipient and any inline error.
+ * @returns {void}
  */
 function closeInvite() {
 	inviteBackdrop.classList.remove('open');
@@ -74,7 +97,10 @@ function isValidEmail(val) {
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
 }
 
-/** Clears the inline error under the invite input. */
+/**
+ * Clears the inline error under the invite input.
+ * @returns {void}
+ */
 function clearInviteError() {
 	const errEl = document.getElementById('invite-error');
 	if (errEl) errEl.hidden = true;
@@ -85,6 +111,7 @@ function clearInviteError() {
  * Shows an inline error beneath the invite input.
  * @param {string} msg Error copy to display.
  * @param {object} [resendPayload] If present, appends a "Resend?" action button.
+ * @returns {void}
  */
 function setInviteError(msg, resendPayload) {
 	const errEl = document.getElementById('invite-error');
@@ -109,6 +136,7 @@ function setInviteError(msg, resendPayload) {
 /**
  * Sends an invite, branching on HTTP status for distinct error copy.
  * @param {{ email?: string, username?: string }} payload Invite recipient payload.
+ * @returns {Promise<void>}
  */
 async function sendInvite(payload) {
 	const val = payload.email ?? payload.username;
@@ -150,23 +178,6 @@ async function sendInvite(payload) {
 	}
 }
 
-if (copyInviteLinkBtn) {
-	copyInviteLinkBtn.addEventListener('click', async () => {
-		const url = inviteLinkDisplay?.value;
-		if (!url) return;
-		try {
-			await navigator.clipboard.writeText(url);
-			const original = copyInviteLinkBtn.textContent;
-			copyInviteLinkBtn.textContent = 'Copied!';
-			setTimeout(() => {
-				copyInviteLinkBtn.textContent = original;
-			}, 1500);
-		} catch {
-			showToast('Could not copy link — try selecting it manually.');
-		}
-	});
-}
-
 if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
 
 document.getElementById('cancel-invite').addEventListener('click', closeInvite);
@@ -197,6 +208,7 @@ inviteInput.addEventListener('input', clearInviteError);
 // === Leave team === //
 /**
  * Confirms and leaves the current team, then redirects to the teams list.
+ * @returns {Promise<void>}
  */
 async function handleLeaveTeam() {
 	if (!state.currentTeamId) return;
@@ -220,13 +232,12 @@ async function handleLeaveTeam() {
  * @returns {boolean}
  */
 function issueMatchesTag(issue, tag) {
-	if ((issue.tags || []).includes(tag)) return true;
-	if (tag === 'bug' && issue.category === 'Bug') return true;
-	return false;
+	return (issue.tags || []).includes(tag);
 }
 
 /**
  * Builds sidebar TAG filter rows from TAGS in constants.js.
+ * @returns {void}
  */
 function renderTagFilters() {
 	const container = document.getElementById('tag-filters');
@@ -235,7 +246,7 @@ function renderTagFilters() {
 	container.innerHTML = TAGS.map(
 		(t) => `
 		<div class="filter-item" data-group="tag" data-val="${t}">
-			<span class="indicator label-${t}"></span> ${t}
+			<span class="indicator"></span> ${t}
 			<span class="count" id="cnt-${t}">0</span>
 		</div>`,
 	).join('');
@@ -243,6 +254,7 @@ function renderTagFilters() {
 
 /**
  * Builds sidebar CATEGORY filter rows from CATEGORIES in constants.js.
+ * @returns {void}
  */
 function renderCategoryFilters() {
 	const container = document.getElementById('category-filters');
@@ -291,9 +303,10 @@ function buildIssueSearchText(issue) {
 }
 
 /**
- * Populates the new-issue category dropdown from CATEGORIES.
+ * Populates the new-issue category dropdown (#new-tag) from CATEGORIES.
+ * @returns {void}
  */
-function populateNewTagSelect() {
+function populateNewCategorySelect() {
 	const select = document.getElementById('new-tag');
 	if (!select) return;
 
@@ -302,6 +315,7 @@ function populateNewTagSelect() {
 
 /**
  * Renders the new-issue tag-picker chips from TAGS so only valid tags can be selected.
+ * @returns {void}
  */
 function populateTagPicker() {
 	const picker = document.getElementById('tag-picker');
@@ -322,8 +336,9 @@ function buildEditTagPickerHtml(issue) {
 }
 
 /**
- * Gets issue counts and updates the sidebar UI
+ * Gets issue counts and updates the sidebar UI.
  * Reuses the fetched issue list so counts match the active team and filters.
+ * @returns {void}
  */
 function syncSidebar() {
 	if (!ISSUES) return;
@@ -332,8 +347,6 @@ function syncSidebar() {
 		const el = document.getElementById(id);
 		if (el) el.textContent = count;
 	};
-
-	safeSet('cnt-all', ISSUES.length);
 
 	safeSet('cnt-open', ISSUES.filter((i) => i.status === 'Open').length);
 	safeSet('cnt-prog', ISSUES.filter((i) => i.status === 'In Progress').length);
@@ -351,7 +364,6 @@ function syncSidebar() {
 	});
 }
 
-const sidebarEl = document.querySelector('.sidebar');
 if (sidebarEl) {
 	sidebarEl.addEventListener('click', (e) => {
 		const item = e.target.closest('.filter-item[data-group]');
@@ -376,7 +388,7 @@ if (sidebarEl) {
 
 renderTagFilters();
 renderCategoryFilters();
-populateNewTagSelect();
+populateNewCategorySelect();
 populateTagPicker();
 
 /**
@@ -390,6 +402,7 @@ function isE2ETestMode() {
 
 /**
  * Filters, sorts, groups, and re-renders the issue list.
+ * @returns {void}
  */
 function renderList() {
 	syncSidebar();
@@ -400,7 +413,6 @@ function renderList() {
 		items = items.filter((i) => issueMatchesTag(i, state.tag));
 	}
 	if (state.status !== 'all') {
-		// Each status filter maps to a single backend status value.
 		items = items.filter((i) => i.status === state.status);
 	}
 	if (state.category !== 'all') {
@@ -411,9 +423,11 @@ function renderList() {
 		items = items.filter((i) => buildIssueSearchText(i).includes(query));
 	}
 
+	const dirMult = state.sortDir === 'asc' ? -1 : 1;
+
 	if (state.sort === 'priority') {
 		items.sort((a, b) => {
-			const byPriority = PRI_ORDER[a.priority] - PRI_ORDER[b.priority];
+			const byPriority = (PRI_ORDER[a.priority] - PRI_ORDER[b.priority]) * dirMult;
 			if (byPriority !== 0) return byPriority;
 			const aTime = Date.parse(a.updated_at || a.created_at || 0);
 			const bTime = Date.parse(b.updated_at || b.created_at || 0);
@@ -423,7 +437,7 @@ function renderList() {
 		items.sort((a, b) => {
 			const aTime = Date.parse(a.updated_at || a.created_at || 0);
 			const bTime = Date.parse(b.updated_at || b.created_at || 0);
-			return bTime - aTime || b.id - a.id;
+			return (bTime - aTime) * dirMult || (b.id - a.id) * dirMult;
 		});
 	}
 
@@ -431,7 +445,6 @@ function renderList() {
 
 	let groups;
 	if (state.sort === 'priority') {
-		// Priority groups stay in product order even when some buckets are empty.
 		const buckets = { Critical: [], High: [], Medium: [], Low: [] };
 		items.forEach((i) => buckets[i.priority]?.push(i));
 		groups = [
@@ -440,8 +453,10 @@ function renderList() {
 			{ label: 'Medium', rows: buckets.Medium },
 			{ label: 'Low', rows: buckets.Low },
 		].filter((g) => g.rows.length);
+
+		if (state.sortDir === 'asc') groups.reverse();
 	} else {
-		groups = [{ label: 'Most recent', rows: items }];
+		groups = [{ label: state.sortDir === 'desc' ? 'Most recent' : 'Oldest', rows: items }];
 	}
 
 	listEl.innerHTML = groups
@@ -467,8 +482,8 @@ function renderList() {
 }
 
 /**
- * Creates team menu
  * Renders the team switcher from API-backed team membership.
+ * @returns {void}
  */
 function renderTeamMenu() {
 	const teamMenu = document.getElementById('team-menu');
@@ -476,15 +491,15 @@ function renderTeamMenu() {
 	const currentId = Number(new URLSearchParams(location.search).get('team_id'));
 
 	const itemsHtml = state.teams
-		.map((t) => {
-			const words = t.team_name.trim().split(' ');
-			const mark = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : t.team_name.substring(0, 2).toUpperCase();
+		.map((t, index) => {
+			const mark = getTeamMark(t.team_name);
 
 			const isActive = t.id === currentId ? 'active' : '';
+			const colorClass = `c${(index % 4) + 1}`;
 
 			return `
             <div class="item ${isActive}" data-id="${t.id}">
-                <span class="mark c1">${mark}</span>
+                <span class="mark ${colorClass}">${mark}</span>
                 ${t.team_name}
             </div>
         `;
@@ -525,11 +540,9 @@ function renderTeamMenu() {
 }
 
 /**
- * Renders the team members avatars in the sidebar based on real API data
- */
-/**
- * Renders the team members avatars in the sidebar based on real API data
+ * Renders the team members avatars in the sidebar based on real API data.
  * Falls back to username/email when profile names are not present.
+ * @returns {void}
  */
 function renderTeamMembers() {
 	const membersContainer = document.querySelector('.sidebar .members');
@@ -542,85 +555,16 @@ function renderTeamMembers() {
 
 	const membersHtml = state.teamMembers
 		.map((member) => {
-			let initials = '??';
-
-			// safe check since API was not updated during tests
-			// Older API fixtures may not have profile names yet.
-			if (member.first_name && member.last_name) {
-				initials = (member.first_name.charAt(0) + member.last_name.charAt(0)).toUpperCase();
-			} else {
-				const identifier = member.username || member.email || '??';
-				initials = identifier.substring(0, 2).toUpperCase();
-			}
-
-			const displayName = member.first_name && member.last_name ? `${member.first_name} ${member.last_name}` : member.username;
-
-			return `<div class="avatar" title="${displayName} (${member.role})">${initials}</div>`;
+			const displayName = getUserDisplayName(member);
+			return `<div class="avatar" title="${displayName} (${member.role})">${getUserInitials(member)}</div>`;
 		})
 		.join('');
 
 	membersContainer.innerHTML = membersHtml;
 }
 
-// === Date Formatting === //
-/**
- * @param {string | null | undefined} value - Raw timestamp from the API.
- * @returns {Date | null}
- */
-function parseIssueTimestamp(value) {
-	if (!value) return null;
-	const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
-	const date = new Date(normalized);
-	return Number.isNaN(date.getTime()) ? null : date;
-}
-
-/**
- * @param {string | null | undefined} value - Raw timestamp from the API.
- * @returns {string}
- */
-function formatIssueDate(value) {
-	const date = parseIssueTimestamp(value);
-	if (!date) return value || '—';
-
-	const now = new Date();
-	const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-	const dayDiff = Math.round((startOfToday - startOfDate) / 86400000);
-
-	if (dayDiff === 0) return 'Today';
-	if (dayDiff === 1) return 'Yesterday';
-
-	return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
-}
-
-/**
- * @param {string | null | undefined} value - Raw timestamp from the API.
- * @returns {string}
- */
-function formatIssueDateTime(value) {
-	const date = parseIssueTimestamp(value);
-	if (!date) return value || '';
-
-	return new Intl.DateTimeFormat(undefined, {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric',
-		hour: 'numeric',
-		minute: '2-digit',
-	}).format(date);
-}
-
 // === Issue detail display (view pane) === //
 // Summary, Hypothesis, and Steps come from LLM enrichment; Details is the user's create-form description.
-
-/**
- * Escape user/LLM text before inserting into detail pane HTML.
- * @param {string} text - Raw text to escape.
- * @returns {string}
- */
-function escapeHtml(text) {
-	return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 
 /**
  * Plain-text section body with fallback when LLM/user field is empty.
@@ -686,36 +630,23 @@ function formatStepsToReproduce(value) {
 }
 
 /**
- * Resolve the primary tag for an issue from tags or legacy category.
- * @param {object} issue - Issue record from the API.
- * @returns {string}
- */
-function getIssueTag(issue) {
-	const tag = (issue.tags || []).find((t) => TAGS.includes(t));
-	if (tag) return tag;
-	const cat = issue.category?.toLowerCase();
-	if (TAGS.includes(cat)) return cat;
-	return 'bug';
-}
-
-/**
  * Build HTML for a single issue row in the list.
  * @param {object} i - Issue record.
  * @returns {string} HTML string for the row.
  */
 function rowHtml(i) {
-    const isSel = state.selected === i.id;
-    const tagsAttr = (i.tags || []).join(',');
+	const isSel = state.selected === i.id;
+	const tagsAttr = (i.tags || []).join(',');
 
-    return `
+	return `
     <issue-row 
         data-id="${i.id}"
         class="${isSel ? 'selected' : ''}"
         issue-title="${escapeHtml(i.title)}"
         summary="${escapeHtml(i.summary || '')}"
         status="${i.status}"
-        updated-date="${formatIssueDate(i.updated_at)}"
-        updated-time="${formatIssueDateTime(i.updated_at)}"
+        updated-date="${formatRelativeDate(i.updated_at)}"
+        updated-time="${formatDateTime(i.updated_at)}"
         tags="${tagsAttr}"
     ></issue-row>`;
 }
@@ -723,10 +654,10 @@ function rowHtml(i) {
 // ============================================================
 // RENDER DETAIL
 // ============================================================
-const detailEl = document.getElementById('detail');
 
 /**
  * Renders the currently selected issue, including derived assignee display.
+ * @returns {void}
  */
 function renderDetail() {
 	const i = ISSUES.find((x) => x.id === state.selected);
@@ -745,12 +676,8 @@ function renderDetail() {
 	if (i.assigned_to && state.teamMembers) {
 		const m = state.teamMembers.find((member) => member.id === i.assigned_to);
 		if (m) {
-			const initials =
-				m.first_name && m.last_name
-					? (m.first_name[0] + m.last_name[0]).toUpperCase()
-					: (m.username || m.email || '??').substring(0, 2).toUpperCase();
-			const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username;
-			assigneeHtml = `<div class="avatar sm" title="${name}">${initials}</div>`;
+			const name = getUserDisplayName(m);
+			assigneeHtml = `<div class="avatar sm" title="${name}">${getUserInitials(m)}</div>`;
 		}
 	}
 
@@ -761,29 +688,29 @@ function renderDetail() {
 		detailEl.innerHTML = `
 			<div class="issue-details-header">
 				<button type="button" class="btn sm mobile-back-btn">← Back</button>
-				<h1 class="h-2 no-margin">${i.title}</h1>
+				<h1 class="no-margin">${i.title}</h1>
 				<button type="button" class="btn sm edit-issue-btn" title="Edit Issue">✎</button>
 			</div>
 			
 			<div class="details-meta-grid">
 				<div class="meta-col">
-					<span class="label-sm">STATUS</span>
+					<span class="label-sm">Status</span>
 					<span class="chip st-${statusKey} sm">${i.status}</span>
 				</div>
 				<div class="meta-col">
-					<span class="label-sm">PRIORITY</span>
+					<span class="label-sm">Priority</span>
 					<span class="chip sm">${i.priority}</span>
 				</div>
 				<div class="meta-col">
-					<span class="label-sm">CATEGORY</span>
+					<span class="label-sm">Category</span>
 					<span class="chip sm">${i.category || 'None'}</span>
 				</div>
 				<div class="meta-col">
-					<span class="label-sm">ASSIGNEE</span>
+					<span class="label-sm">Assignee</span>
 					${assigneeHtml}
 				</div>
 				<div class="meta-col meta-col-tags">
-					<span class="label-sm">LABELS</span>
+					<span class="label-sm">Labels</span>
 					<div class="tag-container">
 						${(i.tags || []).map((t) => `<span class="chip sm tag-${t}">${t}</span>`).join('')}
 					</div>
@@ -821,14 +748,14 @@ function renderDetail() {
 					</div>
 				</div>
 				<div class="edit-title-field">
-					<span class="label-sm">TITLE</span>
-					<input class="input h-2 edit-title-input" id="edit-title" value="${i.title}">
+					<span class="label-sm">Title</span>
+					<input class="input edit-title-input" id="edit-title" value="${i.title}">
 				</div>
 			</div>
 			
 			<div class="details-meta-grid is-editing">
 				<div class="meta-col">
-					<span class="label-sm">STATUS</span>
+					<span class="label-sm">Status</span>
 					<select class="input sm" id="edit-status">
 						<option ${i.status === 'Open' ? 'selected' : ''}>Open</option>
 						<option ${i.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
@@ -837,7 +764,7 @@ function renderDetail() {
 					</select>
 				</div>
 				<div class="meta-col">
-					<span class="label-sm">PRIORITY</span>
+					<span class="label-sm">Priority</span>
 					<select class="input sm" id="edit-priority">
 						<option ${i.priority === 'Low' ? 'selected' : ''}>Low</option>
 						<option ${i.priority === 'Medium' ? 'selected' : ''}>Medium</option>
@@ -846,20 +773,20 @@ function renderDetail() {
 					</select>
 				</div>
 				<div class="meta-col">
-					<span class="label-sm">CATEGORY</span>
+					<span class="label-sm">Category</span>
 					<select class="input sm" id="edit-category">
 						${CATEGORIES.map((c) => `<option value="${c}" ${i.category === c ? 'selected' : ''}>${c}</option>`).join('')}
 					</select>
 				</div>
 				<div class="meta-col">
-					<span class="label-sm">ASSIGNEE</span>
+					<span class="label-sm">Assignee</span>
 					<select class="input sm" id="edit-assignee">
 						<option value="">Unassigned</option>
-						${(state.teamMembers || []).map((m) => `<option value="${m.id}" ${i.assigned_to === m.id ? 'selected' : ''}>${m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username}</option>`).join('')}
+						${(state.teamMembers || []).map((m) => `<option value="${m.id}" ${i.assigned_to === m.id ? 'selected' : ''}>${getUserDisplayName(m)}</option>`).join('')}
 					</select>
 				</div>
 				<div class="meta-col meta-col-tags">
-					<span class="label-sm">TAGS</span>
+					<span class="label-sm">Tags</span>
 					<div class="edit-tags-wrap">
 						<div class="tag-picker edit-tag-picker" id="edit-tag-picker" role="listbox">
 							${buildEditTagPickerHtml(i)}
@@ -876,7 +803,7 @@ function renderDetail() {
 }
 
 // ============================================================
-// CONTROLS — search, sort, tag
+// CONTROLS - search, sort, tag
 // ============================================================
 const searchInput = document.getElementById('issue-search');
 const searchClearBtn = document.getElementById('issue-search-clear');
@@ -910,17 +837,24 @@ if (searchInput && searchClearBtn) {
 
 document.querySelectorAll('.sort-btn').forEach((b) => {
 	b.addEventListener('click', () => {
-		document.querySelectorAll('.sort-btn').forEach((x) => x.classList.remove('on'));
+		const newSort = b.dataset.sort;
+
+		if (state.sort === newSort) {
+			state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc';
+		} else {
+			state.sort = newSort;
+			state.sortDir = 'desc';
+		}
+
+		document.querySelectorAll('.sort-btn').forEach((x) => {
+			x.classList.remove('on');
+			const arrow = x.querySelector('.arrow');
+			if (arrow) arrow.remove();
+		});
+
 		b.classList.add('on');
-		state.sort = b.dataset.sort;
-		renderList();
-	});
-});
-document.querySelectorAll('.chip-btn').forEach((b) => {
-	b.addEventListener('click', () => {
-		document.querySelectorAll('.chip-btn').forEach((x) => x.classList.remove('on'));
-		b.classList.add('on');
-		state.tag = b.dataset.tag;
+		b.insertAdjacentHTML('beforeend', `<span class="arrow">${state.sortDir === 'desc' ? '↓' : '↑'}</span>`);
+
 		renderList();
 	});
 });
@@ -957,7 +891,10 @@ function isSidebarCollapsible() {
 	return window.matchMedia(`(width <= ${SIDEBAR_BP}px)`).matches;
 }
 
-/** Overlay drawer for filters sidebar on narrow viewports. */
+/**
+ * Overlay drawer for filters sidebar on narrow viewports.
+ * @returns {void}
+ */
 function syncSidebarLayout() {
 	if (!isSidebarCollapsible()) {
 		sidebarOpen = false;
@@ -975,6 +912,7 @@ function syncSidebarLayout() {
 
 /**
  * @param {boolean} open Whether the sidebar should open.
+ * @returns {void}
  */
 function setSidebarOpen(open) {
 	if (!isSidebarCollapsible()) return;
@@ -984,13 +922,17 @@ function setSidebarOpen(open) {
 }
 
 /**
- * for sidebar view
+ * Toggles the collapsible sidebar open or closed on narrow viewports.
+ * @returns {void}
  */
 function toggleSidebar() {
 	setSidebarOpen(!sidebarOpen);
 }
 
-/** Phone master-detail: full-screen detail when an issue is selected. */
+/**
+ * Phone master-detail: full-screen detail when an issue is selected.
+ * @returns {void}
+ */
 function syncMobileLayout() {
 	const showDetail = isMobileViewport() && state.detailOpen && state.selected !== null;
 	content.classList.toggle('mobile-detail-view', showDetail);
@@ -1001,6 +943,7 @@ function syncMobileLayout() {
 
 /**
  * Applies or clears the persisted list/detail column split.
+ * @returns {void}
  */
 function syncContentGrid() {
 	if (!state.detailOpen || isMobileViewport()) {
@@ -1017,7 +960,10 @@ function syncContentGrid() {
 	}
 }
 
-/** Move issue search between top bar (wide) and top of sidebar drawer (narrow). */
+/**
+ * Move issue search between top bar (wide) and top of sidebar drawer (narrow).
+ * @returns {void}
+ */
 function syncSearchPlacement() {
 	if (!searchWrap || !topbarSearchSlot || !sidebarSearchSlot) return;
 	const target = isMobileViewport() ? sidebarSearchSlot : topbarSearchSlot;
@@ -1027,7 +973,8 @@ function syncSearchPlacement() {
 }
 
 /**
- * for mobile view
+ * Reconciles mobile, sidebar, search, and content-grid layout for the current viewport.
+ * @returns {void}
  */
 function syncLayout() {
 	syncMobileLayout();
@@ -1085,6 +1032,7 @@ teamMenu.addEventListener('click', (e) => e.stopPropagation());
 // ============================================================
 /**
  * Collapses or restores the detail pane.
+ * @returns {void}
  */
 function toggleDetail() {
 	// On phone, Back returns to the issue list.
@@ -1108,10 +1056,10 @@ document.getElementById('toggle-detail').addEventListener('click', toggleDetail)
 // ============================================================
 // DELETE ISSUES
 // ============================================================
-const deleteBackdrop = document.getElementById('delete-backdrop');
 
 /**
- *
+ * Opens the delete confirmation modal and focuses the confirm button.
+ * @returns {void}
  */
 function openDeleteConfirm() {
 	deleteBackdrop?.classList.add('open');
@@ -1119,7 +1067,8 @@ function openDeleteConfirm() {
 }
 
 /**
- *
+ * Closes the delete confirmation modal.
+ * @returns {void}
  */
 function closeDeleteConfirm() {
 	deleteBackdrop?.classList.remove('open');
@@ -1128,6 +1077,7 @@ function closeDeleteConfirm() {
 /**
  * Handles the confirmation click to delete an issue.
  * Calls the API, updates local state, and refreshes the UI.
+ * @returns {Promise<void>}
  */
 async function handleDeleteConfirm() {
 	if (!state.selected) return;
@@ -1173,30 +1123,58 @@ if (deleteBackdrop) {
 // ============================================================
 const newBackdrop = document.getElementById('new-backdrop');
 const confirmNewBtn = document.getElementById('confirm-new');
+const newIssueBtn = document.getElementById('new-issue');
+
+/**
+ * Enables or disables tracker actions that require loaded team context.
+ * @param {boolean} ready Whether initTracker has finished successfully.
+ * @returns {void}
+ */
+function setTrackerReady(ready) {
+	trackerReady = ready;
+	if (newIssueBtn) newIssueBtn.disabled = !ready;
+	if (openInviteModalBtn) openInviteModalBtn.disabled = !ready;
+}
+
+setTrackerReady(false);
 let pendingFiles = [];
 
 /**
- * Opens the new issue modal and refreshes assignee options from team members.
+ * Refreshes the new-issue assignee dropdown from state.teamMembers.
+ * @returns {void}
  */
-function openNew() {
-	newBackdrop.classList.add('open');
-
+function populateNewAssigneeSelect() {
 	const assigneeSelect = document.getElementById('new-assignee');
-	if (assigneeSelect && state.teamMembers) {
-		const options = state.teamMembers
-			.map((m) => {
-				const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username;
-				return `<option value="${m.id}">${name}</option>`;
-			})
-			.join('');
-		assigneeSelect.innerHTML = `<option value="">Unassigned</option>${options}`;
+	if (!assigneeSelect) return;
+
+	const options = (state.teamMembers || []).map((m) => `<option value="${m.id}">${getUserDisplayName(m)}</option>`).join('');
+	assigneeSelect.innerHTML = `<option value="">Unassigned</option>${options}`;
+}
+
+/**
+ * Opens the new issue modal and refreshes assignee options from team members.
+ * @returns {Promise<void>}
+ */
+async function openNew() {
+	if (!trackerReady) return;
+
+	if (state.currentTeamId && state.teamMembers.length === 0) {
+		try {
+			state.teamMembers = await fetchTeamMembers(state.currentTeamId);
+			renderTeamMembers();
+		} catch {
+			state.teamMembers = [];
+		}
 	}
 
+	newBackdrop.classList.add('open');
+	populateNewAssigneeSelect();
 	setTimeout(() => document.getElementById('new-title').focus(), 30);
 }
 
 /**
  * Closes the new issue modal and discards unsent draft state.
+ * @returns {void}
  */
 function closeNew() {
 	newBackdrop.classList.remove('open');
@@ -1204,6 +1182,7 @@ function closeNew() {
 }
 /**
  * Clears fields that only exist in the client-side issue draft.
+ * @returns {void}
  */
 function resetForm() {
 	document.getElementById('new-title').value = '';
@@ -1212,13 +1191,15 @@ function resetForm() {
 	document.querySelectorAll('#tag-picker .tag-opt').forEach((btn) => btn.classList.remove('selected'));
 	pendingFiles = [];
 }
-document.getElementById('new-issue').addEventListener('click', openNew);
+
+newIssueBtn?.addEventListener('click', () => openNew());
 document.getElementById('cancel-new').addEventListener('click', closeNew);
 
 document.getElementById('tag-picker').addEventListener('click', (e) => {
 	const btn = e.target.closest('.tag-opt');
 	if (btn) btn.classList.toggle('selected');
 });
+
 newBackdrop.addEventListener('click', (e) => {
 	if (e.target === newBackdrop) closeNew();
 });
@@ -1275,6 +1256,7 @@ function addFiles(files) {
 
 /**
  * Re-renders attachment chips so each remove button matches pendingFiles.
+ * @returns {void}
  */
 function renderFiles() {
 	fileList.innerHTML = pendingFiles
@@ -1317,7 +1299,6 @@ confirmNewBtn.addEventListener('click', async () => {
 	const priority = document.getElementById('new-priority')?.value;
 	const category = document.getElementById('new-tag')?.value;
 	const assignee = document.getElementById('new-assignee')?.value;
-	const difficulty = document.getElementById('new-difficulty')?.value;
 	// Only forward tags that exist in TAGS so invalid values can't reach the backend.
 	const selectedTags = Array.from(document.querySelectorAll('#tag-picker .tag-opt.selected'))
 		.map((btn) => btn.dataset.tag)
@@ -1330,7 +1311,6 @@ confirmNewBtn.addEventListener('click', async () => {
 		formData.append('category', category);
 	}
 	if (assignee) formData.append('assigned_to', assignee);
-	if (difficulty) formData.append('difficulty', difficulty);
 	if (selectedTags) formData.append('tags', selectedTags);
 
 	pendingFiles.forEach((f) => formData.append('attachments', f));
@@ -1377,21 +1357,8 @@ confirmNewBtn.addEventListener('click', async () => {
 });
 
 // ============================================================
-// TOAST & DOWNLOADS
+// DOWNLOADS
 // ============================================================
-const toast = document.getElementById('toast');
-/**
- * Show a short-lived toast notification.
- * @param {string} msg - Message to display.
- * @returns {void}
- */
-function showToast(msg) {
-	toast.textContent = msg;
-	toast.classList.add('show');
-	clearTimeout(showToast._t);
-	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
-}
-
 document.getElementById('download-skills').addEventListener('click', async () => {
 	try {
 		const response = await fetch(CLI_SKILL_MD_URL);
@@ -1426,7 +1393,7 @@ document.addEventListener('keydown', (e) => {
 		if (inviteBackdrop.classList.contains('open')) closeInvite();
 		teamMenu.classList.remove('open');
 	}
-	if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
+	if (e.key === 'n' && !e.metaKey && !e.ctrlKey && trackerReady) {
 		e.preventDefault();
 		openNew();
 	}
@@ -1532,26 +1499,6 @@ detailEl.addEventListener('click', async (e) => {
 		}
 		return;
 	}
-
-	if (e.target.matches('.mark-done-btn')) {
-		const btn = e.target;
-		btn.textContent = 'Saving...';
-		btn.disabled = true;
-		try {
-			await updateIssue(state.selected, { status: 'Resolved' });
-
-			const index = ISSUES.findIndex((i) => i.id === state.selected);
-			if (index !== -1) ISSUES[index] = { ...ISSUES[index], status: 'Resolved' };
-
-			renderList();
-			renderDetail();
-			showToast('Issue marked as resolved');
-		} catch {
-			btn.textContent = 'Mark done';
-			btn.disabled = false;
-			showToast('Failed to update status');
-		}
-	}
 });
 
 // ============================================================
@@ -1562,6 +1509,7 @@ detailEl.addEventListener('click', async (e) => {
  * Replaces the content pane with a 404-style error when the requested team
  * does not exist or the user no longer has access to it.
  * @param {number} teamId requested team id from the URL.
+ * @returns {void}
  */
 function renderTeamNotFound(teamId) {
 	const contentEl = document.getElementById('content');
@@ -1594,6 +1542,7 @@ function renderTeamNotFound(teamId) {
 
 /**
  * Loads team context, then fetches issues and members for the active team.
+ * @returns {Promise<void>}
  */
 async function initTracker() {
 	const qs = new URLSearchParams(location.search);
@@ -1623,9 +1572,7 @@ async function initTracker() {
 		if (currentTeam) {
 			document.getElementById('team-label').textContent = currentTeam.team_name;
 			const markEl = document.querySelector('.team-switch > .mark');
-			const words = currentTeam.team_name.trim().split(' ');
-			markEl.textContent =
-				words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : currentTeam.team_name.substring(0, 2).toUpperCase();
+			markEl.textContent = getTeamMark(currentTeam.team_name);
 		}
 
 		state.currentTeamId = currentTeam ? currentTeam.id : null;
@@ -1650,6 +1597,7 @@ async function initTracker() {
 		}
 
 		renderTeamMembers();
+		populateNewAssigneeSelect();
 		renderList();
 		renderDetail();
 
@@ -1658,9 +1606,14 @@ async function initTracker() {
 			content.classList.add('collapsed-detail');
 		}
 		syncLayout();
+
+		setTrackerReady(true);
 	} catch {
 		showToast('Failed to load workspace data.');
 	}
 }
 
-initTracker();
+(async () => {
+	if (!(await requireAuth())) return;
+	await initTracker();
+})();
