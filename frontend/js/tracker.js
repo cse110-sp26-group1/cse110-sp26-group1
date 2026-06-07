@@ -1,6 +1,6 @@
-import { PRI_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
+import { CLI_SKILL_MD_URL, PRI_ORDER, STATUS_NAME, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
 
-import { fetchIssues, createIssue, updateIssue } from './api.js';
+import { fetchIssues, createIssue, updateIssue, deleteIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers, leaveTeam } from './api.js';
 import { createIssueNotification, renderNotificationBadge } from './notifications.js';
 
@@ -268,6 +268,29 @@ function issueMatchesCategory(issue, category) {
 }
 
 /**
+ * Collects the issue fields users expect the tracker search to match.
+ * @param {object} issue Issue data from the API.
+ * @returns {string}
+ */
+function buildIssueSearchText(issue) {
+	return [
+		issue.title,
+		issue.description,
+		issue.summary,
+		issue.hypothesis,
+		issue.steps_to_reproduce,
+		issue.status,
+		issue.priority,
+		issue.category,
+		...(issue.tags || []),
+		...(issue.affected_files || []),
+	]
+		.filter(Boolean)
+		.join(' ')
+		.toLowerCase();
+}
+
+/**
  * Populates the new-issue category dropdown from CATEGORIES.
  */
 function populateNewTagSelect() {
@@ -285,6 +308,17 @@ function populateTagPicker() {
 	if (!picker) return;
 
 	picker.innerHTML = TAGS.map((t) => `<button type="button" class="tag-opt tag-${t}" data-tag="${t}">${t}</button>`).join('');
+}
+
+/**
+ * @param {object} issue - Issue record from the API.
+ * @returns {string}
+ */
+function buildEditTagPickerHtml(issue) {
+	const selected = issue.tags || [];
+	return TAGS.map(
+		(t) => `<button type="button" class="tag-opt tag-${t}${selected.includes(t) ? ' selected' : ''}" data-tag="${t}">${t}</button>`,
+	).join('');
 }
 
 /**
@@ -346,6 +380,15 @@ populateNewTagSelect();
 populateTagPicker();
 
 /**
+ * Checks whether backend issue creation should request predictable test-mode
+ * enrichment instead of live LLM processing.
+ * @returns {boolean} True when E2E test mode is enabled for this browser session.
+ */
+function isE2ETestMode() {
+	return globalThis.__ALLEGRO_E2E_TEST_MODE__ === true || localStorage.getItem('allegro_e2e_test_mode') === '1';
+}
+
+/**
  * Filters, sorts, groups, and re-renders the issue list.
  */
 function renderList() {
@@ -362,6 +405,10 @@ function renderList() {
 	}
 	if (state.category !== 'all') {
 		items = items.filter((i) => issueMatchesCategory(i, state.category));
+	}
+	if (state.query) {
+		const query = state.query.toLowerCase();
+		items = items.filter((i) => buildIssueSearchText(i).includes(query));
 	}
 
 	if (state.sort === 'priority') {
@@ -578,10 +625,10 @@ function escapeHtml(text) {
 /**
  * Plain-text section body with fallback when LLM/user field is empty.
  * @param {string | null | undefined} value - Field value from the issue record.
- * @param {string} [fallback='Not available yet'] - Text shown when value is empty.
+ * @param {string} [fallback='Not enough information available'] - Text shown when value is empty.
  * @returns {string}
  */
-function formatIssueText(value, fallback = 'Not available yet') {
+function formatIssueText(value, fallback = 'Not enough information available') {
 	if (value === null || value === undefined) return fallback;
 	const text = (typeof value === 'string' ? value : String(value)).trim();
 	if (!text || text.toLowerCase() === 'null') return fallback;
@@ -608,11 +655,11 @@ function applyEnrichedFields(issue, enriched) {
  * @param {string | string[] | null | undefined} value - Steps field from the issue record.
  * @returns {string}
  */
-const STEPS_UNAVAILABLE_HTML = '<p class="issue-section-body">Not available yet</p>';
+const STEPS_UNAVAILABLE_HTML = '<p class="issue-section-body">Not enough information available</p>';
 
 /**
- *
- * @param value
+ * @param {string | string[] | null | undefined} value Steps field.
+ * @returns {string}
  */
 function formatStepsToReproduce(value) {
 	if (value === null || value === undefined || value === '') return STEPS_UNAVAILABLE_HTML;
@@ -702,6 +749,19 @@ function renderDetail() {
 
 	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
 
+	let assigneeHtml = '<div class="avatar sm" title="Unassigned">--</div>';
+	if (i.assigned_to && state.teamMembers) {
+		const m = state.teamMembers.find((member) => member.id === i.assigned_to);
+		if (m) {
+			const initials =
+				m.first_name && m.last_name
+					? (m.first_name[0] + m.last_name[0]).toUpperCase()
+					: (m.username || m.email || '??').substring(0, 2).toUpperCase();
+			const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username;
+			assigneeHtml = `<div class="avatar sm" title="${name}">${initials}</div>`;
+		}
+	}
+
 	// Implementation of View vs Edit Mode
 	if (!state.isEditing) {
 		// --- VIEW MODE ---
@@ -720,51 +780,61 @@ function renderDetail() {
 				</div>
 				<div class="meta-col">
 					<span class="label-sm">PRIORITY</span>
-					<span class="chip sm"><span class="dot" style="background:var(--pri-${i.priority.toLowerCase()})"></span>${i.priority}</span>
+					<span class="chip sm">${i.priority}</span>
 				</div>
 				<div class="meta-col">
+					<span class="label-sm">CATEGORY</span>
+					<span class="chip sm">${i.category || 'None'}</span>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">ASSIGNEE</span>
+					${assigneeHtml}
+				</div>
+				<div class="meta-col meta-col-tags">
 					<span class="label-sm">LABELS</span>
 					<div class="tag-container">
 						${(i.tags || []).map((t) => `<span class="chip sm tag-${t}">${t}</span>`).join('')}
 					</div>
 				</div>
-				<div class="meta-col">
-					<span class="label-sm">ASSIGNEE</span>
-					<div class="avatar sm">AT</div>
-				</div>
 			</div>
 
 			<div class="detail-body">
 				<div class="ai-content-block">
-					<span class="label-sm">Summary</span>
+					<span class="label-sm"><strong>Summary</strong></span>
 					<p class="issue-section-body">${formatIssueText(i.summary)}</p>
 				</div>
 				<div class="ai-content-block" style="margin-top:1.714rem">
-					<span class="label-sm">Steps to reproduce</span>
+					<span class="label-sm">Steps to Reproduce</span>
 					${formatStepsToReproduce(i.steps_to_reproduce)}
 				</div>
 				<div class="ai-content-block" style="margin-top:1.714rem">
-					<span class="label-sm">Hypothesis</span>
+					<span class="label-sm"><strong>Hypothesis</strong></span>
 					<p class="issue-section-body">${formatIssueText(i.hypothesis)}</p>
 				</div>
 				<div class="ai-content-block" style="margin-top:1.714rem">
-					<span class="label-sm">Details</span>
+					<span class="label-sm">Original User Input</span>
 					<p class="issue-section-body">${formatIssueText(i.description, 'No description provided.')}</p>
 				</div>
 			</div>`;
 	} else {
 		// --- EDIT MODE — human fields only; LLM sections stay read-only in view mode ---
 		detailEl.innerHTML = `
-			<div class="issue-details-header">
-				<button type="button" class="btn sm mobile-back-btn">← Back</button>
-				<input class="input h-2" id="edit-title" value="${i.title}" style="width: 70%">
-				<div class="actions">
-					<button type="button" class="btn sm" id="cancel-edit">Cancel</button>
-					<button type="button" class="btn sm primary" id="save-edit">Save</button>
+			<div class="issue-details-header is-editing">
+				<div class="issue-details-toolbar">
+					<button type="button" class="btn sm mobile-back-btn">← Back</button>
+					<div class="actions">
+						<button type="button" class="btn sm delete-issue-btn" title="Delete issue" aria-label="Delete issue">Delete</button>
+						<button type="button" class="btn sm" id="cancel-edit">Cancel</button>
+						<button type="button" class="btn sm primary" id="save-edit">Save</button>
+					</div>
+				</div>
+				<div class="edit-title-field">
+					<span class="label-sm">TITLE</span>
+					<input class="input h-2 edit-title-input" id="edit-title" value="${i.title}">
 				</div>
 			</div>
 			
-			<div class="details-meta-grid">
+			<div class="details-meta-grid is-editing">
 				<div class="meta-col">
 					<span class="label-sm">STATUS</span>
 					<select class="input sm" id="edit-status">
@@ -777,17 +847,32 @@ function renderDetail() {
 				<div class="meta-col">
 					<span class="label-sm">PRIORITY</span>
 					<select class="input sm" id="edit-priority">
-						<option ${i.priority === 'Critical' ? 'selected' : ''}>Critical</option>
-						<option ${i.priority === 'High' ? 'selected' : ''}>High</option>
-						<option ${i.priority === 'Medium' ? 'selected' : ''}>Medium</option>
 						<option ${i.priority === 'Low' ? 'selected' : ''}>Low</option>
+						<option ${i.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+						<option ${i.priority === 'High' ? 'selected' : ''}>High</option>
+						<option ${i.priority === 'Critical' ? 'selected' : ''}>Critical</option>
 					</select>
 				</div>
 				<div class="meta-col">
-					<span class="label-sm">TAG</span>
-					<select class="input sm" id="edit-tag">
-						${TAGS.map((t) => `<option value="${t}" ${getIssueTag(i) === t ? 'selected' : ''}>${t}</option>`).join('')}
+					<span class="label-sm">CATEGORY</span>
+					<select class="input sm" id="edit-category">
+						${CATEGORIES.map((c) => `<option value="${c}" ${i.category === c ? 'selected' : ''}>${c}</option>`).join('')}
 					</select>
+				</div>
+				<div class="meta-col">
+					<span class="label-sm">ASSIGNEE</span>
+					<select class="input sm" id="edit-assignee">
+						<option value="">Unassigned</option>
+						${(state.teamMembers || []).map((m) => `<option value="${m.id}" ${i.assigned_to === m.id ? 'selected' : ''}>${m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username}</option>`).join('')}
+					</select>
+				</div>
+				<div class="meta-col meta-col-tags">
+					<span class="label-sm">TAGS</span>
+					<div class="edit-tags-wrap">
+						<div class="tag-picker edit-tag-picker" id="edit-tag-picker" role="listbox">
+							${buildEditTagPickerHtml(i)}
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -867,14 +952,14 @@ let dragging = false;
 let sidebarOpen = false;
 
 /**
- *
+ * @returns {boolean}
  */
 function isMobileViewport() {
 	return window.matchMedia(`(width <= ${MOBILE_BP}px)`).matches;
 }
 
 /**
- *
+ * @returns {boolean}
  */
 function isSidebarCollapsible() {
 	return window.matchMedia(`(width <= ${SIDEBAR_BP}px)`).matches;
@@ -897,8 +982,7 @@ function syncSidebarLayout() {
 }
 
 /**
- *
- * @param open
+ * @param {boolean} open Whether the sidebar should open.
  */
 function setSidebarOpen(open) {
 	if (!isSidebarCollapsible()) return;
@@ -1028,6 +1112,69 @@ function toggleDetail() {
 	syncMobileLayout();
 }
 document.getElementById('toggle-detail').addEventListener('click', toggleDetail);
+
+// ============================================================
+// DELETE ISSUES
+// ============================================================
+const deleteBackdrop = document.getElementById('delete-backdrop');
+
+/**
+ *
+ */
+function openDeleteConfirm() {
+	deleteBackdrop?.classList.add('open');
+	setTimeout(() => document.getElementById('confirm-delete')?.focus(), 30);
+}
+
+/**
+ *
+ */
+function closeDeleteConfirm() {
+	deleteBackdrop?.classList.remove('open');
+}
+
+/**
+ * Handles the confirmation click to delete an issue.
+ * Calls the API, updates local state, and refreshes the UI.
+ */
+async function handleDeleteConfirm() {
+	if (!state.selected) return;
+
+	const confirmDeleteBtn = document.getElementById('confirm-delete');
+	const originalText = confirmDeleteBtn.textContent;
+
+	confirmDeleteBtn.textContent = 'Deleting...';
+	confirmDeleteBtn.disabled = true;
+
+	try {
+		await deleteIssue(state.selected);
+
+		const idx = ISSUES.findIndex((issue) => issue.id === state.selected);
+		ISSUES = ISSUES.filter((issue) => issue.id !== state.selected);
+
+		state.selected = ISSUES[idx]?.id ?? ISSUES[idx - 1]?.id ?? null;
+		state.isEditing = false;
+
+		renderList();
+		renderDetail();
+		showToast('Issue deleted');
+		closeDeleteConfirm();
+	} catch (err) {
+		showToast(err.message || 'Failed to delete issue.');
+	} finally {
+		confirmDeleteBtn.textContent = originalText;
+		confirmDeleteBtn.disabled = false;
+	}
+}
+
+if (deleteBackdrop) {
+	document.getElementById('cancel-delete')?.addEventListener('click', closeDeleteConfirm);
+	document.getElementById('confirm-delete')?.addEventListener('click', handleDeleteConfirm);
+
+	deleteBackdrop.addEventListener('click', (e) => {
+		if (e.target === deleteBackdrop) closeDeleteConfirm();
+	});
+}
 
 // ============================================================
 // NEW ISSUE MODAL
@@ -1203,7 +1350,7 @@ confirmNewBtn.addEventListener('click', async () => {
 	try {
 		showToast('Creating and analyzing issue...');
 
-		const response = await createIssue(formData);
+		const response = await createIssue(formData, isE2ETestMode());
 
 		ISSUES = await fetchIssues(state.currentTeamId);
 
@@ -1257,18 +1404,24 @@ function showToast(msg) {
 	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
-document.getElementById('download-skills').addEventListener('click', () => {
-	const blob = new Blob([SKILLS_MD], { type: 'text/markdown' });
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = 'skills.md';
-	document.body.appendChild(a);
-	a.click();
-	a.remove();
-	// Object URLs hold browser resources until explicitly released.
-	URL.revokeObjectURL(url);
-	showToast('skills.md downloaded');
+document.getElementById('download-skills').addEventListener('click', async () => {
+	try {
+		const response = await fetch(CLI_SKILL_MD_URL);
+		if (!response.ok) throw new Error('Failed to fetch cli/SKILL.md');
+
+		const blob = await response.blob();
+		const url = URL.createObjectURL(blob);
+		const downloadLink = document.createElement('a');
+		downloadLink.href = url;
+		downloadLink.download = 'SKILL.md';
+		document.body.appendChild(downloadLink);
+		downloadLink.click();
+		downloadLink.remove();
+		URL.revokeObjectURL(url);
+		showToast('cli/SKILL.md downloaded');
+	} catch {
+		showToast('Could not download cli/SKILL.md');
+	}
 });
 
 // ============================================================
@@ -1277,6 +1430,10 @@ document.getElementById('download-skills').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
 	if (e.target.matches('input, textarea')) return;
 	if (e.key === 'Escape') {
+		if (deleteBackdrop?.classList.contains('open')) {
+			closeDeleteConfirm();
+			return;
+		}
 		if (newBackdrop.classList.contains('open')) closeNew();
 		if (inviteBackdrop.classList.contains('open')) closeInvite();
 		teamMenu.classList.remove('open');
@@ -1309,10 +1466,22 @@ detailEl.addEventListener('click', async (e) => {
 		return;
 	}
 
+	const editTagOpt = e.target.closest('.edit-tag-picker .tag-opt');
+	if (editTagOpt) {
+		editTagOpt.classList.toggle('selected');
+		return;
+	}
+
 	const cancelBtn = e.target.closest('#cancel-edit');
 	if (cancelBtn) {
 		state.isEditing = false;
 		renderDetail();
+		return;
+	}
+
+	const deleteBtn = e.target.closest('.delete-issue-btn');
+	if (deleteBtn) {
+		openDeleteConfirm();
 		return;
 	}
 
@@ -1324,7 +1493,13 @@ detailEl.addEventListener('click', async (e) => {
 		const title = document.getElementById('edit-title')?.value.trim();
 		const status = document.getElementById('edit-status')?.value;
 		const priority = document.getElementById('edit-priority')?.value;
-		const tag = document.getElementById('edit-tag')?.value;
+		const category = document.getElementById('edit-category')?.value;
+
+		const tags = Array.from(document.querySelectorAll('#edit-tag-picker .tag-opt.selected'))
+			.map((btn) => btn.dataset.tag)
+			.filter((t) => TAGS.includes(t));
+
+		const assignee = document.getElementById('edit-assignee')?.value;
 		const description = document.getElementById('edit-desc')?.value.trim();
 
 		if (!title || !description) {
@@ -1333,10 +1508,17 @@ detailEl.addEventListener('click', async (e) => {
 		}
 
 		const updates = { title, status, priority, description };
-		// Only include the tag when it is a known value from TAGS.
-		if (tag && TAGS.includes(tag)) {
-			updates.tags = [tag];
-			updates.category = TAG_MAP[tag];
+
+		if (category && CATEGORIES.includes(category)) {
+			updates.category = category;
+		}
+
+		if (document.getElementById('edit-tag-picker')) {
+			updates.tags = tags;
+		}
+
+		if (assignee !== undefined) {
+			updates.assigned_to = assignee ? Number(assignee) : null;
 		}
 
 		saveBtn.textContent = 'Saving...';

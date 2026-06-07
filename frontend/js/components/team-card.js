@@ -35,7 +35,7 @@ class TeamCard extends HTMLElement {
 	 * @returns {string[]}
 	 */
 	static get observedAttributes() {
-		return ['team-id', 'name', 'mark', 'color', 'role', 'bio', 'user-initials'];
+		return ['team-id', 'name', 'mark', 'color', 'role', 'bio', 'members'];
 	}
 
 	#rendered = false;
@@ -66,14 +66,15 @@ class TeamCard extends HTMLElement {
 		const color = this.getAttribute('color') ?? '0';
 		const role = this.getAttribute('role') ?? 'Member';
 		const bio = this.getAttribute('bio') ?? '';
-		const userInitials = this.getAttribute('user-initials') ?? getUserInitials();
 
 		const link = this.querySelector('a.team');
 		const teamMark = this.querySelector('.team-mark');
 		const title = this.querySelector('h2');
 		const subtitleEl = this.querySelector('.slug');
 		const bioEl = this.querySelector('.team-bio');
-		const avatarEl = this.querySelector('.avatar');
+
+		const oldAvatarEl = this.querySelector('.avatar');
+		if (oldAvatarEl) oldAvatarEl.remove();
 
 		if (link) link.href = `tracker.html?team_id=${teamId}`;
 
@@ -87,8 +88,6 @@ class TeamCard extends HTMLElement {
 
 		if (subtitleEl) subtitleEl.textContent = role === 'admin' ? 'Workspace Admin' : 'Workspace Member';
 
-		if (avatarEl) avatarEl.textContent = userInitials;
-
 		if (bioEl) {
 			const trimmedBio = bio.trim();
 			if (trimmedBio) {
@@ -97,6 +96,39 @@ class TeamCard extends HTMLElement {
 			} else {
 				bioEl.textContent = 'No bio yet.';
 				bioEl.classList.add('empty');
+			}
+		}
+
+		const membersAttr = this.getAttribute('members');
+		if (membersAttr) {
+			try {
+				const members = JSON.parse(membersAttr);
+
+				const membersHtml = members
+					.map((m, index) => {
+						const initials =
+							m.first_name && m.last_name
+								? (m.first_name[0] + m.last_name[0]).toUpperCase()
+								: (m.username || m.email || '??').substring(0, 2).toUpperCase();
+						const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username;
+
+						return `<div class="avatar sm" title="${name}">${initials}</div>`;
+					})
+					.join('');
+
+				let membersContainer = this.querySelector('.member-stack');
+
+				if (!membersContainer) {
+					membersContainer = document.createElement('div');
+					membersContainer.className = 'member-stack';
+					membersContainer.style.marginTop = '1rem';
+
+					if (link) link.appendChild(membersContainer);
+				}
+
+				membersContainer.innerHTML = membersHtml;
+			} catch (err) {
+				console.error('Failed to parse team members for card', err);
 			}
 		}
 	}

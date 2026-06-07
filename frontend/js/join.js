@@ -1,4 +1,5 @@
 import { requireAuth, fetchInvites, acceptInvite, rejectInvite, fetchTeamMembers } from './api.js';
+import { parseTimestamp, formatInviteDate } from './helpers.js';
 
 requireAuth();
 
@@ -31,8 +32,7 @@ const retryBtn = document.getElementById('retry-btn');
 let currentInvite = null;
 
 /**
- *
- * @param msg
+ * @param {string} msg Message to show.
  */
 function showToast(msg) {
 	toast.textContent = msg;
@@ -44,8 +44,8 @@ function showToast(msg) {
 // Color variants cycle for team marks (matches teams.css / tracker.css)
 const COLOR_CLASSES = ['c1', 'c2', 'c3', 'c4'];
 /**
- *
- * @param teamId
+ * @param {string|number} teamId Team id.
+ * @returns {string}
  */
 function markColor(teamId) {
 	return COLOR_CLASSES[(Number(teamId) - 1) % COLOR_CLASSES.length];
@@ -66,9 +66,10 @@ function showPreview(inv, members) {
 	previewMarkEl.className = `team-mark ${markColor(inv.team_id)}`;
 
 	previewNameEl.textContent = teamName;
+
 	const inviter = String(inv.inviter_username ?? '');
-	const sent = new Date(inv.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-	previewMetaEl.textContent = inviter ? `Invited by ${inviter} · ${sent}` : sent;
+	const sent = formatInviteDate(inv.created_at);
+	previewMetaEl.textContent = inviter ? `Invited by ${inviter} · ${sent}` : `Invited ${sent}`;
 
 	// Member avatar stack (up to 6)
 	const visible = members.slice(0, 6);
@@ -113,8 +114,8 @@ previewJoinBtn?.addEventListener('click', async () => {
 
 /**
  * Searches the given invite list for one matching teamId, then shows preview or invalid state.
- * @param {string|number} teamId
- * @param {Array} invites
+ * @param {string|number} teamId Team id.
+ * @param {Array} invites Invite list.
  */
 async function resolveTeamId(teamId, invites) {
 	const inv = invites.find((i) => String(i.team_id) === String(teamId));
@@ -134,7 +135,7 @@ async function resolveTeamId(teamId, invites) {
 
 /**
  * Renders the code-entry view with the full list of pending invites below.
- * @param {Array} invites
+ * @param {Array} invites Invite list.
  */
 function showCodeView(invites) {
 	loadingEl.hidden = true;
@@ -152,7 +153,7 @@ function showCodeView(invites) {
 
 /**
  * Builds the invite row elements and wires accept/decline buttons.
- * @param {Array} invites
+ * @param {Array} invites Invite list.
  */
 function renderInviteList(invites) {
 	const els = invites.map((inv) => {
@@ -176,7 +177,7 @@ function renderInviteList(invites) {
 		summary.append(nameEl, ` · invited by ${String(inv.inviter_username ?? '')}`);
 
 		const sentEl = document.createElement('p');
-		sentEl.textContent = `Sent ${new Date(inv.created_at).toLocaleDateString()}`;
+		sentEl.textContent = `Sent ${formatInviteDate(inv.created_at)}`;
 
 		details.append(summary, sentEl);
 		info.append(markEl, details);
@@ -205,7 +206,7 @@ function renderInviteList(invites) {
 
 /**
  * Wires accept/decline click handlers on the rendered invite rows.
- * @param {Array} invites
+ * @param {Array} invites Invite list.
  */
 function wireButtons(invites) {
 	listEl.querySelectorAll('.accept-btn').forEach((btn) => {

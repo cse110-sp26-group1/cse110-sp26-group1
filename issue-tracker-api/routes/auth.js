@@ -72,7 +72,16 @@ export async function handleAuth(request, env) {
 
 		// if a match was found, reject to avoid duplicate accounts.
 		if (existing) {
-			return Response.json({ error: 'Email or username is already in use' }, { status: 409 });
+			const emailTaken = existing.email === email;
+			const usernameTaken = existing.username === username;
+
+			if (emailTaken && usernameTaken) {
+				return Response.json({ error: 'Both this email and username are already in use' }, { status: 409 });
+			} else if (emailTaken) {
+				return Response.json({ error: 'This email is already registered to another account' }, { status: 409 });
+			} else {
+				return Response.json({ error: 'This username is already taken' }, { status: 409 });
+			}
 		}
 
 		// hash the password before storing, never store plaintext.

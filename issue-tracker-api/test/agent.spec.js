@@ -257,7 +257,7 @@ describe('Agent Endpoint Testing Suite', () => {
 						priority: 'High',
 						category: 'Bug',
 						difficulty: 'hard',
-						tags: ['auth', 'critical'],
+						tags: ['authentication', 'security'],
 						entry_point: 'src/auth.js',
 						error_type: 'TypeError',
 						error_message: 'Cannot read property of undefined',
