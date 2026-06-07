@@ -9,7 +9,7 @@ export const STATUS_NAME = {
 	Closed: 'Closed',
 };
 
-export const CLI_SKILL_MD_URL = 'https://raw.githubusercontent.com/cse110-sp26-group1/cse110-sp26-group1/main/cli/SKILL.md';
+export const CLI_SKILL_MD_URL = 'https://raw.githubusercontent.com/cse110-sp26-group1/Allegro-CLT/main/cli/SKILL.md';
 
 // Standard list of tags
 export const TAGS = [
