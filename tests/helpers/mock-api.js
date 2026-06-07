@@ -80,7 +80,7 @@ export function createState() {
 }
 
 /**
- * @param {MockState} s
+ * @param {MockState} s State.
  * @returns {number}
  */
 function nextId(s) {
@@ -91,15 +91,15 @@ function nextId(s) {
 /**
  * Adds a user, team, membership, optional issues + invites to the mock state in one call.
  * Returns helpful ids for chaining in the test setup.
- * @param {MockState} state
- * @param {object} opts
- * @param {string} [opts.token='test-token']
- * @param {Partial<MockUser>} [opts.user]
- * @param {Partial<MockTeam>} [opts.team]
- * @param {string} [opts.role='admin']
- * @param {MockIssue[]} [opts.issues]
- * @param {MockInvite[]} [opts.invites]
- * @returns {{ token: string, user: MockUser, team: MockTeam }}
+ * @param {MockState} state Mock state.
+ * @param {object} opts Options.
+ * @param {string} [opts.token='test-token'] Token.
+ * @param {Partial<MockUser>} [opts.user] User overrides.
+ * @param {Partial<MockTeam>} [opts.team] Team overrides.
+ * @param {string} [opts.role='admin'] Team role.
+ * @param {MockIssue[]} [opts.issues] Issues to seed.
+ * @param {MockInvite[]} [opts.invites] Invites to seed.
+ * @returns {{ token: string, user: MockUser, team: MockTeam }} Session data.
  */
 export function seed(state, opts = {}) {
 	const token = opts.token ?? 'test-token';
@@ -161,8 +161,8 @@ export function seed(state, opts = {}) {
 /**
  * Inject the auth token + user profile into localStorage before any module script
  * runs. Required because login.js / requireAuth gate on `allegro_token` immediately.
- * @param {import('@playwright/test').Page} page
- * @param {{ token: string, user: MockUser }} session
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {{ token: string, user: MockUser }} session Session data.
  */
 export async function setAuthStorage(page, session) {
 	// Init scripts run on EVERY navigation. If we unconditionally write the auth
@@ -199,9 +199,10 @@ export async function setAuthStorage(page, session) {
 }
 
 /**
- * @param {import('@playwright/test').Route} route
- * @param {number} status
- * @param {object} body
+ * @param {import('@playwright/test').Route} route Route.
+ * @param {number} status Status code.
+ * @param {object} body Response body.
+ * @returns {Promise<void>}
  */
 function json(route, status, body) {
 	return route.fulfill({
@@ -215,8 +216,8 @@ function json(route, status, body) {
  * Wires up a Playwright route handler that emulates the Cloudflare Worker
  * against the supplied in-memory state. Tests can mutate `state` between
  * requests to control behaviour.
- * @param {import('@playwright/test').Page} page
- * @param {MockState} state
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {MockState} state Mock state.
  */
 export async function installApiMocks(page, state) {
 	await page.route(API_GLOB, async (route) => {
@@ -565,8 +566,8 @@ export async function installApiMocks(page, state) {
 /**
  * Convenience wrapper that creates fresh state, seeds it with options, mocks
  * the API, and (when seed-supplied) injects auth into localStorage.
- * @param {import('@playwright/test').Page} page
- * @param {object} [opts] - Forwarded to seed(). Pass `noAuth: true` to skip seeding entirely.
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {object} [opts] Forwarded to seed().
  * @returns {Promise<{ state: MockState, session: { token: string, user: MockUser, team: MockTeam } | null }>}
  */
 export async function setupApp(page, opts = {}) {
