@@ -1419,224 +1419,43 @@ body {
 	padding-left: 1.25rem;
 }
 
-/* ============ NOTIFICATIONS ============ */
-
-.notif-wrap {
-	position: relative;
+/* Restricts the width of smaller modals like Delete or Invite */
+.modal-small {
+	max-width: 28.571rem;
 }
 
-.notif-btn {
-	position: relative;
-}
-
-.notif-btn.active {
-	outline: 0.143rem solid var(--accent);
-	outline-offset: 0.143rem;
-	border-radius: 0.286rem;
-}
-
-.notif-badge {
-	position: absolute;
-	top: -0.286rem;
-	right: -0.286rem;
-	background: var(--pri-urgent, oklch(55% 0.18 25deg));
-	color: #fff;
-	font-size: 0.643rem;
-	font-weight: 600;
-	border-radius: 71.357rem;
-	padding: 0 0.286rem;
-	min-width: 1rem;
-	height: 1rem;
-	line-height: 1rem;
-	text-align: center;
-	border: 0.107rem solid var(--surface);
-	pointer-events: none;
-}
-
-.notif-dropdown {
-	position: absolute;
-	top: calc(100% + 0.429rem);
-	right: 0;
-	width: 20rem;
-	background: var(--surface);
-	border: 0.071rem solid var(--line);
-	border-radius: 0.429rem;
-	box-shadow: 0 0.857rem 2.286rem #0002;
-	overflow: hidden;
-	z-index: 200;
-}
-
-.notif-head {
+/* Creates a flexbox row for side-by-side form inputs */
+.form-row {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0.571rem 0.857rem;
-	border-bottom: 0.071rem solid var(--line);
+	gap: 0.857rem;
+	margin-bottom: 0.857rem;
 }
 
-.notif-head strong {
-	font-size: 0.821rem;
-}
-
-.notif-mark-all {
-	background: none;
-	border: none;
-	padding: 0;
-	font-size: 0.714rem;
-	color: var(--muted);
-	font-family: var(--mono);
-	cursor: pointer;
-}
-
-.notif-mark-all:hover {
-	color: var(--ink);
-}
-
-.notif-tabs {
-	display: flex;
-	gap: 0.357rem;
-	padding: 0.429rem 0.857rem 0.286rem;
-}
-
-.notif-tab {
-	background: var(--surface-2);
-	border: 0.071rem solid var(--line);
-	border-radius: 71.357rem;
-	padding: 0.071rem 0.571rem;
-	font-size: 0.679rem;
-	color: var(--ink-2);
-	cursor: pointer;
-}
-
-.notif-tab.active {
-	background: var(--ink);
-	color: #f7f4ee;
-	border-color: var(--ink);
-}
-
-.notif-list {
-	max-height: 18.571rem;
-	overflow-y: auto;
-}
-
-.notif-item {
-	display: flex;
-	gap: 0.571rem;
-	align-items: flex-start;
-	padding: 0.571rem 0.857rem;
-	border-bottom: 0.071rem solid var(--line);
-	cursor: pointer;
-}
-
-.notif-item:last-child {
-	border-bottom: none;
-}
-
-.notif-item.unread {
-	background: var(--accent-soft);
-}
-
-.notif-item:hover {
-	background: var(--surface-2);
-}
-
-.notif-item.unread:hover {
-	background: var(--accent-soft);
-	filter: brightness(0.97);
-}
-
-.notif-dot {
-	width: 0.429rem;
-	height: 0.429rem;
-	border-radius: 50%;
-	margin-top: 0.357rem;
-	flex: 0 0 auto;
-}
-
-.notif-dot.unread {
-	background: var(--accent);
-}
-
-.notif-dot.read {
-	background: transparent;
-}
-
-.notif-body {
+/* A standard form column that takes up 1 fraction of the row */
+.form-col-standard {
 	flex: 1;
-	min-width: 0;
+	margin-bottom: 0;
 }
 
-.notif-text {
-	font-size: 0.75rem;
-	line-height: 1.4;
-	color: var(--ink);
-	overflow-wrap: break-word;
+/* A wider form column that takes up twice the space (2 fractions) */
+.form-col-wide {
+	flex: 2;
+	margin-bottom: 0;
 }
 
-.notif-item:not(.unread) .notif-text {
-	color: var(--ink-2);
+/* --- Spacing Utilities --- */
+
+/* Removes all margin */
+.no-margin {
+	margin: 0 !important;
 }
 
-.notif-mono {
-	font-family: var(--mono);
+/* Adds a small gap above an element */
+.margin-top-small {
+	margin-top: 0.571rem !important;
 }
 
-.notif-age {
-	font-size: 0.679rem;
-	color: var(--muted);
-	font-family: var(--mono);
-	margin-top: 0.143rem;
-}
-
-.notif-empty {
-	padding: 1.429rem 0.857rem;
-	text-align: center;
-	font-size: 0.786rem;
-	color: var(--muted);
-}
-
-.notif-foot {
-	padding: 0.429rem 0.857rem;
-	border-top: 0.071rem solid var(--line);
-	text-align: center;
-}
-
-.notif-view-all {
-	background: none;
-	border: none;
-	padding: 0;
-	font-size: 0.714rem;
-	color: var(--ink-2);
-	cursor: pointer;
-	width: 100%;
-}
-
-.notif-view-all:hover {
-	color: var(--ink);
-}
-
-/* Sidebar notifications row (DES-08) */
-.notif-sidebar-row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	font-size: 0.929rem;
-	padding: 0.286rem 0;
-	color: var(--ink);
-	cursor: pointer;
-	border-radius: 0.286rem;
-}
-
-.notif-sidebar-row:hover {
-	color: var(--accent-ink);
-}
-
-.notif-sidebar-count {
-	font-size: 0.786rem;
-	background: var(--pri-urgent, oklch(55% 0.18 25deg));
-	color: #fff;
-	border-radius: 71.357rem;
-	padding: 0 0.357rem;
-	min-width: 1.143rem;
-	text-align: center;
+/* Adds a larger gap above an element (used for spacing out AI blocks) */
+.margin-top-large {
+	margin-top: 1.714rem !important;
 }

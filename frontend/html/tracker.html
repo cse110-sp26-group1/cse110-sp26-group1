@@ -258,8 +258,8 @@
 						<input class="input" id="new-title" placeholder="Name your issue" />
 					</div>
 
-					<div style="display: flex; gap: 0.857rem; margin-bottom: 0.857rem">
-						<div class="field" style="flex: 1; margin-bottom: 0">
+					<div class="form-row">
+						<div class="field form-col-standard">
 							<label>Priority</label>
 							<select class="input" id="new-priority">
 								<option value="Low">Low</option>
@@ -268,12 +268,12 @@
 								<option value="Critical">Critical</option>
 							</select>
 						</div>
-						<div class="field" style="flex: 1; margin-bottom: 0">
+						<div class="field form-col-standard">
 							<!-- Selected category is sent to the backend category enum -->
 							<label>Category</label>
 							<select class="input" id="new-tag"></select>
 						</div>
-						<div class="field" style="flex: 1; margin-bottom: 0">
+						<div class="field form-col-standard">
 							<label>Assignee</label>
 							<select class="input" id="new-assignee">
 								<option value="">Unassigned</option>
@@ -281,8 +281,8 @@
 						</div>
 					</div>
 
-					<div style="display: flex; gap: 0.857rem; margin-bottom: 0.857rem">
-						<div class="field" style="flex: 2; margin-bottom: 0">
+					<div class="form-row">
+						<div class="field form-col-wide">
 							<label>Tags</label>
 							<!-- Options are rendered from TAGS (constants.js) so only valid tags can be picked -->
 							<div class="tag-picker" id="tag-picker"></div>
@@ -315,7 +315,7 @@
 		</div>
 
 		<div class="backdrop" id="invite-backdrop">
-			<div class="modal" style="max-width: 28.571rem">
+			<div class="modal modal-small">
 				<div class="modal-head">
 					<h3>Invite to team</h3>
 					<p>Send an invitation to a colleague.</p>
@@ -335,9 +335,9 @@
 		</div>
 
 		<div class="backdrop" id="delete-backdrop">
-			<div class="modal" style="max-width: 28.571rem">
-				<div class="modal-head">
-					<h3>Delete issue?</h3>
+            <div class="modal modal-small">
+                <div class="modal-head">
+                    <h3>Delete issue?</h3>
 					<p>This removes the issue from the database. You can cancel if you changed your mind.</p>
 				</div>
 				<div class="modal-foot">
@@ -352,6 +352,5 @@
 		<script src="../js/theme.js"></script>
 		<script type="module" src="../js/user-menu.js"></script>
 		<script type="module" src="../js/tracker.js"></script>
-		<script type="module" src="../js/notif-ui.js"></script>
 	</body>
 </html>

@@ -2,7 +2,7 @@ import { CLI_SKILL_MD_URL, PRI_ORDER, STATUS_NAME, TAGS, TAG_MAP, CATEGORIES } f
 
 import { fetchIssues, createIssue, updateIssue, deleteIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers, leaveTeam } from './api.js';
-import { createIssueNotification, renderNotificationBadge } from './notifications.js';
+import './components/issue-row.js';
 
 requireAuth(); // forces the user to sign up if this page is accessed without credentials
 
@@ -704,28 +704,20 @@ function getIssueTag(issue) {
  * @returns {string} HTML string for the row.
  */
 function rowHtml(i) {
-	const isSel = state.selected === i.id;
-	const statusKey = i.status === 'In Progress' ? 'prog' : i.status.toLowerCase();
+    const isSel = state.selected === i.id;
+    const tagsAttr = (i.tags || []).join(',');
 
-	// Tag Shrink Logic
-	const maxTags = window.matchMedia('(width <= 640px)').matches ? 1 : 2;
-	const visibleTags = (i.tags || []).slice(0, maxTags);
-	const moreCount = (i.tags || []).length - maxTags;
-
-	const tagsHtml =
-		visibleTags.map((l) => `<span class="chip tag-${l}">${l}</span>`).join('') +
-		(moreCount > 0 ? `<span class="chip tag-more">+${moreCount}</span>` : '');
-
-	return `
-	<div class="issue-row ${isSel ? 'selected' : ''}" data-id="${i.id}">
-		<div class="title">
-			<span>${i.title}</span>
-			<span class="sub">${i.summary || ''}</span>
-		</div>
-		<div class="labels">${tagsHtml}</div>
-		<span class="chip st-${statusKey}">${STATUS_NAME[i.status]}</span>
-		<span class="updated" title="${formatIssueDateTime(i.updated_at)}">${formatIssueDate(i.updated_at)}</span>
-	</div>`;
+    return `
+    <issue-row 
+        data-id="${i.id}"
+        class="${isSel ? 'selected' : ''}"
+        issue-title="${escapeHtml(i.title)}"
+        summary="${escapeHtml(i.summary || '')}"
+        status="${i.status}"
+        updated-date="${formatIssueDate(i.updated_at)}"
+        updated-time="${formatIssueDateTime(i.updated_at)}"
+        tags="${tagsAttr}"
+    ></issue-row>`;
 }
 
 // ============================================================
@@ -769,7 +761,7 @@ function renderDetail() {
 		detailEl.innerHTML = `
 			<div class="issue-details-header">
 				<button type="button" class="btn sm mobile-back-btn">← Back</button>
-				<h1 class="h-2" style="margin:0">${i.title}</h1>
+				<h1 class="h-2 no-margin">${i.title}</h1>
 				<button type="button" class="btn sm edit-issue-btn" title="Edit Issue">✎</button>
 			</div>
 			
@@ -803,15 +795,15 @@ function renderDetail() {
 					<span class="label-sm"><strong>Summary</strong></span>
 					<p class="issue-section-body">${formatIssueText(i.summary)}</p>
 				</div>
-				<div class="ai-content-block" style="margin-top:1.714rem">
+				<div class="ai-content-block margin-top-large">
 					<span class="label-sm">Steps to Reproduce</span>
 					${formatStepsToReproduce(i.steps_to_reproduce)}
 				</div>
-				<div class="ai-content-block" style="margin-top:1.714rem">
+				<div class="ai-content-block margin-top-large">
 					<span class="label-sm"><strong>Hypothesis</strong></span>
 					<p class="issue-section-body">${formatIssueText(i.hypothesis)}</p>
 				</div>
-				<div class="ai-content-block" style="margin-top:1.714rem">
+				<div class="ai-content-block margin-top-large">
 					<span class="label-sm">Original User Input</span>
 					<p class="issue-section-body">${formatIssueText(i.description, 'No description provided.')}</p>
 				</div>
@@ -878,7 +870,7 @@ function renderDetail() {
 
 			<div class="detail-body">
 				<span class="label-sm">Details</span>
-				<textarea class="textarea" id="edit-desc" style="margin-top:0.571rem">${i.description || ''}</textarea>
+				<textarea class="textarea margin-top-small" id="edit-desc">${i.description || ''}</textarea>
 			</div>`;
 	}
 }
@@ -1366,10 +1358,6 @@ confirmNewBtn.addEventListener('click', async () => {
 		} else {
 			state.selected = ISSUES[0]?.id ?? null;
 		}
-
-		const createdIssue = ISSUES.find((i) => i.id === response.id) ?? { id: response.id, title };
-		createIssueNotification(createdIssue);
-		renderNotificationBadge();
 
 		closeNew();
 		renderList();
