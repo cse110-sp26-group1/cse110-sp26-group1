@@ -125,33 +125,6 @@ p.sub {
 	gap: 0.714rem;
 }
 
-/* === help-row === */
-
-/* styles for the help row
-* styles for the help row
-* displays the forgot password and help links
-*/
-
-/* not used saved for stretch goals */
-
-/*
-.help-row {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	font-size: 0.893rem;
-	margin: -0.286rem 0 1.286rem;
-}
-
-.help-row a {
-	color: var(--accent-ink);
-}
-
-.help-row a:hover {
-	text-decoration: underline;
-}
-*/
-
 .btn.block {
 	width: 100%;
 	justify-content: center;
@@ -159,99 +132,19 @@ p.sub {
 	font-size: 1rem;
 }
 
-/* === or === */
-
-/* styles for form of login
-* allows socialmedia login
-*/
-
-/* not used saved for Google sign-in
-.or {
-	display: flex;
-	align-items: center;
-	gap: 0.714rem;
-	margin: 1.286rem 0;
-	color: var(--muted);
-	font-size: 0.857rem;
-}
-
-.or::before,
-.or::after {
-	content: '';
-	flex: 1;
-	height: 0.071rem;
-	background: var(--line);
-}
-
-.social {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 0.571rem;
-}
-
-.social .btn {
-	justify-content: center;
-	padding: 0.714rem;
-	font-size: 0.929rem;
-}
-
-.social .gh::before {
-	content: '⌘';
-	font-family: var(--mono);
-	margin-right: 0.286rem;
-}
-
-.social .goog::before {
-	content: 'G';
-	font-family: var(--mono);
-	font-weight: 700;
-	margin-right: 0.286rem;
-}
-*/
-
 /* === legal === */
 
 /* styles for the privacy and terms
 * displays the privacy and terms
 */
 
-/* not used saved for stretch goals
 .legal {
 	margin-top: 1.714rem;
 	font-size: 0.821rem;
 	color: var(--muted);
 	text-align: center;
 }
-*/
 
-/* === poster === */
-
-/* styles for the poster background
-* displays the content on the right side of the page
-*/
-
-/* saved for stretch goals
-.poster {
-	background: var(--ink);
-	color: #e9e4d8;
-	padding: 2.857rem;
-	overflow: hidden;
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
-}
-
-.poster::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	background:
-		radial-gradient(circle at 80% 10%, oklch(35% 0.06 38deg) 0%, transparent 40%),
-		radial-gradient(circle at 10% 90%, oklch(30% 0.04 220deg) 0%, transparent 50%);
-	opacity: 0.9;
-}
-*/
 .password-wrapper {
 	position: relative;
 }
@@ -326,26 +219,6 @@ p.sub {
 	text-decoration: underline;
 }
 
-/* === media queries === */
-
-/* styles for the media queries
-* displays the media queries
-*/
-
-/* not used saved for stretch goals
-@media (max-width: 62.857rem) {
-	body {
-		grid-template-columns: 1fr;
-	}
-
-	.poster {
-		display: none;
-	}
-}
-*/
-
-/* Task: UI Alignment - Ensure the 2-column layout for Signup (Image 2)
-   matches the mockup's compact style. */
 .row2 .field {
 	margin-bottom: 0; /* Let the row handle the bottom margin */
 }
@@ -353,4 +226,21 @@ p.sub {
 .row2 label {
 	font-size: 0.786rem;
 	margin-bottom: 0.286rem;
+}
+
+/* Authentication Error Banner */
+#auth-error {
+	color: var(--danger, #d93025);
+	background: var(--danger-bg, #fce8e6);
+	padding: 0.75rem;
+	border-radius: 6px;
+	margin-bottom: 1.14rem;
+	font-size: 0.857rem;
+	text-align: center;
+	border: 1px solid #f2bbba;
+}
+
+/* Ensure it completely disappears when the hidden attribute is present */
+#auth-error[hidden] {
+	display: none;
 }

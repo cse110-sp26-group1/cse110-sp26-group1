@@ -79,30 +79,6 @@
 	flex: 0 0 auto;
 }
 
-.join-preview-head .team-mark.c1 {
-	background: oklch(92% 0.04 38deg);
-	color: oklch(40% 0.12 38deg);
-	border-color: oklch(85% 0.05 38deg);
-}
-
-.join-preview-head .team-mark.c2 {
-	background: oklch(92% 0.04 200deg);
-	color: oklch(38% 0.1 200deg);
-	border-color: oklch(85% 0.05 200deg);
-}
-
-.join-preview-head .team-mark.c3 {
-	background: oklch(93% 0.04 130deg);
-	color: oklch(38% 0.1 130deg);
-	border-color: oklch(85% 0.05 130deg);
-}
-
-.join-preview-head .team-mark.c4 {
-	background: oklch(92% 0.04 320deg);
-	color: oklch(40% 0.1 320deg);
-	border-color: oklch(85% 0.05 320deg);
-}
-
 .join-preview-info h2 {
 	margin: 0 0 0.286rem;
 	font-size: 1.429rem;

@@ -23,6 +23,19 @@ consistently before making changes.
 
 ## Agent Workflow
 
+```mermaid
+flowchart TD
+    A[Install Allegro CLI Tool] --> B[Sign in / Authenticate]
+    B --> C[Start a session]
+    C --> D[Give agent a fix issue task]
+    D --> E[Agent thinks and analyzes the request, retrieves needed issue data, and works on the task]
+    E --> H[Agent updates issue status and info]
+    H --> K[User reviews the response]
+    K --> L[/User has more inquiries/]
+    L -- Yes --> D
+    L -- No --> J[Log out]
+```
+
 At a high level, the prepared agent should:
 
 1. Read the user's task together with `SKILLS.md`.
@@ -48,7 +61,7 @@ The detailed task logic belongs in `SKILLS.md`.
 ### Windows Users
 
 - Open a terminal as an administrator.
-- [Download NVM for Windows here, then click "Download from GitHub"](https://www.nvmnode.com/guide/download.html#google_vignette).
+- [Go here for the NVM installation guide for Windows, then click "Download from GitHub"](https://www.nvmnode.com/guide/download.html#google_vignette).
 - Verify your NVM installation by running `nvm version`.
 - Run `nvm install 18`.
 - Run `nvm use 18`.
