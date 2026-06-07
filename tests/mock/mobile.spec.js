@@ -9,7 +9,8 @@ import { setupApp } from '../helpers/mock-api.js';
 // and the master/detail (full-screen issue) navigation with the back button.
 
 /**
- * @param {object} session
+ * @param {object} session Session data.
+ * @returns {Array<object>}
  */
 function seedThreeIssues(session) {
 	return [

@@ -3,7 +3,8 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import sqlSchemaRaw from '../schema.sql?raw';
 
 /**
- *
+ * Clears the test DB.
+ * @returns {Promise<void>}
  */
 async function cleanDatabase() {
 	await env.DB.exec(`
@@ -17,9 +18,9 @@ async function cleanDatabase() {
 }
 
 /**
- *
- * @param username
- * @param email
+ * @param {string} username Username.
+ * @param {string} email Email.
+ * @returns {Promise<number>}
  */
 async function createTestUser(username, email) {
 	const row = await env.DB.prepare(
@@ -32,10 +33,10 @@ async function createTestUser(username, email) {
 }
 
 /**
- *
- * @param userId
- * @param token
- * @param ttlHours
+ * @param {number} userId User id.
+ * @param {string} token Session token.
+ * @param {number} ttlHours TTL hours.
+ * @returns {Promise<void>}
  */
 async function createTestSession(userId, token, ttlHours = 24) {
 	const expiryDate = new Date();
@@ -46,9 +47,9 @@ async function createTestSession(userId, token, ttlHours = 24) {
 }
 
 /**
- *
- * @param teamName
- * @param creatorId
+ * @param {string} teamName Team name.
+ * @param {number | null} creatorId Creator id.
+ * @returns {Promise<number>}
  */
 async function createTestTeam(teamName, creatorId = null) {
 	const row = await env.DB.prepare(`INSERT INTO teams (team_name) VALUES (?) RETURNING id`).bind(teamName).first();
@@ -62,21 +63,21 @@ async function createTestTeam(teamName, creatorId = null) {
 }
 
 /**
- *
- * @param userId
- * @param teamId
- * @param role
+ * @param {number} userId User id.
+ * @param {number} teamId Team id.
+ * @param {'admin' | 'member'} role Role.
+ * @returns {Promise<void>}
  */
 async function createTeamMembership(userId, teamId, role = 'member') {
 	await env.DB.prepare('INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)').bind(teamId, userId, role).run();
 }
 
 /**
- *
- * @param teamId
- * @param inviterId
- * @param invitedId
- * @param status
+ * @param {number} teamId Team id.
+ * @param {number} inviterId Inviter id.
+ * @param {number} invitedId Invited id.
+ * @param {string} status Invite status.
+ * @returns {Promise<number>}
  */
 async function createTestInvite(teamId, inviterId, invitedId, status = 'pending') {
 	const row = await env.DB.prepare(
@@ -89,8 +90,8 @@ async function createTestInvite(teamId, inviterId, invitedId, status = 'pending'
 }
 
 /**
- *
- * @param token
+ * @param {string} token Session token.
+ * @returns {{ Authorization: string, 'Content-Type': string }}
  */
 function authHeaders(token) {
 	return {

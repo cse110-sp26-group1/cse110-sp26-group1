@@ -21,7 +21,7 @@ const ALLOWED_TAGS = [
 const ALLOWED_DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Unknown'];
 
 /**
- * @param {unknown} tags
+ * @param {unknown} tags Tags payload.
  * @returns {string | null} Error message, or null if valid / omitted.
  */
 function getTagsValidationError(tags) {
@@ -37,7 +37,7 @@ function getTagsValidationError(tags) {
 }
 
 /**
- * @param {unknown} tags
+ * @param {unknown} tags Tags payload.
  * @returns {string[]}
  */
 function sanitizeTags(tags) {
@@ -48,10 +48,11 @@ function sanitizeTags(tags) {
 /**
  * Picks the user value if present, otherwise the LLM value if it's in the
  * allowed enum list, otherwise the fallback. Empty strings/null are skipped.
- * @param userVal
- * @param llmVal
- * @param allowed
- * @param fallback
+ * @param {string | undefined | null} userVal User value.
+ * @param {string | undefined | null} llmVal LLM value.
+ * @param {string[]} allowed Allowed values.
+ * @param {string} fallback Fallback value.
+ * @returns {string}
  */
 function pickEnum(userVal, llmVal, allowed, fallback) {
 	if (userVal && allowed.includes(userVal)) return userVal;
@@ -62,8 +63,9 @@ function pickEnum(userVal, llmVal, allowed, fallback) {
 /**
  * Coerces a value into an array. The LLM parser may return a string, null, or
  * an array; user input may already be an array.
- * @param userVal
- * @param llmVal
+ * @param {unknown} userVal User value.
+ * @param {unknown} llmVal LLM value.
+ * @returns {unknown[]}
  */
 function coerceArray(userVal, llmVal) {
 	if (Array.isArray(userVal)) return userVal;
@@ -74,8 +76,9 @@ function coerceArray(userVal, llmVal) {
 /**
  * Returns user value if non-empty string, else LLM value if non-empty (and not
  * the literal "null" sentinel from the parser), else null.
- * @param userVal
- * @param llmVal
+ * @param {unknown} userVal User value.
+ * @param {unknown} llmVal LLM value.
+ * @returns {string | null}
  */
 function coerceText(userVal, llmVal) {
 	if (typeof userVal === 'string' && userVal.trim() !== '') return userVal;
@@ -86,8 +89,9 @@ function coerceText(userVal, llmVal) {
 /**
  * Stores LLM array fields (missing_information, steps_to_reproduce) as JSON
  * strings, plain text otherwise. The schema column is TEXT either way.
- * @param userVal
- * @param llmVal
+ * @param {unknown} userVal User value.
+ * @param {unknown} llmVal LLM value.
+ * @returns {string | null}
  */
 function stringifyMaybeArray(userVal, llmVal) {
 	const v = userVal ?? llmVal ?? null;
@@ -100,8 +104,9 @@ function stringifyMaybeArray(userVal, llmVal) {
 
 /**
  * Handles all /issues routes: GET (list by team or view single), POST (create), PATCH (update), DELETE (remove).
- * @param {Request} request
- * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
+ * @param {Request} request Request object.
+ * @param {{ DB: D1Database }} env Worker env.
+ * @returns {Promise<Response>}
  */
 export async function handleIssues(request, env) {
 	const url = new URL(request.url);
