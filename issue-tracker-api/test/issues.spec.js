@@ -17,8 +17,8 @@ import { processIssue } from '../src/llm.js';
 
 /**
  * Creates a mock user record in the database.
- * @param {string} username
- * @param {string} email
+ * @param {string} username Username.
+ * @param {string} email Email.
  * @returns {Promise<number>} The inserted user's ID.
  */
 async function createTestUser(username, email) {
@@ -32,7 +32,7 @@ async function createTestUser(username, email) {
 
 /**
  * Creates a mock team workspace record in the database.
- * @param {string} teamName
+ * @param {string} teamName Team name.
  * @returns {Promise<number>} The inserted team's ID.
  */
 async function createTestTeam(teamName) {
@@ -42,9 +42,10 @@ async function createTestTeam(teamName) {
 
 /**
  * Seeds an active or expired session to satisfy the requireAuth barrier.
- * @param {number} userId - The user ID owning the session.
- * @param {string} token - The raw bearer token string.
- * @param {number} ttlHours - Relative time offset in hours (negative for expired sessions).
+ * @param {number} userId User id.
+ * @param {string} token Session token.
+ * @param {number} ttlHours TTL hours.
+ * @returns {Promise<void>}
  */
 async function createTestSession(userId, token, ttlHours = 24) {
 	const expiryDate = new Date();
@@ -56,9 +57,10 @@ async function createTestSession(userId, token, ttlHours = 24) {
 
 /**
  * Seeds a team membership relation to satisfy the requireTeamMember multi-tenant barrier.
- * @param {number} userId
- * @param {number} teamId
- * @param {'admin' | 'member'} role
+ * @param {number} userId User id.
+ * @param {number} teamId Team id.
+ * @param {'admin' | 'member'} role Role.
+ * @returns {Promise<void>}
  */
 async function createTeamMembership(userId, teamId, role = 'member') {
 	await env.DB.prepare('INSERT INTO team_members (user_id, team_id, role) VALUES (?, ?, ?)').bind(userId, teamId, role).run();
@@ -66,10 +68,11 @@ async function createTeamMembership(userId, teamId, role = 'member') {
 
 /**
  * Robust helper to generate baseline issue records ensuring required schema fields are populated.
- * @param teamId
- * @param createdById
- * @param title
- * @param description
+ * @param {number} teamId Team id.
+ * @param {number} createdById Creator id.
+ * @param {string} title Issue title.
+ * @param {string} description Issue description.
+ * @returns {Promise<number>}
  */
 async function createTestIssue(teamId, createdById, title = 'Sample Bug', description = 'Sample Description') {
 	const row = await env.DB.prepare(

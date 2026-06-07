@@ -658,8 +658,8 @@ function applyEnrichedFields(issue, enriched) {
 const STEPS_UNAVAILABLE_HTML = '<p class="issue-section-body">Not enough information available</p>';
 
 /**
- *
- * @param value
+ * @param {string | string[] | null | undefined} value Steps field.
+ * @returns {string}
  */
 function formatStepsToReproduce(value) {
 	if (value === null || value === undefined || value === '') return STEPS_UNAVAILABLE_HTML;
@@ -952,14 +952,14 @@ let dragging = false;
 let sidebarOpen = false;
 
 /**
- *
+ * @returns {boolean}
  */
 function isMobileViewport() {
 	return window.matchMedia(`(width <= ${MOBILE_BP}px)`).matches;
 }
 
 /**
- *
+ * @returns {boolean}
  */
 function isSidebarCollapsible() {
 	return window.matchMedia(`(width <= ${SIDEBAR_BP}px)`).matches;
@@ -982,8 +982,7 @@ function syncSidebarLayout() {
 }
 
 /**
- *
- * @param open
+ * @param {boolean} open Whether the sidebar should open.
  */
 function setSidebarOpen(open) {
 	if (!isSidebarCollapsible()) return;

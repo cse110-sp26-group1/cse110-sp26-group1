@@ -3,9 +3,9 @@ import { test, expect } from '@playwright/test';
 import { setupApp } from '../helpers/mock-api.js';
 
 /**
- * Seeds a small but realistic set of issues across statuses, priorities, and tags
- * so the list/filter/sort/search assertions have meaningful surface area.
- * @param {object} session
+ * Seeds a small set of issues for list/filter/sort/search tests.
+ * @param {object} session Session data.
+ * @returns {Array<object>}
  */
 function seedIssues(session) {
 	return [

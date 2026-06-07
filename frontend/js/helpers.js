@@ -29,7 +29,8 @@ export function initPasswordToggles() {
 
 /**
  * Parses a raw API timestamp into a valid Date object.
- * @param value
+ * @param {string | null | undefined} value Timestamp string.
+ * @returns {Date | null}
  */
 export function parseTimestamp(value) {
 	if (!value) return null;
@@ -40,7 +41,8 @@ export function parseTimestamp(value) {
 
 /**
  * Formats a date string to match the issue tracker's smart format.
- * @param value
+ * @param {string | null | undefined} value Timestamp string.
+ * @returns {string}
  */
 export function formatInviteDate(value) {
 	const date = parseTimestamp(value);
