@@ -1,14 +1,15 @@
 import { fetchTeams, createTeam, requireAuth, acceptInvite, rejectInvite, fetchInvites, fetchTeamMembers } from './api.js';
-import { getUserInitials } from './user-profile.js';
-import { formatInviteDate } from './helpers.js';
+import { formatRelativeDate, showToast, getTeamMark, initTheme, initUserMenu } from './helpers.js';
+import { TEAM_MARK_HUES } from './constants.js';
 
 import './components/team-card.js';
+import './components/invite-row.js';
 
-requireAuth(); // forces the user to sign up if this page is accessed without credentials
+initTheme();
+initUserMenu();
 
 const backdrop = document.getElementById('create-backdrop');
 const teamNameEl = document.getElementById('team-name');
-const toast = document.getElementById('toast');
 
 const MAX_BIO_LENGTH = 50;
 
@@ -28,9 +29,11 @@ function closeModal() {
 }
 
 document.getElementById('create-team').addEventListener('click', openModal);
-document.getElementById('create-team-2').addEventListener('click', (e) => {
-	e.preventDefault();
-	openModal();
+document.getElementById('team-grid').addEventListener('click', (e) => {
+	if (e.target.closest('#create-team-2')) {
+		e.preventDefault();
+		openModal();
+	}
 });
 document.getElementById('cancel-create').addEventListener('click', closeModal);
 backdrop.addEventListener('click', (e) => {
@@ -38,18 +41,6 @@ backdrop.addEventListener('click', (e) => {
 		closeModal();
 	}
 });
-
-/**
- * Shows a temporary status message.
- *
- * @param {string} msg Message to display.
- */
-function showToast(msg) {
-	toast.textContent = msg;
-	toast.classList.add('show');
-	clearTimeout(showToast._t);
-	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
-}
 
 document.getElementById('confirm-create').addEventListener('click', async () => {
 	const nameEl = document.getElementById('team-name');
@@ -89,77 +80,38 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 });
 
 /**
- * Updates the red notification badge on the "Pending invites" button.
- * Creates the badge node on first use and removes it when count drops to 0.
- * @param {number} count Number of pending invites to display.
- */
-function updatePendingInvitesBadge(count) {
-	const btn = document.getElementById('view-invites');
-	if (!btn) return;
-	let badge = btn.querySelector('.invite-badge');
-	if (count > 0) {
-		if (!badge) {
-			badge = document.createElement('span');
-			badge.className = 'invite-badge';
-			btn.appendChild(badge);
-		}
-		badge.textContent = String(count);
-		btn.classList.add('has-invites');
-	} else {
-		if (badge) badge.remove();
-		btn.classList.remove('has-invites');
-	}
-}
-
-/**
  * Loads pending invites, renders the rows from API data, then attaches the
  * accept/decline listeners to the newly-created buttons.
  */
 async function loadInvites() {
 	const section = document.getElementById('invites-section');
 	if (!section) return;
-	section.querySelectorAll('.invite').forEach((row) => row.remove());
+	section.querySelectorAll('invite-row').forEach((row) => row.remove());
 
 	let invites;
 	try {
 		invites = await fetchInvites();
 	} catch {
 		section.hidden = true;
-		updatePendingInvitesBadge(0);
 		return;
 	}
 
 	if (!invites.length) {
 		section.hidden = true;
-		updatePendingInvitesBadge(0);
 		return;
 	}
 
 	section.hidden = false;
-	updatePendingInvitesBadge(invites.length);
 
-	const list = invites
-		.map(
-			(inv) => `
-		<div class="invite" data-invite-id="${inv.id}">
-		<div class="info">
-			<div class="team-mark">${inv.team_name.substring(0, 2).toUpperCase()}</div>
-			<div>
-            <p><strong>${inv.team_name}</strong> · invited by ${inv.inviter_username}</p>
-            <p>Invited ${formatInviteDate(inv.created_at)}</p>
-            </div>
-		</div>
-		<div class="actions">
-			<button class="btn sm decline-btn" data-invite-id="${inv.id}">Decline</button>
-			<button class="btn primary sm accept-btn" data-invite-id="${inv.id}">Accept</button>
-		</div>
-		</div>
-	`,
-		)
-		.join('');
+	invites.forEach((inv) => {
+		const row = document.createElement('invite-row');
+		row.setAttribute('invite-id', String(inv.id));
+		row.setAttribute('team-name', inv.team_name);
+		row.setAttribute('inviter-name', inv.inviter_username);
+		row.setAttribute('invite-date', formatRelativeDate(inv.created_at));
 
-	// stay in HTML while the rows reflect the latest API state.
-	section.querySelector('h3').insertAdjacentHTML('afterend', list);
+		section.appendChild(row);
+	});
 
 	section.querySelectorAll('.accept-btn').forEach((btn) => {
 		btn.addEventListener('click', async (e) => {
@@ -169,8 +121,8 @@ async function loadInvites() {
 			try {
 				await acceptInvite(inviteId);
 				showToast('Invitation accepted!');
-				e.target.closest('.invite').remove();
-				initTeamsPage();
+				e.target.closest('invite-row').remove();
+				await initTeamsPage();
 			} catch {
 				showToast('Failed to accept invite.');
 				e.target.textContent = 'Accept';
@@ -187,11 +139,10 @@ async function loadInvites() {
 			e.target.disabled = true;
 			try {
 				await rejectInvite(inviteId);
-				e.target.closest('.invite').remove();
+				e.target.closest('invite-row').remove();
 				showToast('Invitation declined.');
-				const remaining = section.querySelectorAll('.invite').length;
+				const remaining = section.querySelectorAll('invite-row').length;
 				if (!remaining) section.hidden = true;
-				updatePendingInvitesBadge(remaining);
 			} catch {
 				showToast('Failed to decline invite.');
 				e.target.textContent = 'Decline';
@@ -211,15 +162,13 @@ async function initTeamsPage() {
 		const createBtnHtml = grid.querySelector('.team.new').outerHTML;
 
 		const teamCards = await Promise.all(
-			teams.map(async (team) => {
+			teams.map(async (team, index) => {
 				const card = document.createElement('team-card');
 				card.setAttribute('team-id', String(team.id));
 				card.setAttribute('name', team.team_name);
 
-				const words = team.team_name.trim().split(' ');
-				const mark = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : team.team_name.substring(0, 2).toUpperCase();
-				card.setAttribute('mark', mark);
-				card.setAttribute('color', '220');
+				card.setAttribute('mark', getTeamMark(team.team_name));
+				card.setAttribute('color', String(TEAM_MARK_HUES[index % TEAM_MARK_HUES.length]));
 				card.setAttribute('role', team.role);
 
 				let bioText = team.bio ?? '';
@@ -243,15 +192,13 @@ async function initTeamsPage() {
 		grid.replaceChildren(...teamCards);
 		grid.insertAdjacentHTML('beforeend', createBtnHtml);
 
-		document.getElementById('create-team-2').addEventListener('click', (e) => {
-			e.preventDefault();
-			openModal();
-		});
-
 		await loadInvites();
 	} catch {
 		showToast('Failed to load dashboard.');
 	}
 }
 
-initTeamsPage();
+(async () => {
+	if (!(await requireAuth())) return;
+	await initTeamsPage();
+})();

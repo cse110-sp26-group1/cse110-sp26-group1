@@ -1,31 +1,30 @@
 // @ts-check
-// Real-backend version of teams.spec.js.
 import { test, expect } from '@playwright/test';
 import {
-	acceptRealInvite,
-	createRealTeam,
-	fetchRealTeamMembers,
-	fetchRealTeams,
-	inviteRealUser,
+	acceptInvite,
+	createTeam,
+	fetchTeamMembers,
+	fetchTeams,
+	inviteUser,
 	makeUniqueTeamName,
 	makeUniqueUser,
-	registerRealUser,
-	safeDeleteRealTeam,
+	registerUser,
+	safeDeleteTeam,
 	setBrowserSession,
-} from '../helpers/real-api.js';
+} from '../helpers/api.js';
 
-test.describe('Teams dashboard (real backend)', () => {
+test.describe('Teams dashboard', () => {
 	test('renders team cards from the API with names and roles', async ({ page }) => {
 		// One owner with two teams: admin of A, member of B (via accepted invite from a second user).
-		const owner = await registerRealUser(makeUniqueUser('owner'));
-		const adminTeam = await createRealTeam(owner, { team_name: makeUniqueTeamName('Studio AI') });
+		const owner = await registerUser(makeUniqueUser('owner'));
+		const adminTeam = await createTeam(owner, { team_name: makeUniqueTeamName('Studio AI') });
 
-		const memberAdmin = await registerRealUser(makeUniqueUser('member_admin'));
-		const memberTeam = await createRealTeam(memberAdmin, { team_name: makeUniqueTeamName('Capstone') });
-		const invite = await inviteRealUser(memberAdmin, memberTeam.id, { email: owner.credentials.email });
+		const memberAdmin = await registerUser(makeUniqueUser('member_admin'));
+		const memberTeam = await createTeam(memberAdmin, { team_name: makeUniqueTeamName('Capstone') });
+		const invite = await inviteUser(memberAdmin, memberTeam.id, { email: owner.credentials.email });
 
 		// Accept the invite as `owner` so the team renders as a member-role card.
-		await acceptRealInvite(owner, invite.invite_id);
+		await acceptInvite(owner, invite.invite_id);
 
 		await setBrowserSession(page, owner);
 
@@ -39,14 +38,14 @@ test.describe('Teams dashboard (real backend)', () => {
 			await expect(cards.filter({ hasText: adminTeam.team_name })).toContainText('Workspace Admin');
 			await expect(cards.filter({ hasText: memberTeam.team_name })).toContainText('Workspace Member');
 		} finally {
-			await safeDeleteRealTeam(owner, adminTeam.id);
-			await safeDeleteRealTeam(memberAdmin, memberTeam.id);
+			await safeDeleteTeam(owner, adminTeam.id);
+			await safeDeleteTeam(memberAdmin, memberTeam.id);
 		}
 	});
 
 	test('clicking a team card navigates to that team in the tracker', async ({ page }) => {
-		const owner = await registerRealUser(makeUniqueUser('teamnav'));
-		const team = await createRealTeam(owner, { team_name: makeUniqueTeamName('Nav Team') });
+		const owner = await registerUser(makeUniqueUser('teamnav'));
+		const team = await createTeam(owner, { team_name: makeUniqueTeamName('Nav Team') });
 		await setBrowserSession(page, owner);
 
 		try {
@@ -56,16 +55,16 @@ test.describe('Teams dashboard (real backend)', () => {
 			await link.click();
 			await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${team.id}`));
 		} finally {
-			await safeDeleteRealTeam(owner, team.id);
+			await safeDeleteTeam(owner, team.id);
 		}
 	});
 
 	test('member leaves a team from the tracker menu and loses backend membership', async ({ page }) => {
-		const admin = await registerRealUser(makeUniqueUser('leave_admin'));
-		const member = await registerRealUser(makeUniqueUser('leave_member'));
-		const team = await createRealTeam(admin, { team_name: makeUniqueTeamName('Leave Flow') });
-		const invite = await inviteRealUser(admin, team.id, { email: member.credentials.email });
-		await acceptRealInvite(member, invite.invite_id);
+		const admin = await registerUser(makeUniqueUser('leave_admin'));
+		const member = await registerUser(makeUniqueUser('leave_member'));
+		const team = await createTeam(admin, { team_name: makeUniqueTeamName('Leave Flow') });
+		const invite = await inviteUser(admin, team.id, { email: member.credentials.email });
+		await acceptInvite(member, invite.invite_id);
 		await setBrowserSession(page, member);
 
 		try {
@@ -83,23 +82,23 @@ test.describe('Teams dashboard (real backend)', () => {
 			await expect(page).toHaveURL(/teams\.html/);
 			await expect(page.locator('team-card').filter({ hasText: team.team_name })).toHaveCount(0);
 
-			const memberTeams = await fetchRealTeams(member);
+			const memberTeams = await fetchTeams(member);
 			expect(memberTeams.find((row) => row.id === team.id)).toBeUndefined();
 
-			const members = await fetchRealTeamMembers(admin, team.id);
+			const members = await fetchTeamMembers(admin, team.id);
 			expect(members.find((row) => row.email === member.credentials.email)).toBeUndefined();
 			expect(members.find((row) => row.email === admin.credentials.email)).toBeDefined();
 		} finally {
-			await safeDeleteRealTeam(admin, team.id);
+			await safeDeleteTeam(admin, team.id);
 		}
 	});
 
 	test('admin cannot leave a team that still has members', async ({ page }) => {
-		const admin = await registerRealUser(makeUniqueUser('blocked_admin'));
-		const member = await registerRealUser(makeUniqueUser('blocked_member'));
-		const team = await createRealTeam(admin, { team_name: makeUniqueTeamName('Blocked Leave') });
-		const invite = await inviteRealUser(admin, team.id, { email: member.credentials.email });
-		await acceptRealInvite(member, invite.invite_id);
+		const admin = await registerUser(makeUniqueUser('blocked_admin'));
+		const member = await registerUser(makeUniqueUser('blocked_member'));
+		const team = await createTeam(admin, { team_name: makeUniqueTeamName('Blocked Leave') });
+		const invite = await inviteUser(admin, team.id, { email: member.credentials.email });
+		await acceptInvite(member, invite.invite_id);
 		await setBrowserSession(page, admin);
 
 		try {
@@ -117,19 +116,19 @@ test.describe('Teams dashboard (real backend)', () => {
 			await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${team.id}`));
 			await expect(page.locator('#toast')).toContainText('Admins cannot leave');
 
-			const adminTeams = await fetchRealTeams(admin);
+			const adminTeams = await fetchTeams(admin);
 			expect(adminTeams.find((row) => row.id === team.id)).toBeDefined();
 
-			const members = await fetchRealTeamMembers(admin, team.id);
+			const members = await fetchTeamMembers(admin, team.id);
 			expect(members.find((row) => row.email === admin.credentials.email)).toBeDefined();
 			expect(members.find((row) => row.email === member.credentials.email)).toBeDefined();
 		} finally {
-			await safeDeleteRealTeam(admin, team.id);
+			await safeDeleteTeam(admin, team.id);
 		}
 	});
 
 	test('create-team modal validates the name and creates a new team', async ({ page }) => {
-		const owner = await registerRealUser(makeUniqueUser('create_team'));
+		const owner = await registerUser(makeUniqueUser('create_team'));
 		await setBrowserSession(page, owner);
 
 		const teamName = makeUniqueTeamName('Rocket Squad');
@@ -164,21 +163,19 @@ test.describe('Teams dashboard (real backend)', () => {
 			await expect(page.locator('#toast')).toContainText('Workspace created');
 			await expect(page).toHaveURL(/tracker\.html\?team_id=\d+/, { timeout: 6000 });
 		} finally {
-			if (createdTeamId) await safeDeleteRealTeam(owner, createdTeamId);
+			if (createdTeamId) await safeDeleteTeam(owner, createdTeamId);
 		}
 	});
 
 	test('shows pending invitations for each inviting team', async ({ page }) => {
-		// The hero "Pending invites" button was removed from teams.html (commit c16d5fe),
-		// so the visible count today is the number of .invite rows inside #invites-section.
-		const invitee = await registerRealUser(makeUniqueUser('badge_invitee'));
-		const admin1 = await registerRealUser(makeUniqueUser('badge_admin1'));
-		const admin2 = await registerRealUser(makeUniqueUser('badge_admin2'));
-		const team1 = await createRealTeam(admin1, { team_name: makeUniqueTeamName('Hearth') });
-		const team2 = await createRealTeam(admin2, { team_name: makeUniqueTeamName('SideQuest') });
+		const invitee = await registerUser(makeUniqueUser('pending_invitee'));
+		const admin1 = await registerUser(makeUniqueUser('pending_admin1'));
+		const admin2 = await registerUser(makeUniqueUser('pending_admin2'));
+		const team1 = await createTeam(admin1, { team_name: makeUniqueTeamName('Hearth') });
+		const team2 = await createTeam(admin2, { team_name: makeUniqueTeamName('SideQuest') });
 
-		await inviteRealUser(admin1, team1.id, { email: invitee.credentials.email });
-		await inviteRealUser(admin2, team2.id, { email: invitee.credentials.email });
+		await inviteUser(admin1, team1.id, { email: invitee.credentials.email });
+		await inviteUser(admin2, team2.id, { email: invitee.credentials.email });
 
 		await setBrowserSession(page, invitee);
 
@@ -190,28 +187,8 @@ test.describe('Teams dashboard (real backend)', () => {
 			await expect(section).toContainText(team1.team_name);
 			await expect(section).toContainText(team2.team_name);
 		} finally {
-			await safeDeleteRealTeam(admin1, team1.id);
-			await safeDeleteRealTeam(admin2, team2.id);
-		}
-	});
-
-	test('shows the pending-invitations section listing all invites by team', async ({ page }) => {
-		const invitee = await registerRealUser(makeUniqueUser('inv_section'));
-		const admin = await registerRealUser(makeUniqueUser('inv_section_admin'));
-		const team = await createRealTeam(admin, { team_name: makeUniqueTeamName('Hearth Section') });
-
-		await inviteRealUser(admin, team.id, { email: invitee.credentials.email });
-
-		await setBrowserSession(page, invitee);
-
-		try {
-			await page.goto('/html/teams.html');
-			const invitesSection = page.locator('#invites-section');
-			await expect(invitesSection).toBeVisible();
-			await expect(invitesSection).toContainText(team.team_name);
-			await expect(invitesSection).toContainText(admin.credentials.username);
-		} finally {
-			await safeDeleteRealTeam(admin, team.id);
+			await safeDeleteTeam(admin1, team1.id);
+			await safeDeleteTeam(admin2, team2.id);
 		}
 	});
 });

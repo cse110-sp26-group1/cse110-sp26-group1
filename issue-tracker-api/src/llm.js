@@ -5,6 +5,28 @@
  * into a structured JSON object before being returned.
  */
 
+/**
+ * @typedef {object} EnrichedIssue
+ * @property {string} [title]
+ * @property {string} [description]
+ * @property {string} [summary]
+ * @property {string} [status]
+ * @property {string} [priority]
+ * @property {string} [difficulty]
+ * @property {string} [category]
+ * @property {string[]} [tags]
+ * @property {string | null} [entry_point]
+ * @property {string | null} [error_type]
+ * @property {string | null} [error_message]
+ * @property {string[]} [stack_trace]
+ * @property {string[]} [affected_files]
+ * @property {string | null} [expected_behavior]
+ * @property {string | null} [actual_behavior]
+ * @property {string[]} [missing_information]
+ * @property {string[]} [steps_to_reproduce]
+ * @property {string | null} [hypothesis]
+ */
+
 const BASE_URL = 'https://api.deepseek.com';
 
 const PROMPT = `You are an issue triage agent for a software team.
@@ -85,10 +107,8 @@ USER INPUT:
 
 /**
  * Parses DeepSeek key-value output into a JSON object.
- *
- * @function parseKeyValueResponse
- * @param {string} text - Raw LLM response text.
- * @returns {object} Parsed structured issue object.
+ * @param {string} text Raw LLM response text.
+ * @returns {EnrichedIssue} Parsed structured issue object.
  */
 function parseKeyValueResponse(text) {
 	const result = {};
@@ -136,12 +156,9 @@ function parseKeyValueResponse(text) {
 
 /**
  * Sends raw user input to DeepSeek and returns the structured issue object.
- *
- * @async
- * @function processIssue
- * @param {string} rawUserInput - Raw issue description from the user.
- * @param {string} apiKey - DeepSeek API key.
- * @returns {Promise<object>} Parsed issue object.
+ * @param {string} rawUserInput Raw issue description from the user.
+ * @param {string} apiKey DeepSeek API key.
+ * @returns {Promise<EnrichedIssue>} Parsed issue object.
  * @throws {Error} If the API key is missing or the API request fails.
  */
 export async function processIssue(rawUserInput, apiKey) {

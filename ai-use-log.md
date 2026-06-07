@@ -47,6 +47,7 @@
 - fix linting 
 - used ai to help with getting LLM response
 - conversion of px to dynamic
+- used to help identify dead code
 
 ---
 

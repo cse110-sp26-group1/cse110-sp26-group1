@@ -1,6 +1,5 @@
-import { createAccount, login, requireNoAuth, getPostAuthRedirect } from './api.js';
-import { saveStoredUser, userFromApiProfile } from './user-profile.js';
-import { initPasswordToggles } from './helpers.js';
+import { createAccount, requireNoAuth, getPostAuthRedirect } from './api.js';
+import { initPasswordToggles, saveStoredUser, userFromApiProfile } from './helpers.js';
 
 requireNoAuth();
 initPasswordToggles(); // wires up the eye button next to the password field
@@ -23,10 +22,11 @@ const errorEl = document.getElementById('auth-error');
 const submitBtn = document.getElementById('submit-btn');
 
 /**
- * Handles create-account form submit. Registers the user, then immediately
- * logs in to obtain a session token before redirecting to teams.
+ * Handles create-account form submit. Registers the user, stores the session
+ * token returned by the API, then redirects to the post-auth destination.
  *
  * @param {SubmitEvent} e Browser submit event from the signup form.
+ * @returns {Promise<void>}
  */
 async function handleSignupSubmit(e) {
 	e.preventDefault();

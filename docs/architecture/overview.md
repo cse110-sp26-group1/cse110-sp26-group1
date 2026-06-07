@@ -58,5 +58,5 @@ For a visual event-flow diagram, see the team Miro board (link TBD).
 - [Database architecture](./database.md) — tables, relationships, and cascade behavior
 - [ADR](../../ADR/adr.md) — dual-interface API, LLM structuring, and Cloudflare stack
 - [API routes](../../issue-tracker-api/ROUTES.md) — endpoint surface
-- [Frontend overview](../../frontend/doc_overview.md) — static UI prototype and local run instructions (note: update later once we update where the docs are located)
+- [Frontend overview](../../frontend/README.md) — local frontend run instructions and API configuration
 

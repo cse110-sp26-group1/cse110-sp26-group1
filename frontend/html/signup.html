@@ -5,15 +5,7 @@
 		<title>Create account - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" href="../imgs/file.svg" type="image/svg+xml" />
-		<script>
-			try {
-				if (localStorage.getItem('theme') === 'dark') {
-					document.documentElement.classList.add('dark');
-				}
-			} catch {
-				/* localStorage unavailable */
-			}
-		</script>
+		<script src="../js/theme-init.js"></script>
 		<link rel="stylesheet" href="../css/global.css" />
 		<link rel="stylesheet" href="../css/login.css" />
 	</head>
@@ -107,7 +99,6 @@
 				</form>
 			</div>
 		</div>
-		<script src="../js/theme.js"></script>
 		<script type="module" src="../js/signup.js"></script>
 	</body>
 </html>

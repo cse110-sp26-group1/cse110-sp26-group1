@@ -1,13 +1,16 @@
+export const API_BASE = 'https://issue-tracker-api.amorbuks25.workers.dev';
+
 export const PRI_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 };
-export const STATUS_ORDER = { 'In Progress': 0, Open: 1, Resolved: 2, Closed: 3 };
-export const PRI_LABEL = { Critical: 'URG', High: 'P1', Medium: 'P2', Low: 'P3' };
-export const PRI_NAME = { Critical: 'Critical', High: 'High', Medium: 'Medium', Low: 'Low' };
+
 export const STATUS_NAME = {
 	Open: 'Open',
-	'In Progress': 'In progress',
+	'In Progress': 'In Progress',
 	Resolved: 'Resolved',
 	Closed: 'Closed',
 };
+
+/** oklch hue values matching tracker team-menu .c1–.c4 */
+export const TEAM_MARK_HUES = [38, 200, 130, 320];
 
 export const CLI_SKILL_MD_URL = 'https://raw.githubusercontent.com/cse110-sp26-group1/Allegro-CLT/main/cli/SKILL.md';
 
@@ -28,39 +31,3 @@ export const TAGS = [
 
 // Backend category enum values, used by the new-issue Category dropdown.
 export const CATEGORIES = ['Bug', 'Feature', 'Task'];
-
-/** Maps sidebar tag to backend category enum (Bug | Feature | Task).
- * Temporary until backend fix
- */
-export const TAG_MAP = {
-	ui: 'Bug',
-	backend: 'Bug',
-	database: 'Bug',
-	authentication: 'Bug',
-	performance: 'Bug',
-	security: 'Bug',
-	testing: 'Bug',
-	documentation: 'Bug',
-	integration: 'Bug',
-	enhancement: 'Bug',
-	research: 'Bug',
-};
-
-// Predefined "Views" (Saved filter/sort combinations)
-export const DEFAULT_VIEWS = [
-	{
-		id: 'all',
-		name: 'All Issues',
-		filters: { status: 'all', priority: 'all', tag: 'all' },
-	},
-	{
-		id: 'urgent',
-		name: 'Urgent Action',
-		filters: { status: 'Open', priority: 'Critical', tag: 'all' },
-	},
-	{
-		id: 'ui-bugs',
-		name: 'UI Bugs',
-		filters: { status: 'all', priority: 'all', tag: 'ui' },
-	},
-];

@@ -1,15 +1,12 @@
-// Real-backend test helpers. Talks to a running Cloudflare Worker (defaults to
+// E2E test helpers. Talks to a running Cloudflare Worker (defaults to
 // http://127.0.0.1:8787 via local Wrangler + D1) over real HTTP. No fetch
-// interception: configureRealApiPage() / setBrowserSession() flip
+// interception: configureApiPage() / setBrowserSession() flip
 // window.__ALLEGRO_API_BASE__ so the frontend's resolveApiBase() picks up the
 // override transparently, and tests then drive the UI normally.
-//
-// Never imported by mock-mode specs.
 
-const DEFAULT_REAL_API_BASE = 'http://127.0.0.1:8787';
+const DEFAULT_API_BASE = 'http://127.0.0.1:8787';
 
-export const REAL_API_ENABLED = process.env.E2E_REAL_API === '1';
-export const REAL_API_BASE = trimApiBase(process.env.E2E_API_BASE || DEFAULT_REAL_API_BASE);
+export const API_BASE = trimApiBase(process.env.E2E_API_BASE || DEFAULT_API_BASE);
 
 /**
  * Removes trailing slashes from an API origin.
@@ -43,7 +40,7 @@ export function makeUniqueUser(prefix = 'user') {
 }
 
 /**
- * Creates a unique team name for real-backend tests.
+ * Creates a unique team name for E2E tests.
  * @param {string} prefix Human-readable prefix.
  * @returns {string} Unique team name.
  */
@@ -53,7 +50,7 @@ export function makeUniqueTeamName(prefix = 'E2E Team') {
 }
 
 /**
- * Creates a unique issue title for real-backend tests.
+ * Creates a unique issue title for E2E tests.
  * @param {string} prefix Human-readable prefix.
  * @returns {string} Unique issue title.
  */
@@ -63,7 +60,7 @@ export function makeUniqueIssueTitle(prefix = 'E2E Issue') {
 }
 
 /**
- * Sends a JSON request to the configured real API.
+ * Sends a JSON request to the configured API.
  * @param {string} path API path beginning with "/".
  * @param {{ method?: string, token?: string, body?: object }} [options] Request options.
  * @returns {Promise<unknown>} Parsed JSON response, or null for empty responses.
@@ -86,9 +83,9 @@ export async function apiRequest(path, options = {}) {
 
 	let response;
 	try {
-		response = await fetch(new URL(path, `${REAL_API_BASE}/`), request);
+		response = await fetch(new URL(path, `${API_BASE}/`), request);
 	} catch (error) {
-		throw new Error(`Could not reach real API at ${REAL_API_BASE}: ${error.message}`);
+		throw new Error(`Could not reach API at ${API_BASE}: ${error.message}`);
 	}
 
 	const text = await response.text();
@@ -116,7 +113,7 @@ export async function apiRequest(path, options = {}) {
 }
 
 /**
- * Builds the browser localStorage profile object from a real API session.
+ * Builds the browser localStorage profile object from an API session.
  * @param {{ credentials: object, user?: object }} session Authenticated session.
  * @returns {{ first_name: string, last_name: string, username: string, email: string, initials: string, name: string }}
  */
@@ -152,11 +149,11 @@ function buildSession(credentials, response) {
 }
 
 /**
- * Registers a unique user against the real backend.
+ * Registers a unique user against the backend.
  * @param {object} [overrides] Optional credential overrides.
  * @returns {Promise<{ token: string, expires_at: string, credentials: object, user: object }>} Authenticated session.
  */
-export async function registerRealUser(overrides = {}) {
+export async function registerUser(overrides = {}) {
 	const credentials = { ...makeUniqueUser(), ...overrides };
 	const response = await apiRequest('/auth/register', {
 		method: 'POST',
@@ -167,29 +164,12 @@ export async function registerRealUser(overrides = {}) {
 }
 
 /**
- * Logs in with real backend credentials.
- * @param {{ email: string, password: string }} credentials Login credentials.
- * @returns {Promise<{ token: string, expires_at: string, credentials: object, user: object }>} Authenticated session.
- */
-export async function loginRealUser(credentials) {
-	const response = await apiRequest('/auth/login', {
-		method: 'POST',
-		body: {
-			email: credentials.email,
-			password: credentials.password,
-		},
-	});
-
-	return buildSession(credentials, response);
-}
-
-/**
- * Creates a team through the real backend.
+ * Creates a team through the backend.
  * @param {{ token: string }} session Authenticated admin session.
  * @param {{ team_name?: string, bio?: string }} [overrides] Team fields.
  * @returns {Promise<{ id: number, team_name: string, bio: string | null }>} Created team.
  */
-export async function createRealTeam(session, overrides = {}) {
+export async function createTeam(session, overrides = {}) {
 	const body = {
 		team_name: overrides.team_name || makeUniqueTeamName(),
 	};
@@ -212,12 +192,12 @@ export async function createRealTeam(session, overrides = {}) {
 }
 
 /**
- * Deletes a team through the real backend.
+ * Deletes a team through the backend.
  * @param {{ token: string }} session Authenticated admin session.
  * @param {number} teamId Team id.
  * @returns {Promise<unknown>} Delete response.
  */
-export async function deleteRealTeam(session, teamId) {
+export async function deleteTeam(session, teamId) {
 	return apiRequest(`/teams/${teamId}`, {
 		method: 'DELETE',
 		token: session.token,
@@ -230,9 +210,9 @@ export async function deleteRealTeam(session, teamId) {
  * @param {number} teamId Team id.
  * @returns {Promise<void>}
  */
-export async function safeDeleteRealTeam(session, teamId) {
+export async function safeDeleteTeam(session, teamId) {
 	try {
-		await deleteRealTeam(session, teamId);
+		await deleteTeam(session, teamId);
 	} catch (error) {
 		if (![403, 404].includes(error.status)) {
 			throw error;
@@ -245,31 +225,18 @@ export async function safeDeleteRealTeam(session, teamId) {
  * @param {{ token: string }} session Authenticated session.
  * @returns {Promise<Array>} Team rows.
  */
-export async function fetchRealTeams(session) {
+export async function fetchTeams(session) {
 	return apiRequest('/teams', { token: session.token });
 }
 
 /**
- * Fetches real team members.
+ * Fetches team members.
  * @param {{ token: string }} session Authenticated session.
  * @param {number} teamId Team id.
  * @returns {Promise<Array>} Team members.
  */
-export async function fetchRealTeamMembers(session, teamId) {
+export async function fetchTeamMembers(session, teamId) {
 	return apiRequest(`/teams/${teamId}/members`, {
-		token: session.token,
-	});
-}
-
-/**
- * Leaves a team through the real backend as the authenticated user.
- * @param {{ token: string }} session Authenticated session.
- * @param {number} teamId Team id.
- * @returns {Promise<{ success: boolean, message: string }>} Leave response.
- */
-export async function leaveRealTeam(session, teamId) {
-	return apiRequest(`/teams/${teamId}/leave`, {
-		method: 'DELETE',
 		token: session.token,
 	});
 }
@@ -280,7 +247,7 @@ export async function leaveRealTeam(session, teamId) {
  * @param {number} teamId Team id.
  * @returns {Promise<Array>} Issue rows.
  */
-export async function fetchRealIssues(session, teamId) {
+export async function fetchIssues(session, teamId) {
 	return apiRequest(`/issues?team_id=${teamId}`, { token: session.token });
 }
 
@@ -291,13 +258,13 @@ export async function fetchRealIssues(session, teamId) {
  * @param {object} [overrides] Issue field overrides.
  * @returns {Promise<{ success: boolean, id: number, enriched: object }>} Create issue response.
  */
-export async function createRealIssue(session, teamId, overrides = {}) {
+export async function createIssue(session, teamId, overrides = {}) {
 	return apiRequest('/issues', {
 		method: 'POST',
 		token: session.token,
 		body: {
 			title: makeUniqueIssueTitle(),
-			description: 'Created by the real-backend Playwright helper.',
+			description: 'Created by the E2E Playwright helper.',
 			team_id: teamId,
 			priority: 'Medium',
 			category: 'Bug',
@@ -309,50 +276,6 @@ export async function createRealIssue(session, teamId, overrides = {}) {
 }
 
 /**
- * Patches an issue through the real backend.
- * @param {{ token: string }} session Authenticated session.
- * @param {number} issueId Issue id.
- * @param {object} updates Patch fields.
- * @returns {Promise<{ success: boolean }>} PATCH response.
- */
-export async function updateRealIssue(session, issueId, updates) {
-	return apiRequest(`/issues/${issueId}`, {
-		method: 'PATCH',
-		token: session.token,
-		body: updates,
-	});
-}
-
-/**
- * Deletes an issue through the real backend.
- * @param {{ token: string }} session Authenticated session.
- * @param {number} issueId Issue id.
- * @returns {Promise<{ success: boolean }>} DELETE response.
- */
-export async function deleteRealIssue(session, issueId) {
-	return apiRequest(`/issues/${issueId}`, {
-		method: 'DELETE',
-		token: session.token,
-	});
-}
-
-/**
- * Best-effort issue cleanup that ignores already-deleted issues.
- * @param {{ token: string }} session Authenticated session.
- * @param {number} issueId Issue id.
- * @returns {Promise<void>}
- */
-export async function safeDeleteRealIssue(session, issueId) {
-	try {
-		await deleteRealIssue(session, issueId);
-	} catch (error) {
-		if (![403, 404].includes(error.status)) {
-			throw error;
-		}
-	}
-}
-
-/**
  * Sends an invite from `adminSession`'s team to a target user (by id, username, or email).
  * Uses /teams/:teamId/invite so it goes through the same admin-gated path the UI does.
  * @param {{ token: string }} adminSession Admin session for the team.
@@ -360,7 +283,7 @@ export async function safeDeleteRealIssue(session, issueId) {
  * @param {{ invited_user_id?: number, username?: string, email?: string }} target Invitee identifier.
  * @returns {Promise<{ success: boolean, invite_id: number }>} Invite response.
  */
-export async function inviteRealUser(adminSession, teamId, target) {
+export async function inviteUser(adminSession, teamId, target) {
 	return apiRequest(`/teams/${teamId}/invite`, {
 		method: 'POST',
 		token: adminSession.token,
@@ -369,11 +292,11 @@ export async function inviteRealUser(adminSession, teamId, target) {
 }
 
 /**
- * Fetches real pending invites for the authenticated user.
+ * Fetches pending invites for the authenticated user.
  * @param {{ token: string }} session Authenticated session.
  * @returns {Promise<Array>} Pending invites.
  */
-export async function fetchRealInvites(session) {
+export async function fetchInvites(session) {
 	return apiRequest('/invites', {
 		token: session.token,
 	});
@@ -385,7 +308,7 @@ export async function fetchRealInvites(session) {
  * @param {number} inviteId Invite id.
  * @returns {Promise<{ success: boolean, message: string }>} Accept response.
  */
-export async function acceptRealInvite(session, inviteId) {
+export async function acceptInvite(session, inviteId) {
 	return apiRequest(`/invites/${inviteId}/accept`, {
 		method: 'PATCH',
 		token: session.token,
@@ -393,25 +316,12 @@ export async function acceptRealInvite(session, inviteId) {
 }
 
 /**
- * Rejects a pending invite as the invited user.
- * @param {{ token: string }} session Authenticated session of the invited user.
- * @param {number} inviteId Invite id.
- * @returns {Promise<{ success: boolean, message: string }>} Reject response.
- */
-export async function rejectRealInvite(session, inviteId) {
-	return apiRequest(`/invites/${inviteId}/reject`, {
-		method: 'PATCH',
-		token: session.token,
-	});
-}
-
-/**
  * Installs browser-side API overrides before app modules run.
- * Does not write auth state — call storeBrowserSession / setBrowserSession for that.
+ * Does not write auth state — call setBrowserSession for that.
  * @param {import('@playwright/test').Page} page Playwright page.
  * @returns {Promise<void>}
  */
-export async function configureRealApiPage(page) {
+export async function configureApiPage(page) {
 	await page.addInitScript(
 		({ apiBase }) => {
 			window.__ALLEGRO_API_BASE__ = apiBase;
@@ -423,35 +333,7 @@ export async function configureRealApiPage(page) {
 				/* localStorage unavailable */
 			}
 		},
-		{ apiBase: REAL_API_BASE },
-	);
-}
-
-/**
- * Writes an authenticated session into the current browser page.
- * The page must already be on the frontend origin.
- * @param {import('@playwright/test').Page} page Playwright page.
- * @param {{ token: string, expires_at: string, credentials: object, user?: object }} session Authenticated session.
- * @returns {Promise<void>}
- */
-export async function storeBrowserSession(page, session) {
-	await page.evaluate(
-		({ apiBase, token, expiresAt, user }) => {
-			sessionStorage.clear();
-			localStorage.setItem('allegro_api_base', apiBase);
-			localStorage.setItem('allegro_e2e_test_mode', '1');
-			localStorage.setItem('allegro_token', token);
-			localStorage.setItem('allegro_token_expires', expiresAt);
-			localStorage.setItem('allegro_user', JSON.stringify(user));
-			window.__ALLEGRO_API_BASE__ = apiBase;
-			window.__ALLEGRO_E2E_TEST_MODE__ = true;
-		},
-		{
-			apiBase: REAL_API_BASE,
-			token: session.token,
-			expiresAt: session.expires_at,
-			user: storageUser(session),
-		},
+		{ apiBase: API_BASE },
 	);
 }
 
@@ -462,15 +344,15 @@ export async function storeBrowserSession(page, session) {
  * @returns {Promise<void>}
  */
 export async function setBrowserSession(page, session) {
-	await configureRealApiPage(page);
+	await configureApiPage(page);
 	await page.addInitScript(
 		({ token, expiresAt, user }) => {
 			try {
-				if (sessionStorage.getItem('__pw_real_auth_injected__') === '1') return;
+				if (sessionStorage.getItem('__pw_auth_injected__') === '1') return;
 				localStorage.setItem('allegro_token', token);
 				localStorage.setItem('allegro_token_expires', expiresAt);
 				localStorage.setItem('allegro_user', JSON.stringify(user));
-				sessionStorage.setItem('__pw_real_auth_injected__', '1');
+				sessionStorage.setItem('__pw_auth_injected__', '1');
 			} catch {
 				/* localStorage unavailable */
 			}
@@ -484,36 +366,36 @@ export async function setBrowserSession(page, session) {
 }
 
 /**
- * Registers a user, creates a team, and injects browser auth for a real-backend UI test.
+ * Registers a user, creates a team, and injects browser auth for a UI test.
  * @param {import('@playwright/test').Page} page Playwright page.
  * @param {{ user?: object, team?: { team_name?: string, bio?: string } }} [opts] Setup options.
- * @returns {Promise<{ session: object, team: object, cleanup: () => Promise<void> }>} Real app context.
+ * @returns {Promise<{ session: object, team: object, cleanup: () => Promise<void> }>} App context.
  */
-export async function setupRealApp(page, opts = {}) {
-	const session = await registerRealUser(opts.user || {});
-	const team = await createRealTeam(session, opts.team || {});
+export async function setupApp(page, opts = {}) {
+	const session = await registerUser(opts.user || {});
+	const team = await createTeam(session, opts.team || {});
 	await setBrowserSession(page, session);
 
 	return {
 		session,
 		team,
-		cleanup: () => safeDeleteRealTeam(session, team.id),
+		cleanup: () => safeDeleteTeam(session, team.id),
 	};
 }
 
 /**
- * Registers a user, creates a team, seeds N issues through the real API, and
+ * Registers a user, creates a team, seeds N issues through the API, and
  * injects browser auth. Cleanup deletes the team (issues cascade via FK).
  * @param {import('@playwright/test').Page} page Playwright page.
  * @param {object[]} issues Issue field-override objects. test_mode defaults to true.
- * @param {{ user?: object, team?: object }} [opts] setupRealApp options.
+ * @param {{ user?: object, team?: object }} [opts] setupApp options.
  * @returns {Promise<{ session: object, team: object, issues: object[], cleanup: () => Promise<void> }>} Seeded app context.
  */
-export async function setupRealAppWithIssues(page, issues, opts = {}) {
-	const app = await setupRealApp(page, opts);
+export async function setupAppWithIssues(page, issues, opts = {}) {
+	const app = await setupApp(page, opts);
 	const created = [];
 	for (const overrides of issues) {
-		const response = await createRealIssue(app.session, app.team.id, overrides);
+		const response = await createIssue(app.session, app.team.id, overrides);
 		created.push({ id: response.id, ...overrides, ...response.enriched });
 	}
 
