@@ -58,6 +58,10 @@ Amberly:
 ---
 
 ### Benjamin:
+- used AI for understanding the invites and teams endpoint requirements
+- used AI to help write invites and teams test files
+- used AI to help debug database schema issues
+- still hand-checked all tests to verify they pass, manually fixed status codes, removed non-existent columns (joined_at), and split tests into separate files 
 
 ---
 
