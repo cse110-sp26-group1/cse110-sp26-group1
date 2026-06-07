@@ -26,7 +26,7 @@ export function getStoredUser() {
 
 /**
  * Derives two-letter initials (same rules as tracker sidebar team members).
- * @param {StoredUser | null | undefined} [user]
+ * @param {StoredUser | null | undefined} [user] User.
  * @returns {string}
  */
 export function getUserInitials(user = getStoredUser()) {
@@ -45,7 +45,7 @@ export function getUserInitials(user = getStoredUser()) {
 }
 
 /**
- * @param {StoredUser | null | undefined} [user]
+ * @param {StoredUser | null | undefined} [user] User.
  * @returns {string}
  */
 export function getUserDisplayName(user = getStoredUser()) {
@@ -61,7 +61,7 @@ export function getUserDisplayName(user = getStoredUser()) {
 }
 
 /**
- * @param {StoredUser} profile
+ * @param {StoredUser} profile User data to save.
  * @returns {void}
  */
 export function saveStoredUser(profile) {
@@ -85,7 +85,7 @@ export function saveStoredUser(profile) {
 
 /**
  * Build a stored user object from API login/register user payload.
- * @param {{ first_name?: string, last_name?: string, username?: string, email?: string }} apiUser
+ * @param {{ first_name?: string, last_name?: string, username?: string, email?: string }} apiUser API payload.
  * @returns {StoredUser}
  */
 export function userFromApiProfile(apiUser) {

@@ -4,6 +4,7 @@
 		<meta charset="utf-8" />
 		<title>Sign in - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" href="../imgs/file.svg" type="image/svg+xml" />
 		<script>
 			try {
 				if (localStorage.getItem('theme') === 'dark') {
@@ -20,7 +21,7 @@
 		<div class="stage">
 			<div class="inner">
 				<div class="brand">
-					<div class="logo" aria-hidden="true"></div>
+					<img class="logo" src="../imgs/file.svg" alt="" width="24" height="24" decoding="async" aria-hidden="true" />
 					<span class="name">Allegro</span>
 				</div>
 
@@ -28,6 +29,8 @@
 				<p class="sub">Sign in to continue to your teams.</p>
 
 				<form id="auth-form" novalidate>
+					<div id="auth-error" hidden></div>
+
 					<div class="field">
 						<label for="email">Email</label>
 						<input id="email" class="input" type="email" placeholder="you@studio.dev" autocomplete="email" required />

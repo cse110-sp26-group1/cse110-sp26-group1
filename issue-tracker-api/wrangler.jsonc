@@ -4,6 +4,7 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
+	"account_id": "28e15f81190845dc8bc813176034984c",
 	"name": "issue-tracker-api",
 	"main": "src/index.js",
 	"compatibility_date": "2026-05-09",

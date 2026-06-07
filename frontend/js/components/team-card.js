@@ -35,8 +35,7 @@ class TeamCard extends HTMLElement {
 	 * @returns {string[]}
 	 */
 	static get observedAttributes() {
-		// Added status attributes to support issue-aware dashboard
-		return ['team-id', 'name', 'mark', 'color', 'role', 'open', 'prog', 'done', 'user-initials'];
+		return ['team-id', 'name', 'mark', 'color', 'role', 'bio', 'members'];
 	}
 
 	#rendered = false;
@@ -66,18 +65,16 @@ class TeamCard extends HTMLElement {
 		const mark = this.getAttribute('mark') ?? '';
 		const color = this.getAttribute('color') ?? '0';
 		const role = this.getAttribute('role') ?? 'Member';
-
-		// Status values
-		const openCount = this.getAttribute('open') ?? '0';
-		const progCount = this.getAttribute('prog') ?? '0';
-		const doneCount = this.getAttribute('done') ?? '0';
-		const userInitials = this.getAttribute('user-initials') ?? getUserInitials();
+		const bio = this.getAttribute('bio') ?? '';
 
 		const link = this.querySelector('a.team');
 		const teamMark = this.querySelector('.team-mark');
 		const title = this.querySelector('h2');
 		const subtitleEl = this.querySelector('.slug');
-		const avatarEl = this.querySelector('.avatar');
+		const bioEl = this.querySelector('.team-bio');
+
+		const oldAvatarEl = this.querySelector('.avatar');
+		if (oldAvatarEl) oldAvatarEl.remove();
 
 		if (link) link.href = `tracker.html?team_id=${teamId}`;
 
@@ -91,21 +88,48 @@ class TeamCard extends HTMLElement {
 
 		if (subtitleEl) subtitleEl.textContent = role === 'admin' ? 'Workspace Admin' : 'Workspace Member';
 
-		// Ensure initials match the current user
-		if (avatarEl) avatarEl.textContent = userInitials;
+		if (bioEl) {
+			const trimmedBio = bio.trim();
+			if (trimmedBio) {
+				bioEl.textContent = trimmedBio;
+				bioEl.classList.remove('empty');
+			} else {
+				bioEl.textContent = 'No bio yet.';
+				bioEl.classList.add('empty');
+			}
+		}
 
-		// Enabling stats display
-		const statsEl = this.querySelector('.stats');
-		if (statsEl) {
-			statsEl.style.display = 'grid'; // Remove 'none' to show counts
+		const membersAttr = this.getAttribute('members');
+		if (membersAttr) {
+			try {
+				const members = JSON.parse(membersAttr);
 
-			const openEl = this.querySelector('.open-count');
-			const progEl = this.querySelector('.prog-count');
-			const doneEl = this.querySelector('.done-count');
+				const membersHtml = members
+					.map((m, index) => {
+						const initials =
+							m.first_name && m.last_name
+								? (m.first_name[0] + m.last_name[0]).toUpperCase()
+								: (m.username || m.email || '??').substring(0, 2).toUpperCase();
+						const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username;
 
-			if (openEl) openEl.textContent = openCount;
-			if (progEl) progEl.textContent = progCount;
-			if (doneEl) doneEl.textContent = doneCount;
+						return `<div class="avatar sm" title="${name}">${initials}</div>`;
+					})
+					.join('');
+
+				let membersContainer = this.querySelector('.member-stack');
+
+				if (!membersContainer) {
+					membersContainer = document.createElement('div');
+					membersContainer.className = 'member-stack';
+					membersContainer.style.marginTop = '1rem';
+
+					if (link) link.appendChild(membersContainer);
+				}
+
+				membersContainer.innerHTML = membersHtml;
+			} catch (err) {
+				console.error('Failed to parse team members for card', err);
+			}
 		}
 	}
 }
