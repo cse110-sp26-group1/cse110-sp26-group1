@@ -1207,7 +1207,6 @@ body {
 	.topbar .left {
 		flex: 1 1 auto;
 		min-width: 0;
-		overflow: hidden;
 		gap: 0.429rem;
 	}
 
@@ -1224,7 +1223,6 @@ body {
 	.team-switch {
 		min-width: 0;
 		max-width: min(11rem, 42vw);
-		overflow: hidden;
 	}
 
 	#team-label {
