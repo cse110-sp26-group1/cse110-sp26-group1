@@ -1,4 +1,4 @@
-import { PRI_ORDER, STATUS_NAME, SKILLS_MD, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
+import { CLI_SKILL_MD_URL, PRI_ORDER, STATUS_NAME, TAGS, TAG_MAP, CATEGORIES } from './constants.js';
 
 import { fetchIssues, createIssue, updateIssue, deleteIssue } from './api.js';
 import { requireAuth, inviteToTeam, fetchTeams, fetchTeamMembers, leaveTeam } from './api.js';
@@ -1405,18 +1405,24 @@ function showToast(msg) {
 	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
-document.getElementById('download-skills').addEventListener('click', () => {
-	const blob = new Blob([SKILLS_MD], { type: 'text/markdown' });
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = 'skills.md';
-	document.body.appendChild(a);
-	a.click();
-	a.remove();
-	// Object URLs hold browser resources until explicitly released.
-	URL.revokeObjectURL(url);
-	showToast('skills.md downloaded');
+document.getElementById('download-skills').addEventListener('click', async () => {
+	try {
+		const response = await fetch(CLI_SKILL_MD_URL);
+		if (!response.ok) throw new Error('Failed to fetch cli/SKILL.md');
+
+		const blob = await response.blob();
+		const url = URL.createObjectURL(blob);
+		const downloadLink = document.createElement('a');
+		downloadLink.href = url;
+		downloadLink.download = 'SKILL.md';
+		document.body.appendChild(downloadLink);
+		downloadLink.click();
+		downloadLink.remove();
+		URL.revokeObjectURL(url);
+		showToast('cli/SKILL.md downloaded');
+	} catch {
+		showToast('Could not download cli/SKILL.md');
+	}
 });
 
 // ============================================================
