@@ -74,7 +74,7 @@
 				<div class="nav-section team-section">
 					<div class="team-header">
 						<span class="label-sm">Team</span>
-						<button class="btn sm invite-btn" id="open-invite-modal" type="button" title="Invite user" disabled>Invite user</button>
+						<button class="btn sm settings-btn" id="open-team-settings" type="button" title="Team settings" disabled>Settings</button>
 					</div>
 					<div class="members"></div>
 				</div>
@@ -237,22 +237,34 @@
 			</div>
 		</div>
 
-		<div class="backdrop" id="invite-backdrop">
+		<div class="backdrop" id="settings-backdrop">
+			<div class="modal settings-modal">
+				<div class="modal-head settings-modal-head">
+					<div class="settings-head-row">
+						<h3>Team settings</h3>
+						<button type="button" class="btn sm settings-edit-btn" id="settings-edit-btn" title="Edit team" hidden>✎</button>
+					</div>
+					<p>Manage your workspace profile, members, and access.</p>
+				</div>
+				<div class="modal-body" id="settings-body">
+					<!-- Rendered by tracker.js -->
+				</div>
+				<div class="modal-foot settings-modal-foot">
+					<button class="btn" type="button" id="cancel-settings">Close</button>
+					<div class="settings-danger-actions" id="settings-danger-actions"></div>
+				</div>
+			</div>
+		</div>
+
+		<div class="backdrop" id="delete-team-backdrop">
 			<div class="modal modal-small">
 				<div class="modal-head">
-					<h3>Invite to team</h3>
-					<p>Send an invitation to a colleague.</p>
-				</div>
-				<div class="modal-body">
-					<div class="field" id="invite-field">
-						<label>Username or Email <span class="req">*</span></label>
-						<input class="input" id="invite-input" placeholder="e.g. ada@example.com or adalovelace" autocomplete="off" />
-						<p class="field-error" id="invite-error" hidden></p>
-					</div>
+					<h3>Delete team?</h3>
+					<p>This permanently removes the team and all its issues. This cannot be undone.</p>
 				</div>
 				<div class="modal-foot">
-					<button class="btn" id="cancel-invite">Cancel</button>
-					<button class="btn primary" id="confirm-invite">Send invite</button>
+					<button class="btn" type="button" id="cancel-delete-team">Cancel</button>
+					<button class="btn primary danger-btn" type="button" id="confirm-delete-team">Delete team</button>
 				</div>
 			</div>
 		</div>
