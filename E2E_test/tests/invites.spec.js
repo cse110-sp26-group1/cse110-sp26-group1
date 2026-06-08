@@ -106,7 +106,7 @@ test.describe('Invites — teams page', () => {
 	});
 });
 
-test.describe('Invites — tracker invite modal', () => {
+test.describe('Invites — tracker settings modal', () => {
 	test('sends an invite to an existing user', async ({ page }) => {
 		const admin = await registerUser(makeUniqueUser('tracker_inv_admin'));
 		const target = await registerUser(makeUniqueUser('tracker_inv_target'));
@@ -115,7 +115,10 @@ test.describe('Invites — tracker invite modal', () => {
 
 		try {
 			await page.goto(`/html/tracker.html?team_id=${team.id}`);
-			await page.getByRole('button', { name: 'Invite user' }).click();
+			await page.getByRole('button', { name: 'Settings' }).click();
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
+			await expect(page.locator('#settings-edit-btn')).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Send invite' })).toBeVisible();
 			await page.getByPlaceholder(/ada@example|adalovelace/i).fill(target.credentials.username);
 			await page.getByRole('button', { name: 'Send invite' }).click();
 
@@ -136,7 +139,8 @@ test.describe('Invites — tracker invite modal', () => {
 
 		try {
 			await page.goto(`/html/tracker.html?team_id=${team.id}`);
-			await page.getByRole('button', { name: 'Invite user' }).click();
+			await page.getByRole('button', { name: 'Settings' }).click();
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
 
 			const ghost = `nobody_e2e_${Date.now().toString(36)}`;
 			await page.getByPlaceholder(/ada@example|adalovelace/i).fill(ghost);
@@ -157,7 +161,8 @@ test.describe('Invites — tracker invite modal', () => {
 
 		try {
 			await page.goto(`/html/tracker.html?team_id=${team.id}`);
-			await page.getByRole('button', { name: 'Invite user' }).click();
+			await page.getByRole('button', { name: 'Settings' }).click();
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
 			await page.getByPlaceholder(/ada@example|adalovelace/i).fill('not-an-email@');
 			await page.getByRole('button', { name: 'Send invite' }).click();
 
@@ -178,14 +183,16 @@ test.describe('Invites — tracker invite modal', () => {
 
 		try {
 			await page.goto(`/html/tracker.html?team_id=${team.id}`);
-			await page.getByRole('button', { name: 'Invite user' }).click();
+			await page.getByRole('button', { name: 'Settings' }).click();
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
 			await page.getByPlaceholder(/ada@example|adalovelace/i).fill(target.credentials.username);
 			await page.getByRole('button', { name: 'Send invite' }).click();
 
 			const err = page.locator('#invite-error');
 			await expect(err).toBeVisible();
 			await expect(err).toContainText('already has a pending invite');
-			await expect(page.locator('#invite-backdrop')).toHaveClass(/open/);
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
+			await expect(page.locator('#delete-team-backdrop')).not.toHaveClass(/open/);
 			await expect(page.getByPlaceholder(/ada@example|adalovelace/i)).toHaveValue(target.credentials.username);
 
 			const pending = (await fetchInvites(target)).filter((invite) => invite.team_id === team.id);

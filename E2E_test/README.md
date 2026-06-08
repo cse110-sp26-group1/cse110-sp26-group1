@@ -53,8 +53,8 @@ Tests seed data through real HTTP API calls, use unique generated users/teams/is
 | File | What it covers |
 | --- | --- |
 | `auth.spec.js` | `/auth/register`, `/auth/login`, `/auth/logout` flows, `?redirect=` preservation, duplicate-signup 409 friendly banner, password toggle, `requireAuth` / `requireNoAuth` gating, sign-out clearing storage. |
-| `teams.spec.js` | Listing teams via `/teams`, admin vs member role rendering (via an accepted invite from a second user), tracker-menu leave-team flow for members, admin leave restriction with backend membership checks, create-team modal and POST payload, pending-invites section, navigation to tracker. |
-| `invites.spec.js` | Two-user invite flow: accept removes the row + adds the team card; decline; last-invite hides section; tracker invite modal happy path + duplicate + 404 + email-format error. |
+| `teams.spec.js` | Listing teams via `/teams`, admin vs member role rendering (via an accepted invite from a second user), settings-modal leave-team flow for members (member vs admin controls), admin leave restriction with backend membership checks, create-team modal and POST payload, pending-invites section, navigation to tracker. |
+| `invites.spec.js` | Two-user invite flow: accept removes the row + adds the team card; decline; last-invite hides section; tracker settings modal invite happy path + duplicate + 404 + email-format error. |
 | `issues.spec.js` | `/issues` seed with `test_mode=true` (predictable LLM bypass), priority grouping, filter/search/sort, create modal validation + happy path, assignee persistence, text/log attachment persistence, edit save + validation, delete via UI, `j` keyboard nav. |
 | `navigation.spec.js` | Signed-out root → `login.html`, signed-in root → `teams.html`, dark-mode persistence, tracker logo → teams. |
 | `mobile.spec.js` | **`mobile-chrome` project only.** Sidebar drawer, search relocation, mobile master/detail, teams new-team action and pending-invites section on a narrow viewport. |

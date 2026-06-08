@@ -263,7 +263,61 @@ describe('Teams Endpoints', () => {
 			expect(response.status).toBe(200);
 			const data = await response.json();
 			expect(data.success).toBe(true);
-			expect(data.message).toBe('Team renamed');
+			expect(data.message).toBe('Team updated');
+		});
+
+		it('allows admin to update bio only', async () => {
+			const admin = await createTestUser('bio_admin', 'bio_admin@test.com');
+
+			const createRes = await SELF.fetch('http://localhost/teams', {
+				method: 'POST',
+				headers: authHeaders(admin.token),
+				body: JSON.stringify({ team_name: 'Bio Team' }),
+			});
+			const { team_id } = await createRes.json();
+
+			const response = await SELF.fetch(`http://localhost/teams/${team_id}`, {
+				method: 'PATCH',
+				headers: authHeaders(admin.token),
+				body: JSON.stringify({ bio: 'Robotics stack context' }),
+			});
+
+			expect(response.status).toBe(200);
+			const data = await response.json();
+			expect(data.success).toBe(true);
+			expect(data.message).toBe('Team updated');
+
+			const getRes = await SELF.fetch(`http://localhost/teams/${team_id}`, {
+				headers: authHeaders(admin.token),
+			});
+			const team = await getRes.json();
+			expect(team.bio).toBe('Robotics stack context');
+		});
+
+		it('allows admin to update name and bio together', async () => {
+			const admin = await createTestUser('both_admin', 'both_admin@test.com');
+
+			const createRes = await SELF.fetch('http://localhost/teams', {
+				method: 'POST',
+				headers: authHeaders(admin.token),
+				body: JSON.stringify({ team_name: 'Old Name', bio: 'Old bio' }),
+			});
+			const { team_id } = await createRes.json();
+
+			const response = await SELF.fetch(`http://localhost/teams/${team_id}`, {
+				method: 'PATCH',
+				headers: authHeaders(admin.token),
+				body: JSON.stringify({ team_name: 'New Name', bio: 'New bio' }),
+			});
+
+			expect(response.status).toBe(200);
+
+			const getRes = await SELF.fetch(`http://localhost/teams/${team_id}`, {
+				headers: authHeaders(admin.token),
+			});
+			const team = await getRes.json();
+			expect(team.team_name).toBe('New Name');
+			expect(team.bio).toBe('New bio');
 		});
 
 		it('prevents non-admin from renaming team', async () => {
@@ -287,7 +341,7 @@ describe('Teams Endpoints', () => {
 			expect(response.status).toBe(403);
 		});
 
-		it('returns 400 when team_name is missing', async () => {
+		it('returns 400 when no fields are provided', async () => {
 			const user = await createTestUser('nomad', 'nomad@test.com');
 
 			const createRes = await SELF.fetch('http://localhost/teams', {
@@ -304,6 +358,113 @@ describe('Teams Endpoints', () => {
 			});
 
 			expect(response.status).toBe(400);
+			const data = await response.json();
+			expect(data.error).toBe('At least one of team_name or bio is required');
+		});
+	});
+
+	describe('PATCH /teams/:teamId/members/:userId', () => {
+		it('allows admin to promote member to admin', async () => {
+			const admin = await createTestUser('promote_admin', 'promote_admin@test.com');
+			const member = await createTestUser('promote_member', 'promote_member@test.com');
+
+			const createRes = await SELF.fetch('http://localhost/teams', {
+				method: 'POST',
+				headers: authHeaders(admin.token),
+				body: JSON.stringify({ team_name: 'Promote Team' }),
+			});
+			const { team_id } = await createRes.json();
+			await addTeamMember(team_id, member.id, 'member');
+
+			const response = await SELF.fetch(`http://localhost/teams/${team_id}/members/${member.id}`, {
+				method: 'PATCH',
+				headers: authHeaders(admin.token),
+				body: JSON.stringify({ role: 'admin' }),
+			});
+
+			expect(response.status).toBe(200);
+			const data = await response.json();
+			expect(data.success).toBe(true);
+			expect(data.message).toBe('Member role updated');
+
+			const membersRes = await SELF.fetch(`http://localhost/teams/${team_id}/members`, {
+				headers: authHeaders(admin.token),
+			});
+			const members = await membersRes.json();
+			const updated = members.find((m) => m.id === member.id);
+			expect(updated.role).toBe('admin');
+		});
+
+		it('allows admin to demote admin when another admin exists', async () => {
+			const admin1 = await createTestUser('demote_a1', 'demote_a1@test.com');
+			const admin2 = await createTestUser('demote_a2', 'demote_a2@test.com');
+
+			const createRes = await SELF.fetch('http://localhost/teams', {
+				method: 'POST',
+				headers: authHeaders(admin1.token),
+				body: JSON.stringify({ team_name: 'Demote Team' }),
+			});
+			const { team_id } = await createRes.json();
+			await addTeamMember(team_id, admin2.id, 'admin');
+
+			const response = await SELF.fetch(`http://localhost/teams/${team_id}/members/${admin2.id}`, {
+				method: 'PATCH',
+				headers: authHeaders(admin1.token),
+				body: JSON.stringify({ role: 'member' }),
+			});
+
+			expect(response.status).toBe(200);
+
+			const membersRes = await SELF.fetch(`http://localhost/teams/${team_id}/members`, {
+				headers: authHeaders(admin1.token),
+			});
+			const members = await membersRes.json();
+			const updated = members.find((m) => m.id === admin2.id);
+			expect(updated.role).toBe('member');
+		});
+
+		it('prevents demoting the only admin', async () => {
+			const admin = await createTestUser('sole_admin', 'sole_admin@test.com');
+
+			const createRes = await SELF.fetch('http://localhost/teams', {
+				method: 'POST',
+				headers: authHeaders(admin.token),
+				body: JSON.stringify({ team_name: 'Sole Admin Team' }),
+			});
+			const { team_id } = await createRes.json();
+
+			const response = await SELF.fetch(`http://localhost/teams/${team_id}/members/${admin.id}`, {
+				method: 'PATCH',
+				headers: authHeaders(admin.token),
+				body: JSON.stringify({ role: 'member' }),
+			});
+
+			expect(response.status).toBe(409);
+			const data = await response.json();
+			expect(data.error).toBe('Cannot demote the only admin. Promote another member first.');
+		});
+
+		it('prevents non-admin from changing member role', async () => {
+			const owner = await createTestUser('role_owner', 'role_owner@test.com');
+			const member1 = await createTestUser('role_m1', 'role_m1@test.com');
+			const member2 = await createTestUser('role_m2', 'role_m2@test.com');
+
+			const createRes = await SELF.fetch('http://localhost/teams', {
+				method: 'POST',
+				headers: authHeaders(owner.token),
+				body: JSON.stringify({ team_name: 'Role Team' }),
+			});
+			const { team_id } = await createRes.json();
+			await addTeamMember(team_id, member1.id, 'member');
+			await addTeamMember(team_id, member2.id, 'member');
+
+			const response = await SELF.fetch(`http://localhost/teams/${team_id}/members/${member2.id}`, {
+				method: 'PATCH',
+				headers: authHeaders(member1.token),
+				body: JSON.stringify({ role: 'admin' }),
+			});
+
+			expect(response.status).toBe(403);
 		});
 	});
 

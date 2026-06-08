@@ -241,9 +241,9 @@ export async function createTeam(data) {
 
 /**
  * PATCH /teams/:teamId
- * Renames a team. Requires admin role.
- * @param {number} teamId Team to rename.
- * @param {{ team_name: string }} data Updated team fields.
+ * Updates team_name and/or bio. Requires admin role. At least one field required.
+ * @param {number} teamId Team to update.
+ * @param {{ team_name?: string, bio?: string | null }} data Updated team fields.
  * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function updateTeam(teamId, data) {
@@ -271,6 +271,21 @@ export async function deleteTeam(teamId) {
  */
 export async function fetchTeamMembers(teamId) {
 	return request(`/teams/${teamId}/members`);
+}
+
+/**
+ * PATCH /teams/:teamId/members/:userId
+ * Updates a member's role. Requires admin role.
+ * @param {number} teamId Team containing the member.
+ * @param {number} userId Member whose role should change.
+ * @param {'admin' | 'member'} role New role.
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function updateTeamMemberRole(teamId, userId, role) {
+	return request(`/teams/${teamId}/members/${userId}`, {
+		method: 'PATCH',
+		body: JSON.stringify({ role }),
+	});
 }
 
 /**
