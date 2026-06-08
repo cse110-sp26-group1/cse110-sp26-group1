@@ -4,8 +4,9 @@ End-to-end test suite for the Allegro issue tracker **frontend**. Specs drive th
 
 | Path | Purpose |
 | --- | --- |
-| `E2E_test/tests/*.spec.js` | Playwright specs (49 tests across 6 files) |
+| `E2E_test/tests/*.spec.js` | Playwright specs (58 tests across 6 files) |
 | `E2E_test/helpers/api.js` | HTTP client + browser session bootstrap |
+| `E2E_test/helpers/seeds.js` | Shared issue seed payloads for `issues.spec.js` and `mobile.spec.js` |
 
 ## Running
 
@@ -31,8 +32,8 @@ Confirm it's up with `curl http://127.0.0.1:8787/health`, then run the suite:
 
 ```sh
 npm run test:e2e                                # chromium + mobile-chrome
-npm run test:e2e -- --project=chromium          # desktop only
-npm run test:e2e -- --project=mobile-chrome     # mobile only
+npm run test:e2e -- --project=chromium          # desktop only (54 tests)
+npm run test:e2e -- --project=mobile-chrome     # mobile only (4 tests)
 
 E2E_API_BASE=http://127.0.0.1:8787 npm run test:e2e   # explicit API origin
 
@@ -53,17 +54,23 @@ Tests seed data through real HTTP API calls, use unique generated users/teams/is
 | File | What it covers |
 | --- | --- |
 | `auth.spec.js` | `/auth/register`, `/auth/login`, `/auth/logout` flows, `?redirect=` preservation, duplicate-signup 409 friendly banner, password toggle, `requireAuth` / `requireNoAuth` gating, sign-out clearing storage. |
-| `teams.spec.js` | Listing teams via `/teams`, admin vs member role rendering (via an accepted invite from a second user), settings-modal leave-team flow for members (member vs admin controls), admin leave restriction with backend membership checks, create-team modal and POST payload, pending-invites section, navigation to tracker. |
+| `teams.spec.js` | Listing teams via `/teams`, admin vs member role rendering, create-team modal and POST payload, pending-invites section, tracker navigation and team switcher. **Tracker settings modal:** profile edit (name + bio), cancel edit, empty-name validation, remove member, role change, leave/delete team flows. |
 | `invites.spec.js` | Two-user invite flow: accept removes the row + adds the team card; decline; last-invite hides section; tracker settings modal invite happy path + duplicate + 404 + email-format error. |
 | `issues.spec.js` | `/issues` seed with `test_mode=true` (predictable LLM bypass), priority grouping, filter/search/sort, create modal validation + happy path, assignee persistence, text/log attachment persistence, edit save + validation, delete via UI, `j` keyboard nav. |
 | `navigation.spec.js` | Signed-out root → `login.html`, signed-in root → `teams.html`, dark-mode persistence, tracker logo → teams. |
 | `mobile.spec.js` | **`mobile-chrome` project only.** Sidebar drawer, search relocation, mobile master/detail, teams new-team action and pending-invites section on a narrow viewport. |
 
-## Helpers (`E2E_test/helpers/api.js`)
+## Helpers
 
-HTTP client for the backend (`registerUser`, `createTeam`, `inviteUser`, `acceptInvite`, `createIssue`, `fetchTeams`, `fetchIssues`, `fetchInvites`, `fetchTeamMembers`, `safeDeleteTeam`, …) plus browser-side bootstrap: `configureApiPage` and `setBrowserSession` set `window.__ALLEGRO_API_BASE__` before module scripts run, and the frontend's `resolveApiBase()` reads that override.
+### `E2E_test/helpers/api.js`
+
+HTTP client for the backend (`registerUser`, `createTeam`, `inviteUser`, `acceptInvite`, `createIssue`, `fetchTeams`, `fetchIssues`, `fetchInvites`, `fetchTeamMembers`, `updateTeamMemberRole`, `safeDeleteTeam`, …) plus browser-side bootstrap: `configureApiPage` and `setBrowserSession` set `window.__ALLEGRO_API_BASE__` before module scripts run, and the frontend's `resolveApiBase()` reads that override.
 
 Issue creation through the helper sends `test_mode=true` so the backend returns predictable LLM-shaped fields without calling DeepSeek.
+
+### `E2E_test/helpers/seeds.js`
+
+Shared issue payloads: `issueSeeds()` (4 issues for desktop filter/sort tests) and `mobileIssueSeeds()` (first 3 for mobile drawer/detail tests).
 
 ## Config
 
@@ -75,13 +82,13 @@ Issue creation through the helper sends `test_mode=true` so the backend returns 
   - Retries 2× on CI.
 
 - `package.json` scripts:
-  - `test:e2e` — full suite (`E2E_REAL_API=1 playwright test`)
+  - `test:e2e` — full suite (`playwright test`)
   - `test:e2e:ui` / `test:e2e:headed`
 
 ## Decisions
 
 - **User-visible assertions come first.** UI text, badge counts, URLs, and toasts are the primary proofs. API-state cross-checks (`fetchInvites`, `fetchTeams`, etc.) are secondary — they catch a UI that lies without calling the API, but never stand alone.
-- **Persistent workflows get API-state assertions.** Issue create/edit/delete, assignment, attachment upload, invite duplicate handling, and team leave all verify backend state after the UI action.
+- **Persistent workflows get API-state assertions.** Issue create/edit/delete, assignment, attachment upload, invite duplicate handling, team leave, profile edit, remove member, and role change all verify backend state after the UI action.
 - **Cleanup runs in `finally`.** Teams (and cascaded issues) are deleted after every test. Users persist — there is no `/auth/delete` route — which is one more reason to use a local D1.
 - **Issue creation uses backend test mode.** Specs set `allegro_e2e_test_mode=1`, so UI issue creation sends `test_mode=true`.
 
@@ -92,6 +99,7 @@ Issue creation through the helper sends `test_mode=true` so the backend returns 
 - **Drag-to-resize divider** is not covered.
 - **Notification dropdown UI** is commented out in `tracker.html` — not tested.
 - **Theme FOUC script** runs before module scripts; covered indirectly via the dark-mode persistence test.
+- **Mobile settings modal** is not covered separately (desktop settings tests run on `chromium` only).
 
 ## Regressions covered
 
