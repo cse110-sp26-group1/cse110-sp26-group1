@@ -1,9 +1,8 @@
 import { login, requireNoAuth, getPostAuthRedirect } from './api.js';
-import { saveStoredUser, userFromApiProfile } from './user-profile.js';
-import { initPasswordToggles } from './helpers.js';
+import { initPasswordToggles, saveStoredUser, userFromApiProfile } from './helpers.js';
 
 requireNoAuth();
-initPasswordToggles();
+initPasswordToggles(); // wires up the eye button next to the password field
 
 const authForm = document.getElementById('auth-form');
 const signupLink = document.querySelector('.auth-switch a');
@@ -21,6 +20,7 @@ if (signupLink && redirectParam) {
  * redirects to the teams page.
  *
  * @param {SubmitEvent} e Form submit event.
+ * @returns {Promise<void>}
  */
 async function handleLoginSubmit(e) {
 	e.preventDefault();

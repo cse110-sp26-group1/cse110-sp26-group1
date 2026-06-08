@@ -1,54 +1,21 @@
 // @ts-check
-// Real-backend version of mobile.spec.js. Only runs in the mobile-chrome
-// Playwright project (Pixel 5 viewport) so we don't duplicate desktop coverage.
+// Runs in the mobile-chrome Playwright project (Pixel 5 viewport).
 import { test, expect } from '@playwright/test';
 import {
-	createRealTeam,
-	inviteRealUser,
-	makeUniqueIssueTitle,
+	createTeam,
+	inviteUser,
 	makeUniqueTeamName,
 	makeUniqueUser,
-	registerRealUser,
-	safeDeleteRealTeam,
+	registerUser,
+	safeDeleteTeam,
 	setBrowserSession,
-	setupRealAppWithIssues,
-} from '../helpers/real-api.js';
+	setupAppWithIssues,
+} from '../helpers/api.js';
+import { mobileIssueSeeds } from '../helpers/seeds.js';
 
-/**
- * Three predictable issue payloads — Critical / High / Medium — used to drive
- * the mobile drawer, search relocation, and master/detail tests.
- * @returns {object[]}
- */
-function threeIssueSeeds() {
-	return [
-		{
-			title: makeUniqueIssueTitle('Login button not clickable'),
-			description: 'Big blue login button is dead.',
-			priority: 'Critical',
-			category: 'Bug',
-			tags: ['ui'],
-		},
-		{
-			title: makeUniqueIssueTitle('Dashboard charts slow to load'),
-			description: 'Charts take 6+ seconds.',
-			status: 'In Progress',
-			priority: 'High',
-			category: 'Bug',
-			tags: ['performance'],
-		},
-		{
-			title: makeUniqueIssueTitle('Add CSV export to issues'),
-			description: 'Users want CSV.',
-			priority: 'Medium',
-			category: 'Feature',
-			tags: ['enhancement'],
-		},
-	];
-}
-
-test.describe('Mobile — tracker sidebar drawer (real backend)', () => {
+test.describe('Mobile — tracker sidebar drawer', () => {
 	test('sidebar starts closed; toggle opens it as an overlay; backdrop closes it', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, threeIssueSeeds());
+		const ctx = await setupAppWithIssues(page, mobileIssueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 
@@ -78,7 +45,7 @@ test.describe('Mobile — tracker sidebar drawer (real backend)', () => {
 	});
 
 	test('search input lives inside the sidebar drawer on mobile (relocated from the topbar)', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, threeIssueSeeds());
+		const ctx = await setupAppWithIssues(page, mobileIssueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 
@@ -98,9 +65,9 @@ test.describe('Mobile — tracker sidebar drawer (real backend)', () => {
 	});
 });
 
-test.describe('Mobile — tracker master/detail (real backend)', () => {
+test.describe('Mobile — tracker master/detail', () => {
 	test('tapping a row shows the issue detail full-screen; back button returns to the list', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, threeIssueSeeds());
+		const ctx = await setupAppWithIssues(page, mobileIssueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 
@@ -129,15 +96,12 @@ test.describe('Mobile — tracker master/detail (real backend)', () => {
 	});
 });
 
-test.describe('Mobile — teams page (real backend)', () => {
-	test('hero "New team" button + pending invites remain visible and usable at narrow viewport', async ({ page }) => {
-		// The hero "Pending invites" button has been removed (commit c16d5fe).
-		// On mobile, we still expect: the +New team CTA stays hittable, and any
-		// pending invites render in the #invites-section list.
-		const invitee = await registerRealUser(makeUniqueUser('mobile_invitee'));
-		const admin = await registerRealUser(makeUniqueUser('mobile_admin'));
-		const team = await createRealTeam(admin, { team_name: makeUniqueTeamName('Mobile Hero') });
-		await inviteRealUser(admin, team.id, { email: invitee.credentials.email });
+test.describe('Mobile — teams page', () => {
+	test('new-team action and pending invites remain visible and usable at narrow viewport', async ({ page }) => {
+		const invitee = await registerUser(makeUniqueUser('mobile_invitee'));
+		const admin = await registerUser(makeUniqueUser('mobile_admin'));
+		const team = await createTeam(admin, { team_name: makeUniqueTeamName('Mobile Hero') });
+		await inviteUser(admin, team.id, { email: invitee.credentials.email });
 
 		await setBrowserSession(page, invitee);
 
@@ -149,12 +113,12 @@ test.describe('Mobile — teams page (real backend)', () => {
 
 			const section = page.locator('#invites-section');
 			await expect(section).toBeVisible();
-			await expect(section.locator('.invite')).toHaveCount(1);
+			await expect(section.locator('invite-row')).toHaveCount(1);
 
 			await newTeam.click();
 			await expect(page.locator('#create-backdrop')).toHaveClass(/open/);
 		} finally {
-			await safeDeleteRealTeam(admin, team.id);
+			await safeDeleteTeam(admin, team.id);
 		}
 	});
 });

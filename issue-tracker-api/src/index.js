@@ -20,6 +20,11 @@ import { handleInvites } from '../routes/invites.js';
 import { handleTeams } from '../routes/teams.js';
 import { handleAuth } from '../routes/auth.js';
 
+/**
+ * @typedef {object} Env
+ * @property {D1Database} DB
+ */
+
 const ALLOWED_ORIGINS = [
 	'http://localhost:3000',
 	'http://127.0.0.1:3000',

@@ -1,5 +1,52 @@
-// api.js
-const API_BASE = 'https://issue-tracker-api.amorbuks25.workers.dev';
+import { API_BASE } from './constants.js';
+
+/**
+ * @typedef {object} ApiUser
+ * @property {string} username
+ * @property {string} email
+ * @property {string} first_name
+ * @property {string} last_name
+ */
+
+/**
+ * @typedef {object} Issue
+ * @property {number} id
+ * @property {number} team_id
+ * @property {number} created_by
+ * @property {number | null} [assigned_to]
+ * @property {string} title
+ * @property {string | null} [description]
+ * @property {string | null} [summary]
+ * @property {string} status
+ * @property {string} priority
+ * @property {string} [difficulty]
+ * @property {string} [category]
+ * @property {string[]} [tags]
+ * @property {string | null} [entry_point]
+ * @property {string | null} [error_type]
+ * @property {string | null} [error_message]
+ * @property {string[]} [stack_trace]
+ * @property {string[]} [affected_files]
+ * @property {string | null} [expected_behavior]
+ * @property {string | null} [actual_behavior]
+ * @property {string | null} [missing_information]
+ * @property {string | null} [steps_to_reproduce]
+ * @property {string | null} [hypothesis]
+ * @property {string | null} [attempt_notes]
+ * @property {string | null} [resolution_notes]
+ * @property {string} [created_at]
+ * @property {string} [updated_at]
+ */
+
+/**
+ * @typedef {object} InviteDetail
+ * @property {number} id
+ * @property {number} team_id
+ * @property {string} [team_name]
+ * @property {string} [inviter_username]
+ * @property {string} status
+ * @property {string} [created_at]
+ */
 
 /**
  * Resolves the API origin for this browser session.
@@ -11,15 +58,42 @@ function resolveApiBase() {
 	const override = globalThis.__ALLEGRO_API_BASE__ || localStorage.getItem('allegro_api_base');
 	return String(override || API_BASE).replace(/\/+$/, '');
 }
+
 /**
- * Checks if the user is authenticated and redirects to the login page if not.
- * Preserves the current URL as a `?redirect=` param so login can send the user back to the page they were trying to reach.
- *
- * This is a lightweight frontend gate; backend routes still enforce auth.
+ * Checks if the user is authenticated and validates the token against the backend.
+ * Redirects to the login page if the token is missing or invalid.
+ * Preserves the current URL as a `?redirect=` param.
+ * @returns {Promise<boolean>}
  */
-export function requireAuth() {
-	if (!localStorage.getItem('allegro_token')) {
+export async function requireAuth() {
+	const token = localStorage.getItem('allegro_token');
+
+	if (!token) {
 		location.replace('login.html?redirect=' + encodeURIComponent(location.href));
+		return false;
+	}
+
+	try {
+		const response = await fetch(`${resolveApiBase()}/auth/validate`, {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json',
+			},
+		});
+
+		if (!response.ok) {
+			localStorage.removeItem('allegro_token');
+			location.replace('login.html?redirect=' + encodeURIComponent(location.href));
+			return false;
+		}
+
+		return true;
+	} catch (error) {
+		console.error('Error validating session:', error);
+		localStorage.removeItem('allegro_token');
+		location.replace('login.html?redirect=' + encodeURIComponent(location.href));
+		return false;
 	}
 }
 
@@ -27,6 +101,7 @@ export function requireAuth() {
  * Checks if the user is authenticated and redirects away from auth pages.
  * Respects a `?redirect=` param so users who land on login.html via a shared
  * link and are already signed in get sent to their intended destination.
+ * @returns {void}
  */
 export function requireNoAuth() {
 	if (localStorage.getItem('allegro_token')) {
@@ -81,40 +156,36 @@ export async function request(endpoint, options = {}) {
 		headers,
 	};
 
-	try {
-		const response = await fetch(`${resolveApiBase()}${endpoint}`, config);
+	const response = await fetch(`${resolveApiBase()}${endpoint}`, config);
 
-		if (!response.ok) {
-			// Try to parse server error messages if available
-			// Workers may return plain-text or empty errors, so JSON parsing stays optional.
-			let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-			try {
-				const errorData = await response.json();
-				if (errorData.message) errorMessage = errorData.message;
-				else if (errorData.error) errorMessage = errorData.error;
-			} catch {
-				/* ignore JSON parse error on non-JSON error responses */
-			}
-
-			const err = new Error(errorMessage);
-			err.status = response.status;
-			throw err;
+	if (!response.ok) {
+		// Try to parse server error messages if available
+		// Workers may return plain-text or empty errors, so JSON parsing stays optional.
+		let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+		try {
+			const errorData = await response.json();
+			if (errorData.message) errorMessage = errorData.message;
+			else if (errorData.error) errorMessage = errorData.error;
+		} catch {
+			/* ignore JSON parse error on non-JSON error responses */
 		}
 
-		// Handle 204 No Content or empty responses safely
-		if (response.status === 204) return null;
-
-		return await response.json();
-	} catch (error) {
-		throw error; // Re-throw to let the UI handle the specific error state
+		const err = new Error(errorMessage);
+		err.status = response.status;
+		throw err;
 	}
+
+	// Handle 204 No Content or empty responses safely
+	if (response.status === 204) return null;
+
+	return await response.json();
 }
 
 /**
- * POST /api/auth/login
+ * POST /auth/login
  * @param {string} email Email address entered on the login form.
  * @param {string} password Plaintext password submitted over HTTPS.
- * @returns {Promise<{ token: string, user: object }>}
+ * @returns {Promise<{ token: string, user: ApiUser }>}
  */
 export async function login(email, password) {
 	return request('/auth/login', {
@@ -125,10 +196,10 @@ export async function login(email, password) {
 
 /**
  * POST /auth/register
- * Returns { success: true } on 201. (As of 05/20 does not return a token)
+ * Returns { token, expires_at, user } on 201.
  *
  * @param {{ username: string, first_name: string, last_name: string, email: string, password: string }} data Registration form payload.
- * @returns {Promise<{ success: boolean }>}
+ * @returns {Promise<{ token: string, expires_at: string, user: ApiUser }>}
  */
 export async function createAccount(data) {
 	return request('/auth/register', {
@@ -170,9 +241,9 @@ export async function createTeam(data) {
 
 /**
  * PATCH /teams/:teamId
- * Renames a team. Requires admin role.
- * @param {number} teamId Team to rename.
- * @param {{ team_name: string }} data Updated team fields.
+ * Updates team_name and/or bio. Requires admin role. At least one field required.
+ * @param {number} teamId Team to update.
+ * @param {{ team_name?: string, bio?: string | null }} data Updated team fields.
  * @returns {Promise<{ success: boolean, message: string }>}
  */
 export async function updateTeam(teamId, data) {
@@ -200,6 +271,21 @@ export async function deleteTeam(teamId) {
  */
 export async function fetchTeamMembers(teamId) {
 	return request(`/teams/${teamId}/members`);
+}
+
+/**
+ * PATCH /teams/:teamId/members/:userId
+ * Updates a member's role. Requires admin role.
+ * @param {number} teamId Team containing the member.
+ * @param {number} userId Member whose role should change.
+ * @param {'admin' | 'member'} role New role.
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function updateTeamMemberRole(teamId, userId, role) {
+	return request(`/teams/${teamId}/members/${userId}`, {
+		method: 'PATCH',
+		body: JSON.stringify({ role }),
+	});
 }
 
 /**
@@ -243,7 +329,7 @@ export async function fetchInvites() {
  * Returns a single invite with team and inviter details.
  * Accessible by the invited user, the inviter, or a team admin.
  * @param {number} inviteId Invite to fetch.
- * @returns {Promise<object>}
+ * @returns {Promise<InviteDetail>}
  */
 export async function fetchInvite(inviteId) {
 	return request(`/invites/${inviteId}`);
@@ -316,7 +402,7 @@ export async function deleteInvite(inviteId) {
  * difficulty, sort_by, order.
  * @param {number} teamId Team whose issues should be fetched.
  * @param {Record<string, string>} [filters] - Optional filter/sort params
- * @returns {Promise<Array>}
+ * @returns {Promise<Issue[]>}
  */
 export async function fetchIssues(teamId, filters = {}) {
 	const params = new URLSearchParams({ team_id: teamId, ...filters });
@@ -326,7 +412,7 @@ export async function fetchIssues(teamId, filters = {}) {
 /**
  * GET /issues/:id
  * @param {number} id Issue id to fetch.
- * @returns {Promise<object>}
+ * @returns {Promise<Issue>}
  */
 export async function fetchIssue(id) {
 	return request(`/issues/${id}`);
@@ -339,7 +425,7 @@ export async function fetchIssue(id) {
  * and appends it to the description automatically.
  * Required fields: title, team_id, description.
  * @param {FormData|object} data Issue payload, with FormData used for attachments.
- * @param {boolean|null} testMode Bypasses the LLM for predictable testing. Defaults to false.
+ * @param {boolean} [testMode=false] Bypasses the LLM for predictable testing.
  * @returns {Promise<{ success: boolean }>}
  */
 export async function createIssue(data, testMode = false) {

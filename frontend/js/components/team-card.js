@@ -1,6 +1,5 @@
-import { getUserInitials } from '../user-profile.js';
-
-const templateUrl = new URL('../../html/components/team-card.html', import.meta.url);
+import { loadHtmlTemplate } from './load-template.js';
+import { getUserInitials, getUserDisplayName } from '../helpers.js';
 
 let teamCardTemplate;
 
@@ -10,37 +9,20 @@ let teamCardTemplate;
  */
 async function loadTeamCardTemplate() {
 	if (teamCardTemplate) return teamCardTemplate;
-
-	const response = await fetch(templateUrl);
-	if (!response.ok) {
-		throw new Error(`Failed to load team card template (${response.status})`);
-	}
-
-	const html = await response.text();
-	const doc = new DOMParser().parseFromString(html, 'text/html');
-	teamCardTemplate = doc.getElementById('team-card-template');
-
-	if (!teamCardTemplate) {
-		throw new Error('team-card-template not found in team-card.html');
-	}
-
+	teamCardTemplate = await loadHtmlTemplate(import.meta.url, '../../html/components/team-card.html', 'team-card-template');
 	return teamCardTemplate;
 }
 
-/**
- * Team workspace card shown on the teams dashboard grid.
- */
+/** Team workspace card shown on the teams dashboard grid. */
 class TeamCard extends HTMLElement {
-	/**
-	 * @returns {string[]}
-	 */
+	/** @returns {string[]} */
 	static get observedAttributes() {
 		return ['team-id', 'name', 'mark', 'color', 'role', 'bio', 'members'];
 	}
 
 	#rendered = false;
 
-	/** @returns {void} */
+	/** Clones the team card template on first connect. */
 	connectedCallback() {
 		if (this.#rendered) {
 			this.#update();
@@ -53,12 +35,12 @@ class TeamCard extends HTMLElement {
 		this.#update();
 	}
 
-	/** @returns {void} */
+	/** Re-renders when an observed attribute changes. */
 	attributeChangedCallback() {
 		if (this.#rendered) this.#update();
 	}
 
-	/** @returns {void} */
+	/** Syncs template nodes from element attributes. */
 	#update() {
 		const teamId = this.getAttribute('team-id') ?? '';
 		const name = this.getAttribute('name') ?? '';
@@ -105,14 +87,9 @@ class TeamCard extends HTMLElement {
 				const members = JSON.parse(membersAttr);
 
 				const membersHtml = members
-					.map((m, index) => {
-						const initials =
-							m.first_name && m.last_name
-								? (m.first_name[0] + m.last_name[0]).toUpperCase()
-								: (m.username || m.email || '??').substring(0, 2).toUpperCase();
-						const name = m.first_name && m.last_name ? `${m.first_name} ${m.last_name}` : m.username;
-
-						return `<div class="avatar sm" title="${name}">${initials}</div>`;
+					.map((m) => {
+						const memberName = getUserDisplayName(m);
+						return `<div class="avatar sm" title="${memberName}">${getUserInitials(m)}</div>`;
 					})
 					.join('');
 
