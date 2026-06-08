@@ -418,8 +418,137 @@ body {
 	padding: 0 0.429rem 0.429rem;
 }
 
-.team-section .invite-btn {
+.team-section .settings-btn {
 	flex-shrink: 0;
+}
+
+/* Team settings modal */
+.settings-modal {
+	max-width: 36rem;
+	max-height: 90vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.settings-modal .modal-body {
+	overflow-y: auto;
+	flex: 1;
+}
+
+.settings-head-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+}
+
+.settings-head-row h3 {
+	margin: 0;
+}
+
+.settings-profile-view .settings-name {
+	font-size: 1.143rem;
+	font-weight: 600;
+	margin: 0 0 0.25rem;
+}
+
+.settings-profile-view .settings-bio {
+	color: var(--ink-2);
+	margin: 0;
+	white-space: pre-wrap;
+}
+
+.settings-profile-view .settings-bio.empty {
+	font-style: italic;
+}
+
+.settings-section {
+	margin-top: 1.25rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--line);
+}
+
+.settings-section:first-child {
+	margin-top: 0;
+	padding-top: 0;
+	border-top: none;
+}
+
+.settings-section h4 {
+	font-size: 0.857rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--ink-2);
+	margin: 0 0 0.75rem;
+}
+
+.settings-members {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	max-height: 12rem;
+	overflow-y: auto;
+}
+
+.settings-member-row {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 0.625rem;
+	background: var(--surface-2);
+	border-radius: var(--r-1);
+}
+
+.settings-member-row .member-name {
+	flex: 1;
+	font-size: 0.929rem;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.settings-member-row .member-role {
+	font-size: 0.857rem;
+	color: var(--ink-2);
+	flex-shrink: 0;
+}
+
+.settings-member-row .member-role-select {
+	font-size: 0.857rem;
+	max-width: 10rem;
+	flex-shrink: 0;
+}
+
+.settings-modal-foot {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.settings-danger-actions {
+	display: flex;
+	gap: 0.5rem;
+	margin-left: auto;
+}
+
+.settings-edit-toolbar {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	margin-bottom: 0.75rem;
+}
+
+.btn.danger-btn {
+	background: var(--danger, #c0392b);
+	color: #fff;
+	border-color: transparent;
+}
+
+.btn.danger-btn:hover {
+	filter: brightness(1.08);
 }
 
 /* Sidebar filters */

@@ -203,6 +203,10 @@ button {
 	cursor: not-allowed;
 }
 
+.btn[hidden] {
+	display: none !important;
+}
+
 /* ------- inputs ------- */
 .input,
 .textarea,

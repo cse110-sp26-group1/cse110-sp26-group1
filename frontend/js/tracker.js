@@ -7,7 +7,12 @@ import {
 	requireAuth,
 	inviteToTeam,
 	fetchTeams,
+	fetchTeam,
 	fetchTeamMembers,
+	updateTeam,
+	updateTeamMemberRole,
+	removeTeamMember,
+	deleteTeam,
 	leaveTeam,
 } from './api.js';
 import {
@@ -18,6 +23,7 @@ import {
 	getTeamMark,
 	getUserInitials,
 	getUserDisplayName,
+	getStoredUser,
 	initTheme,
 	initUserMenu,
 } from './helpers.js';
@@ -39,16 +45,22 @@ const state = {
 	isEditing: false, // Track if we are in edit mode
 	teams: [],
 	currentTeamId: null,
+	currentTeamName: '',
+	currentTeamBio: '',
+	currentTeamRole: null,
+	isTeamSettingsEditing: false,
 	teamMembers: [],
 };
 
 let ISSUES = [];
 let trackerReady = false;
 
-const inviteBackdrop = document.getElementById('invite-backdrop');
-const confirmInviteBtn = document.getElementById('confirm-invite');
-const inviteInput = document.getElementById('invite-input');
-const openInviteModalBtn = document.getElementById('open-invite-modal');
+const settingsBackdrop = document.getElementById('settings-backdrop');
+const settingsBody = document.getElementById('settings-body');
+const settingsDangerActions = document.getElementById('settings-danger-actions');
+const settingsEditBtn = document.getElementById('settings-edit-btn');
+const openTeamSettingsBtn = document.getElementById('open-team-settings');
+const deleteTeamBackdrop = document.getElementById('delete-team-backdrop');
 
 const listEl = document.getElementById('issue-list');
 const totalCountEl = document.getElementById('total-count');
@@ -62,30 +74,32 @@ const sidebarEl = document.querySelector('.sidebar');
 
 const deleteBackdrop = document.getElementById('delete-backdrop');
 
-// helpers for invite listeners below
+// === Team settings === //
 /**
- * Opens the invite modal only after a team has been resolved from the URL.
- * @returns {void}
+ * @param {'admin' | 'member'} role
+ * @returns {string}
  */
-function openInvite() {
-	if (!trackerReady) return;
-	if (!state.currentTeamId) {
-		showToast('No active team selected.');
-		return;
-	}
-	inviteBackdrop.classList.add('open');
-
-	setTimeout(() => inviteInput.focus(), 30);
+function roleLabel(role) {
+	return role === 'admin' ? 'Workspace Admin' : 'Workspace Member';
 }
 
 /**
- * Closes the invite modal and clears the draft recipient and any inline error.
- * @returns {void}
+ * @returns {boolean}
  */
-function closeInvite() {
-	inviteBackdrop.classList.remove('open');
-	inviteInput.value = '';
-	clearInviteError();
+function isTeamAdmin() {
+	return state.currentTeamRole === 'admin';
+}
+
+/**
+ * @param {{ username?: string, email?: string }} member
+ * @returns {boolean}
+ */
+function isCurrentMember(member) {
+	const user = getStoredUser();
+	if (!user) return false;
+	if (user.username && member.username && user.username === member.username) return true;
+	if (user.email && member.email && user.email === member.email) return true;
+	return false;
 }
 
 /**
@@ -98,23 +112,25 @@ function isValidEmail(val) {
 }
 
 /**
- * Clears the inline error under the invite input.
+ * Clears the inline error under the invite input in settings.
  * @returns {void}
  */
 function clearInviteError() {
 	const errEl = document.getElementById('invite-error');
+	const inviteInput = document.getElementById('invite-input');
 	if (errEl) errEl.hidden = true;
-	inviteInput.classList.remove('invalid');
+	if (inviteInput) inviteInput.classList.remove('invalid');
 }
 
 /**
- * Shows an inline error beneath the invite input.
+ * Shows an inline error beneath the invite input in settings.
  * @param {string} msg Error copy to display.
  * @param {object} [resendPayload] If present, appends a "Resend?" action button.
  * @returns {void}
  */
 function setInviteError(msg, resendPayload) {
 	const errEl = document.getElementById('invite-error');
+	const inviteInput = document.getElementById('invite-input');
 	if (!errEl) return;
 	errEl.hidden = false;
 	errEl.innerHTML = '';
@@ -130,32 +146,28 @@ function setInviteError(msg, resendPayload) {
 		errEl.append(' ');
 		errEl.appendChild(btn);
 	}
-	inviteInput.classList.add('invalid');
+	if (inviteInput) inviteInput.classList.add('invalid');
 }
 
 /**
- * Sends an invite, branching on HTTP status for distinct error copy.
+ * Sends an invite from the settings modal.
  * @param {{ email?: string, username?: string }} payload Invite recipient payload.
  * @returns {Promise<void>}
  */
 async function sendInvite(payload) {
 	const val = payload.email ?? payload.username;
+	const confirmInviteBtn = document.getElementById('confirm-invite');
+	if (!confirmInviteBtn) return;
+
 	const originalText = confirmInviteBtn.textContent;
 	confirmInviteBtn.textContent = 'Sending...';
 	confirmInviteBtn.disabled = true;
 	try {
 		await inviteToTeam(state.currentTeamId, payload);
 		showToast(`Invitation sent to ${val}`);
-		closeInvite();
-		// Refresh member list so the new invitee shows up
-		if (state.currentTeamId) {
-			fetchTeamMembers(state.currentTeamId)
-				.then((members) => {
-					state.teamMembers = members;
-					renderTeamMembers();
-				})
-				.catch(() => {});
-		}
+		const inviteInput = document.getElementById('invite-input');
+		if (inviteInput) inviteInput.value = '';
+		clearInviteError();
 	} catch (err) {
 		const status = err.status;
 		if (status === 404) {
@@ -178,44 +190,310 @@ async function sendInvite(payload) {
 	}
 }
 
-if (openInviteModalBtn) openInviteModalBtn.addEventListener('click', openInvite);
+/**
+ * Renders team settings modal body (profile, members, invite).
+ * @returns {void}
+ */
+function renderTeamSettingsBody() {
+	if (!settingsBody) return;
 
-document.getElementById('cancel-invite').addEventListener('click', closeInvite);
+	const admin = isTeamAdmin();
+	const bioText = (state.currentTeamBio || '').trim();
+	const bioDisplay = bioText || 'No bio yet.';
+	const bioClass = bioText ? '' : 'empty';
 
-inviteBackdrop.addEventListener('click', (e) => {
-	if (e.target === inviteBackdrop) closeInvite();
-});
+	let profileHtml;
+	if (state.isTeamSettingsEditing && admin) {
+		profileHtml = `
+			<div class="settings-edit-toolbar">
+				<button type="button" class="btn sm" id="settings-cancel-edit">Cancel</button>
+				<button type="button" class="btn sm primary" id="settings-save-edit">Save</button>
+			</div>
+			<div class="field">
+				<label for="settings-team-name">Team name <span class="req">*</span></label>
+				<input class="input" id="settings-team-name" value="${escapeHtml(state.currentTeamName)}" />
+			</div>
+			<div class="field">
+				<label for="settings-team-bio">Short bio <span class="optional-label">(optional)</span></label>
+				<textarea class="textarea" id="settings-team-bio" placeholder="What does this team work on?">${escapeHtml(bioText)}</textarea>
+			</div>`;
+	} else {
+		profileHtml = `
+			<div class="settings-profile-view">
+				<p class="settings-name">${escapeHtml(state.currentTeamName)}</p>
+				<p class="settings-bio ${bioClass}">${escapeHtml(bioDisplay)}</p>
+			</div>`;
+	}
 
-confirmInviteBtn.addEventListener('click', async () => {
+	const membersHtml = (state.teamMembers || [])
+		.map((m) => {
+			const name = m.username || getUserDisplayName(m);
+			const isSelf = isCurrentMember(m);
+			let roleCell;
+			if (admin && !isSelf) {
+				roleCell = `
+					<select class="input sm member-role-select" data-user-id="${Number(m.id)}" data-prev-role="${m.role}">
+						<option value="admin" ${m.role === 'admin' ? 'selected' : ''}>Workspace Admin</option>
+						<option value="member" ${m.role === 'member' ? 'selected' : ''}>Workspace Member</option>
+					</select>`;
+			} else {
+				roleCell = `<span class="member-role">${roleLabel(m.role)}</span>`;
+			}
+
+			const removeBtn =
+				admin && !isSelf
+					? `<button type="button" class="btn sm remove-member-btn" data-user-id="${Number(m.id)}" data-username="${escapeHtml(name)}">Remove</button>`
+					: '';
+
+			return `
+				<div class="settings-member-row">
+					<span class="member-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+					${roleCell}
+					${removeBtn}
+				</div>`;
+		})
+		.join('');
+
+	const inviteHtml = admin
+		? `
+			<div class="settings-section">
+				<h4>Invite member</h4>
+				<div class="field" id="invite-field">
+					<label for="invite-input">Username or Email <span class="req">*</span></label>
+					<input class="input" id="invite-input" placeholder="e.g. ada@example.com or adalovelace" autocomplete="off" />
+					<p class="field-error" id="invite-error" hidden></p>
+				</div>
+				<button type="button" class="btn primary" id="confirm-invite">Send invite</button>
+			</div>`
+		: '';
+
+	settingsBody.innerHTML = `
+		<div class="settings-section">
+			<h4>Profile</h4>
+			${profileHtml}
+		</div>
+		<div class="settings-section">
+			<h4>Members (${(state.teamMembers || []).length})</h4>
+			<div class="settings-members">${membersHtml || '<p class="hint">No members yet.</p>'}</div>
+		</div>
+		${inviteHtml}`;
+
+	syncSettingsEditButtonVisibility();
+
+	bindSettingsBodyEvents();
+}
+
+/**
+ * Shows the profile edit control only for workspace admins.
+ * @returns {void}
+ */
+function syncSettingsEditButtonVisibility() {
+	if (!settingsEditBtn) return;
+	const canEdit = isTeamAdmin() && !state.isTeamSettingsEditing;
+	settingsEditBtn.hidden = !canEdit;
+	settingsEditBtn.disabled = !canEdit;
+}
+
+/**
+ * Renders leave/delete actions in the settings modal footer.
+ * @returns {void}
+ */
+function renderSettingsDangerActions() {
+	if (!settingsDangerActions) return;
+
+	const admin = isTeamAdmin();
+	let html = `<button type="button" class="btn" id="settings-leave-team">Leave team</button>`;
+	if (admin) {
+		html += `<button type="button" class="btn danger-btn" id="settings-delete-team">Delete team</button>`;
+	}
+	settingsDangerActions.innerHTML = html;
+
+	document.getElementById('settings-leave-team')?.addEventListener('click', handleLeaveTeam);
+	document.getElementById('settings-delete-team')?.addEventListener('click', openDeleteTeamConfirm);
+}
+
+/**
+ * Attaches event listeners to dynamically rendered settings body controls.
+ * @returns {void}
+ */
+function bindSettingsBodyEvents() {
+	settingsBody.querySelector('#settings-cancel-edit')?.addEventListener('click', () => {
+		state.isTeamSettingsEditing = false;
+		renderTeamSettingsBody();
+	});
+
+	settingsBody.querySelector('#settings-save-edit')?.addEventListener('click', handleSaveTeamProfile);
+
+	settingsBody.querySelectorAll('.member-role-select').forEach((select) => {
+		select.addEventListener('change', async (e) => {
+			const el = e.target;
+			const userId = Number(el.dataset.userId);
+			const prevRole = el.dataset.prevRole;
+			const newRole = el.value;
+
+			if (!Number.isInteger(userId) || userId <= 0) {
+				el.value = prevRole;
+				showToast('Invalid member id.');
+				return;
+			}
+
+			try {
+				await updateTeamMemberRole(state.currentTeamId, userId, newRole);
+				el.dataset.prevRole = newRole;
+				const member = state.teamMembers.find((m) => Number(m.id) === userId);
+				if (member) member.role = newRole;
+				showToast('Role updated');
+			} catch (err) {
+				el.value = prevRole;
+				showToast(err.message || 'Failed to update role.');
+			}
+		});
+	});
+
+	settingsBody.querySelectorAll('.remove-member-btn').forEach((btn) => {
+		btn.addEventListener('click', async () => {
+			const userId = Number(btn.dataset.userId);
+			const username = btn.dataset.username;
+			if (!Number.isInteger(userId) || userId <= 0) {
+				showToast('Invalid member id.');
+				return;
+			}
+			try {
+				await removeTeamMember(state.currentTeamId, userId);
+				state.teamMembers = state.teamMembers.filter((m) => Number(m.id) !== userId);
+				renderTeamMembers();
+				populateNewAssigneeSelect();
+				renderTeamSettingsBody();
+				showToast('Member removed');
+			} catch (err) {
+				showToast(err.message || 'Failed to remove member.');
+			}
+		});
+	});
+
+	const inviteInput = settingsBody.querySelector('#invite-input');
+	inviteInput?.addEventListener('input', clearInviteError);
+
+	settingsBody.querySelector('#confirm-invite')?.addEventListener('click', async () => {
+		clearInviteError();
+		const val = inviteInput?.value.trim() || '';
+		if (!val) {
+			setInviteError('Enter a username or email.');
+			inviteInput?.focus();
+			return;
+		}
+		const isEmail = val.includes('@');
+		if (isEmail && !isValidEmail(val)) {
+			setInviteError("That doesn't look like a valid email.");
+			inviteInput?.focus();
+			return;
+		}
+		await sendInvite(isEmail ? { email: val } : { username: val });
+	});
+}
+
+/**
+ * Saves edited team name and bio from settings edit mode.
+ * @returns {Promise<void>}
+ */
+async function handleSaveTeamProfile() {
+	const nameEl = document.getElementById('settings-team-name');
+	const bioEl = document.getElementById('settings-team-bio');
+	const name = nameEl?.value.trim() || '';
+	const bio = bioEl?.value.trim() || '';
+
+	if (!name) {
+		showToast('Team name is required.');
+		nameEl?.focus();
+		return;
+	}
+
+	const saveBtn = document.getElementById('settings-save-edit');
+	const originalText = saveBtn?.textContent;
+	if (saveBtn) {
+		saveBtn.textContent = 'Saving...';
+		saveBtn.disabled = true;
+	}
+
+	try {
+		await updateTeam(state.currentTeamId, { team_name: name, bio: bio || null });
+		state.currentTeamName = name;
+		state.currentTeamBio = bio;
+		state.isTeamSettingsEditing = false;
+
+		const teamInList = state.teams.find((t) => t.id === state.currentTeamId);
+		if (teamInList) {
+			teamInList.team_name = name;
+			teamInList.bio = bio || null;
+		}
+
+		document.getElementById('team-label').textContent = name;
+		const markEl = document.querySelector('.team-switch > .mark');
+		if (markEl) markEl.textContent = getTeamMark(name);
+		renderTeamMenu();
+		renderTeamSettingsBody();
+		showToast('Team updated');
+	} catch (err) {
+		showToast(err.message || 'Failed to update team.');
+	} finally {
+		if (saveBtn) {
+			saveBtn.textContent = originalText;
+			saveBtn.disabled = false;
+		}
+	}
+}
+
+/**
+ * Closes the team settings modal.
+ * @returns {void}
+ */
+function closeTeamSettings() {
+	settingsBackdrop?.classList.remove('open');
+	state.isTeamSettingsEditing = false;
 	clearInviteError();
-	const val = inviteInput.value.trim();
-	if (!val) {
-		setInviteError('Enter a username or email.');
-		inviteInput.focus();
+}
+
+/**
+ * Opens team settings and loads fresh team + member data.
+ * @returns {Promise<void>}
+ */
+async function openTeamSettings() {
+	if (!trackerReady) return;
+	if (!state.currentTeamId) {
+		showToast('No active team selected.');
 		return;
 	}
-	const isEmail = val.includes('@');
-	if (isEmail && !isValidEmail(val)) {
-		setInviteError("That doesn't look like a valid email.");
-		inviteInput.focus();
-		return;
+
+	try {
+		const [team, members] = await Promise.all([fetchTeam(state.currentTeamId), fetchTeamMembers(state.currentTeamId)]);
+		state.currentTeamName = team.team_name;
+		state.currentTeamBio = team.bio || '';
+		state.currentTeamRole = team.role;
+		state.teamMembers = members;
+		state.isTeamSettingsEditing = false;
+
+		renderTeamMembers();
+		populateNewAssigneeSelect();
+		renderTeamSettingsBody();
+		renderSettingsDangerActions();
+		syncSettingsEditButtonVisibility();
+
+		settingsBackdrop?.classList.add('open');
+	} catch {
+		showToast('Failed to load team settings.');
 	}
-	await sendInvite(isEmail ? { email: val } : { username: val });
-});
+}
 
-inviteInput.addEventListener('input', clearInviteError);
-
-// === Leave team === //
 /**
  * Confirms and leaves the current team, then redirects to the teams list.
  * @returns {Promise<void>}
  */
 async function handleLeaveTeam() {
 	if (!state.currentTeamId) return;
-	if (!window.confirm('Leave this team? You will lose access to its issues.')) return;
 
 	try {
 		await leaveTeam(state.currentTeamId);
+		closeTeamSettings();
 		showToast('You left the team. Redirecting…');
 		setTimeout(() => {
 			location.href = 'teams.html';
@@ -223,6 +501,77 @@ async function handleLeaveTeam() {
 	} catch (err) {
 		showToast(err.message || 'Failed to leave team.');
 	}
+}
+
+/**
+ * Opens delete-team confirmation modal.
+ * @returns {void}
+ */
+function openDeleteTeamConfirm() {
+	deleteTeamBackdrop?.classList.add('open');
+	setTimeout(() => document.getElementById('confirm-delete-team')?.focus(), 30);
+}
+
+/**
+ * Closes delete-team confirmation modal.
+ * @returns {void}
+ */
+function closeDeleteTeamConfirm() {
+	deleteTeamBackdrop?.classList.remove('open');
+}
+
+/**
+ * Deletes the current team and redirects to teams list.
+ * @returns {Promise<void>}
+ */
+async function handleDeleteTeamConfirm() {
+	if (!state.currentTeamId) return;
+
+	const confirmBtn = document.getElementById('confirm-delete-team');
+	const originalText = confirmBtn?.textContent;
+	if (confirmBtn) {
+		confirmBtn.textContent = 'Deleting...';
+		confirmBtn.disabled = true;
+	}
+
+	try {
+		await deleteTeam(state.currentTeamId);
+		closeDeleteTeamConfirm();
+		closeTeamSettings();
+		showToast('Team deleted. Redirecting…');
+		setTimeout(() => {
+			location.href = 'teams.html';
+		}, 900);
+	} catch (err) {
+		showToast(err.message || 'Failed to delete team.');
+	} finally {
+		if (confirmBtn) {
+			confirmBtn.textContent = originalText;
+			confirmBtn.disabled = false;
+		}
+	}
+}
+
+if (openTeamSettingsBtn) openTeamSettingsBtn.addEventListener('click', openTeamSettings);
+if (settingsEditBtn)
+	settingsEditBtn.addEventListener('click', () => {
+		if (!isTeamAdmin()) return;
+		state.isTeamSettingsEditing = true;
+		renderTeamSettingsBody();
+	});
+
+document.getElementById('cancel-settings')?.addEventListener('click', closeTeamSettings);
+
+settingsBackdrop?.addEventListener('click', (e) => {
+	if (e.target === settingsBackdrop) closeTeamSettings();
+});
+
+if (deleteTeamBackdrop) {
+	document.getElementById('cancel-delete-team')?.addEventListener('click', closeDeleteTeamConfirm);
+	document.getElementById('confirm-delete-team')?.addEventListener('click', handleDeleteTeamConfirm);
+	deleteTeamBackdrop.addEventListener('click', (e) => {
+		if (e.target === deleteTeamBackdrop) closeDeleteTeamConfirm();
+	});
 }
 
 /**
@@ -506,24 +855,17 @@ function renderTeamMenu() {
 		})
 		.join('');
 
-	const hasCurrentTeam = state.teams.some((t) => t.id === currentId);
-	const leaveItemHtml = hasCurrentTeam
-		? `
-        <div class="item" data-action="leave-team">
-            <span class="mark all-teams-mark">⏻</span>
-            Leave team
-        </div>
-    `
-		: '';
-
 	teamMenu.innerHTML = `
         ${itemsHtml}
         <div class="divider"></div>
         <div class="item" data-action="all-teams">
-            <span class="mark all-teams-mark">+</span>
-            All teams &amp; settings
+            <span class="mark all-teams-mark">
+                <svg class="gb_F" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM16,6c0,1.1 0.9,2 2,2s2,-0.9 2,-2 -0.9,-2 -2,-2 -2,0.9 -2,2zM12,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2z"></path>
+                </svg>
+            </span>
+            All teams
         </div>
-        ${leaveItemHtml}
     `;
 
 	teamMenu.querySelectorAll('.item[data-id]').forEach((it) => {
@@ -534,9 +876,6 @@ function renderTeamMenu() {
 	});
 
 	teamMenu.querySelector('[data-action="all-teams"]').addEventListener('click', () => (location.href = 'teams.html'));
-
-	const leaveItem = teamMenu.querySelector('[data-action="leave-team"]');
-	if (leaveItem) leaveItem.addEventListener('click', handleLeaveTeam);
 }
 
 /**
@@ -1133,7 +1472,7 @@ const newIssueBtn = document.getElementById('new-issue');
 function setTrackerReady(ready) {
 	trackerReady = ready;
 	if (newIssueBtn) newIssueBtn.disabled = !ready;
-	if (openInviteModalBtn) openInviteModalBtn.disabled = !ready;
+	if (openTeamSettingsBtn) openTeamSettingsBtn.disabled = !ready;
 }
 
 setTrackerReady(false);
@@ -1385,12 +1724,19 @@ document.getElementById('download-skills').addEventListener('click', async () =>
 document.addEventListener('keydown', (e) => {
 	if (e.target.matches('input, textarea')) return;
 	if (e.key === 'Escape') {
+		if (deleteTeamBackdrop?.classList.contains('open')) {
+			closeDeleteTeamConfirm();
+			return;
+		}
 		if (deleteBackdrop?.classList.contains('open')) {
 			closeDeleteConfirm();
 			return;
 		}
+		if (settingsBackdrop?.classList.contains('open')) {
+			closeTeamSettings();
+			return;
+		}
 		if (newBackdrop.classList.contains('open')) closeNew();
-		if (inviteBackdrop.classList.contains('open')) closeInvite();
 		teamMenu.classList.remove('open');
 	}
 	if (e.key === 'n' && !e.metaKey && !e.ctrlKey && trackerReady) {
@@ -1573,6 +1919,9 @@ async function initTracker() {
 			document.getElementById('team-label').textContent = currentTeam.team_name;
 			const markEl = document.querySelector('.team-switch > .mark');
 			markEl.textContent = getTeamMark(currentTeam.team_name);
+			state.currentTeamName = currentTeam.team_name;
+			state.currentTeamBio = currentTeam.bio || '';
+			state.currentTeamRole = currentTeam.role;
 		}
 
 		state.currentTeamId = currentTeam ? currentTeam.id : null;
@@ -1590,6 +1939,9 @@ async function initTracker() {
 		} else {
 			ISSUES = [];
 			state.teamMembers = [];
+			state.currentTeamName = '';
+			state.currentTeamBio = '';
+			state.currentTeamRole = null;
 		}
 
 		if (ISSUES.length > 0 && !ISSUES.find((i) => i.id === state.selected)) {
