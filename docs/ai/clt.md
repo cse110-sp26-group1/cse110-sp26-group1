@@ -5,7 +5,7 @@ This document explains about the Allegro Command-Line Tool.
 **Related files:**
 
 - [CLT-user-guide](https://github.com/cse110-sp26-group1/cse110-sp26-group1/blob/main/cli/CLT-user-guide.md)
-- [SKILL.md](https://github.com/cse110-sp26-group1/cse110-sp26-group1/tree/main/cli)
+- [SKILL.md](https://github.com/cse110-sp26-group1/cse110-sp26-group1/blob/main/cli/SKILL.md)
 
 **Purpose:**
 
