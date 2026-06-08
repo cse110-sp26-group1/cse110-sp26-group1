@@ -242,6 +242,22 @@ export async function fetchTeamMembers(session, teamId) {
 }
 
 /**
+ * Updates a team member's role through the backend.
+ * @param {{ token: string }} session Authenticated admin session.
+ * @param {number} teamId Team id.
+ * @param {number} userId Member user id.
+ * @param {'admin' | 'member'} role New role.
+ * @returns {Promise<unknown>} Update response.
+ */
+export async function updateTeamMemberRole(session, teamId, userId, role) {
+	return apiRequest(`/teams/${teamId}/members/${userId}`, {
+		method: 'PATCH',
+		token: session.token,
+		body: { role },
+	});
+}
+
+/**
  * Fetches the issues for a team.
  * @param {{ token: string }} session Authenticated session.
  * @param {number} teamId Team id.

@@ -59,7 +59,7 @@ test.describe('Teams dashboard', () => {
 		}
 	});
 
-	test('member leaves a team from the tracker menu and loses backend membership', async ({ page }) => {
+	test('member leaves a team from settings and loses backend membership', async ({ page }) => {
 		const admin = await registerUser(makeUniqueUser('leave_admin'));
 		const member = await registerUser(makeUniqueUser('leave_member'));
 		const team = await createTeam(admin, { team_name: makeUniqueTeamName('Leave Flow') });
@@ -71,11 +71,16 @@ test.describe('Teams dashboard', () => {
 			await page.goto(`/html/tracker.html?team_id=${team.id}`);
 			await expect(page.locator('#team-label')).toHaveText(team.team_name);
 
-			page.once('dialog', (dialog) => dialog.accept());
-			await page.locator('#team-switch').click();
+			await page.getByRole('button', { name: 'Settings' }).click();
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
+			await expect(page.locator('#settings-edit-btn')).toHaveAttribute('hidden', '');
+			await expect(page.getByRole('button', { name: 'Send invite' })).toHaveCount(0);
+			await expect(page.locator('#settings-delete-team')).toHaveCount(0);
+			await expect(page.locator('#settings-leave-team')).toBeVisible();
+
 			const [leaveResponse] = await Promise.all([
 				page.waitForResponse((res) => res.url().endsWith(`/teams/${team.id}/leave`) && res.request().method() === 'DELETE'),
-				page.locator('#team-menu [data-action="leave-team"]').click(),
+				page.locator('#settings-leave-team').click(),
 			]);
 			expect(leaveResponse.status()).toBe(200);
 
@@ -93,7 +98,7 @@ test.describe('Teams dashboard', () => {
 		}
 	});
 
-	test('admin cannot leave a team that still has members', async ({ page }) => {
+	test('admin cannot leave a team that still has members from settings', async ({ page }) => {
 		const admin = await registerUser(makeUniqueUser('blocked_admin'));
 		const member = await registerUser(makeUniqueUser('blocked_member'));
 		const team = await createTeam(admin, { team_name: makeUniqueTeamName('Blocked Leave') });
@@ -105,15 +110,20 @@ test.describe('Teams dashboard', () => {
 			await page.goto(`/html/tracker.html?team_id=${team.id}`);
 			await expect(page.locator('#team-label')).toHaveText(team.team_name);
 
-			page.once('dialog', (dialog) => dialog.accept());
-			await page.locator('#team-switch').click();
+			await page.getByRole('button', { name: 'Settings' }).click();
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
+			await expect(page.locator('#settings-edit-btn')).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Send invite' })).toBeVisible();
+			await expect(page.locator('#settings-delete-team')).toBeVisible();
+
 			const [leaveResponse] = await Promise.all([
 				page.waitForResponse((res) => res.url().endsWith(`/teams/${team.id}/leave`) && res.request().method() === 'DELETE'),
-				page.locator('#team-menu [data-action="leave-team"]').click(),
+				page.locator('#settings-leave-team').click(),
 			]);
 			expect(leaveResponse.status()).toBe(409);
 
 			await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${team.id}`));
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
 			await expect(page.locator('#toast')).toContainText('Admins cannot leave');
 
 			const adminTeams = await fetchTeams(admin);
