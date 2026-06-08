@@ -56,6 +56,36 @@
 ---
 
 ### Anchita:
+#### AI Tool(s) / LLM(s) used
+- codex
+- claude
+
+#### Purpose
+* Used it primarily for code creation, specifically for the LLM layer and command-line tool.
+* Also used it for researching topics related to our project and building a better understanding.
+* used it for setting up sem-ver and JSDoc in ci/cd pipeline
+* Additionally used it for formatting documentation, I told it to only correct grammatical errors while preserving my wording.
+* I also wrote function header comments on my own but used AI to check for grammatical mistakes, again with instructions to preserve my wording.
+
+#### Results
+
+Reviewing AI code:
+* I made sure to review all AI-generated output by looking at the files and lines that were changed to verify the changes made sense to me.
+* I also usually wrote the function header comments myself so that I understood what each method was doing.
+
+Pros:
+* Generally performed well across all tasks, especially frontend work.
+* Particularly helpful for catching grammatical mistakes when writing function headers and documentation on my own.
+
+Cons:
+* Variable naming was sometimes poor, I changed them to be more meaningful.
+* Occasionally ignored security concerns. For example, in the command-line tool, the password was initially not hidden in the terminal. I had to explicitly tell it to mask the password, since that is good practice from a security standpoint.
+* When prompted to include all fields from the DB schema (particularly for the command-line tool), it skipped some fields. I only caught this by double-checking against the schema myself, then had to prompt it again to include the missing fields.
+
+#### Related Files
+- files in CLI directory
+- llm.js in issue-tracker-api/src directory
+- release.yml, lint.yml in github workflows
 
 ---
 
