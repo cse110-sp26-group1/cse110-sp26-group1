@@ -137,6 +137,77 @@ test.describe('Teams dashboard', () => {
 		}
 	});
 
+	test('admin deletes a team from settings after entering via the teams page', async ({ page }) => {
+		const admin = await registerUser(makeUniqueUser('delete_admin'));
+		const member = await registerUser(makeUniqueUser('delete_member'));
+		const team = await createTeam(admin, { team_name: makeUniqueTeamName('Delete Flow') });
+		const invite = await inviteUser(admin, team.id, { email: member.credentials.email });
+		await acceptInvite(member, invite.invite_id);
+		await setBrowserSession(page, admin);
+
+		try {
+			await page.goto('/html/teams.html');
+			await page.locator('team-card').filter({ hasText: team.team_name }).locator('a.team').click();
+			await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${team.id}`));
+			await expect(page.locator('#team-label')).toHaveText(team.team_name);
+
+			await page.getByRole('button', { name: 'Settings' }).click();
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
+			await expect(page.locator('#settings-delete-team')).toBeVisible();
+
+			await page.locator('#settings-delete-team').click();
+			await expect(page.locator('#delete-team-backdrop')).toHaveClass(/open/);
+
+			const [deleteResponse] = await Promise.all([
+				page.waitForResponse((res) => res.url().endsWith(`/teams/${team.id}`) && res.request().method() === 'DELETE'),
+				page.locator('#confirm-delete-team').click(),
+			]);
+			expect(deleteResponse.status()).toBe(200);
+
+			await expect(page.locator('#toast')).toContainText('Team deleted');
+			await expect(page).toHaveURL(/teams\.html/, { timeout: 6000 });
+			await expect(page.locator('team-card').filter({ hasText: team.team_name })).toHaveCount(0);
+
+			const adminTeams = await fetchTeams(admin);
+			expect(adminTeams.find((row) => row.id === team.id)).toBeUndefined();
+
+			const memberTeams = await fetchTeams(member);
+			expect(memberTeams.find((row) => row.id === team.id)).toBeUndefined();
+		} finally {
+			await safeDeleteTeam(admin, team.id);
+		}
+	});
+
+	test('admin can cancel delete-team confirmation and remains on the tracker', async ({ page }) => {
+		const admin = await registerUser(makeUniqueUser('cancel_delete_admin'));
+		const member = await registerUser(makeUniqueUser('cancel_delete_member'));
+		const team = await createTeam(admin, { team_name: makeUniqueTeamName('Cancel Delete') });
+		const invite = await inviteUser(admin, team.id, { email: member.credentials.email });
+		await acceptInvite(member, invite.invite_id);
+		await setBrowserSession(page, admin);
+
+		try {
+			await page.goto('/html/teams.html');
+			await page.locator('team-card').filter({ hasText: team.team_name }).locator('a.team').click();
+			await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${team.id}`));
+			await expect(page.locator('#team-label')).toHaveText(team.team_name);
+
+			await page.getByRole('button', { name: 'Settings' }).click();
+			await expect(page.locator('#settings-backdrop')).toHaveClass(/open/);
+			await page.locator('#settings-delete-team').click();
+			await expect(page.locator('#delete-team-backdrop')).toHaveClass(/open/);
+
+			await page.locator('#cancel-delete-team').click();
+			await expect(page.locator('#delete-team-backdrop')).not.toHaveClass(/open/);
+			await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${team.id}`));
+
+			const adminTeams = await fetchTeams(admin);
+			expect(adminTeams.find((row) => row.id === team.id)).toBeDefined();
+		} finally {
+			await safeDeleteTeam(admin, team.id);
+		}
+	});
+
 	test('create-team modal validates the name and creates a new team', async ({ page }) => {
 		const owner = await registerUser(makeUniqueUser('create_team'));
 		await setBrowserSession(page, owner);
@@ -199,6 +270,63 @@ test.describe('Teams dashboard', () => {
 		} finally {
 			await safeDeleteTeam(admin1, team1.id);
 			await safeDeleteTeam(admin2, team2.id);
+		}
+	});
+});
+
+test.describe('Teams — tracker team switcher', () => {
+	test('switching teams from the tracker menu after entering via the teams page', async ({ page }) => {
+		const owner = await registerUser(makeUniqueUser('switch_owner'));
+		const teamA = await createTeam(owner, { team_name: makeUniqueTeamName('Switch Alpha') });
+		const teamB = await createTeam(owner, { team_name: makeUniqueTeamName('Switch Beta') });
+		await setBrowserSession(page, owner);
+
+		try {
+			await page.goto('/html/teams.html');
+			await page.locator('team-card').filter({ hasText: teamA.team_name }).locator('a.team').click();
+			await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${teamA.id}`));
+			await expect(page.locator('#team-label')).toHaveText(teamA.team_name);
+
+			await page.locator('#team-switch').click();
+			const menu = page.locator('#team-menu');
+			await expect(menu).toHaveClass(/open/);
+			await expect(menu.locator(`.item[data-id="${teamA.id}"]`)).toHaveClass(/active/);
+			await expect(menu.locator(`.item[data-id="${teamB.id}"]`)).not.toHaveClass(/active/);
+			await expect(menu).toContainText(teamA.team_name);
+			await expect(menu).toContainText(teamB.team_name);
+
+			await menu.locator(`.item[data-id="${teamB.id}"]`).click();
+			await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${teamB.id}`));
+			await expect(page.locator('#team-label')).toHaveText(teamB.team_name);
+
+			await page.locator('#team-switch').click();
+			await expect(menu).toHaveClass(/open/);
+			await expect(menu.locator(`.item[data-id="${teamB.id}"]`)).toHaveClass(/active/);
+			await expect(menu.locator(`.item[data-id="${teamA.id}"]`)).not.toHaveClass(/active/);
+		} finally {
+			await safeDeleteTeam(owner, teamA.id);
+			await safeDeleteTeam(owner, teamB.id);
+		}
+	});
+
+	test('team menu "All teams" navigates back to the teams page after entering via a team card', async ({ page }) => {
+		const owner = await registerUser(makeUniqueUser('all_teams_nav'));
+		const team = await createTeam(owner, { team_name: makeUniqueTeamName('All Teams Nav') });
+		await setBrowserSession(page, owner);
+
+		try {
+			await page.goto('/html/teams.html');
+			await page.locator('team-card').filter({ hasText: team.team_name }).locator('a.team').click();
+			await expect(page).toHaveURL(new RegExp(`tracker\\.html\\?team_id=${team.id}`));
+			await expect(page.locator('#team-label')).toHaveText(team.team_name);
+
+			await page.locator('#team-switch').click();
+			await expect(page.locator('#team-menu')).toHaveClass(/open/);
+			await page.locator('#team-menu .item[data-action="all-teams"]').click();
+			await expect(page).toHaveURL(/teams\.html$/);
+			await expect(page.getByRole('heading', { name: team.team_name })).toBeVisible();
+		} finally {
+			await safeDeleteTeam(owner, team.id);
 		}
 	});
 });
