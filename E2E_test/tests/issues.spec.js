@@ -1,25 +1,22 @@
 // @ts-check
-// Real-backend version of issues.spec.js. Real API seeds issues via /issues
-// with test_mode=true so LLM enrichment stays predictable; UI assertions then
-// run against the live page.
+// Seeds issues via /issues with test_mode=true so LLM enrichment stays predictable.
 import { test, expect } from '@playwright/test';
 import {
-	acceptRealInvite,
-	createRealIssue,
-	fetchRealTeamMembers,
-	fetchRealIssues,
-	inviteRealUser,
+	acceptInvite,
+	createIssue,
+	fetchTeamMembers,
+	fetchIssues,
+	inviteUser,
 	makeUniqueIssueTitle,
 	makeUniqueUser,
-	registerRealUser,
+	registerUser,
 	setBrowserSession,
-	setupRealApp,
-	setupRealAppWithIssues,
-} from '../helpers/real-api.js';
+	setupApp,
+	setupAppWithIssues,
+} from '../helpers/api.js';
 
 /**
- * Issue payloads spanning statuses, priorities, tags, categories. Mirrors the
- * mock-mode seed so the same UI surface area is exercised.
+ * Issue payloads spanning statuses, priorities, tags, and categories.
  * @returns {object[]}
  */
 function issueSeeds() {
@@ -57,9 +54,9 @@ function issueSeeds() {
 	];
 }
 
-test.describe('Issues — listing and detail (real backend)', () => {
+test.describe('Issues — listing and detail', () => {
 	test('renders issues grouped by priority with the correct total', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, issueSeeds());
+		const ctx = await setupAppWithIssues(page, issueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 
@@ -74,7 +71,7 @@ test.describe('Issues — listing and detail (real backend)', () => {
 	});
 
 	test('clicking an issue row populates the detail pane with its title', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, issueSeeds());
+		const ctx = await setupAppWithIssues(page, issueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 			const dashboardTitle = ctx.issues.find((i) => /Dashboard charts/.test(i.title)).title;
@@ -88,7 +85,7 @@ test.describe('Issues — listing and detail (real backend)', () => {
 	});
 
 	test('invalid team_id renders the team-not-found error state', async ({ page }) => {
-		const session = await registerRealUser(makeUniqueUser('notfound_user'));
+		const session = await registerUser(makeUniqueUser('notfound_user'));
 		await setBrowserSession(page, session);
 
 		await page.goto('/html/tracker.html?team_id=999999999');
@@ -97,7 +94,7 @@ test.describe('Issues — listing and detail (real backend)', () => {
 	});
 
 	test('non-integer team_id renders the team-not-found error state', async ({ page }) => {
-		const session = await registerRealUser(makeUniqueUser('notinteger_user'));
+		const session = await registerUser(makeUniqueUser('notinteger_user'));
 		await setBrowserSession(page, session);
 
 		await page.goto('/html/tracker.html?team_id=abc');
@@ -105,9 +102,9 @@ test.describe('Issues — listing and detail (real backend)', () => {
 	});
 });
 
-test.describe('Issues — filter, search, sort (real backend)', () => {
+test.describe('Issues — filter, search, sort', () => {
 	test('status filter narrows the list to that status only', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, issueSeeds());
+		const ctx = await setupAppWithIssues(page, issueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 			await expect(page.locator('.issue-row')).toHaveCount(4);
@@ -125,7 +122,7 @@ test.describe('Issues — filter, search, sort (real backend)', () => {
 	});
 
 	test('tag filter narrows the list to issues with that tag', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, issueSeeds());
+		const ctx = await setupAppWithIssues(page, issueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 			await page.locator('.filter-item[data-group="tag"][data-val="performance"]').click();
@@ -139,7 +136,7 @@ test.describe('Issues — filter, search, sort (real backend)', () => {
 	});
 
 	test('category filter narrows the list (e.g. Feature)', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, issueSeeds());
+		const ctx = await setupAppWithIssues(page, issueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 			await page.locator('.filter-item[data-group="category"][data-val="Feature"]').click();
@@ -153,7 +150,7 @@ test.describe('Issues — filter, search, sort (real backend)', () => {
 	});
 
 	test('search filters the list by title/description/summary substring', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, issueSeeds());
+		const ctx = await setupAppWithIssues(page, issueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 			await page.locator('#issue-search').fill('csv');
@@ -170,7 +167,7 @@ test.describe('Issues — filter, search, sort (real backend)', () => {
 	});
 
 	test('switching to "updated" sort collapses priority groups into a single "Most recent" group', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, issueSeeds());
+		const ctx = await setupAppWithIssues(page, issueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 			await page.locator('.sort-btn[data-sort="updated"]').click();
@@ -184,9 +181,9 @@ test.describe('Issues — filter, search, sort (real backend)', () => {
 	});
 });
 
-test.describe('Issues — create modal (real backend)', () => {
+test.describe('Issues — create modal', () => {
 	test('does not submit when title or description is empty', async ({ page }) => {
-		const app = await setupRealApp(page);
+		const app = await setupApp(page);
 		try {
 			await page.goto(`/html/tracker.html?team_id=${app.team.id}`);
 
@@ -203,7 +200,7 @@ test.describe('Issues — create modal (real backend)', () => {
 	});
 
 	test('creates an issue, closes the modal, and shows it in the list', async ({ page }) => {
-		const app = await setupRealApp(page);
+		const app = await setupApp(page);
 		const title = makeUniqueIssueTitle('Notifications panel crashes');
 		try {
 			await page.goto(`/html/tracker.html?team_id=${app.team.id}`);
@@ -218,7 +215,7 @@ test.describe('Issues — create modal (real backend)', () => {
 			await expect(page.locator('#new-backdrop')).not.toHaveClass(/open/, { timeout: 15_000 });
 			await expect(page.locator('#issue-list')).toContainText(title, { timeout: 10_000 });
 
-			const persisted = (await fetchRealIssues(app.session, app.team.id)).find((issue) => issue.title === title);
+			const persisted = (await fetchIssues(app.session, app.team.id)).find((issue) => issue.title === title);
 			expect(persisted).toBeDefined();
 			expect(persisted).toMatchObject({
 				title,
@@ -230,11 +227,11 @@ test.describe('Issues — create modal (real backend)', () => {
 	});
 
 	test('creates an issue assigned to a team member and persists the assignee', async ({ page }) => {
-		const app = await setupRealApp(page);
-		const member = await registerRealUser(makeUniqueUser('assign_member'));
-		const invite = await inviteRealUser(app.session, app.team.id, { email: member.credentials.email });
-		await acceptRealInvite(member, invite.invite_id);
-		const assignee = (await fetchRealTeamMembers(app.session, app.team.id)).find((row) => row.email === member.credentials.email);
+		const app = await setupApp(page);
+		const member = await registerUser(makeUniqueUser('assign_member'));
+		const invite = await inviteUser(app.session, app.team.id, { email: member.credentials.email });
+		await acceptInvite(member, invite.invite_id);
+		const assignee = (await fetchTeamMembers(app.session, app.team.id)).find((row) => row.email === member.credentials.email);
 		if (!assignee) throw new Error('Expected invited user to appear in team members before assigning an issue.');
 
 		const assigneeLabel = `${assignee.first_name} ${assignee.last_name}`;
@@ -256,7 +253,7 @@ test.describe('Issues — create modal (real backend)', () => {
 			await expect(page.locator('#issue-list')).toContainText(title, { timeout: 10_000 });
 			await expect(page.locator(`#detail .avatar.sm[title="${assigneeLabel}"]`)).toBeVisible();
 
-			const persisted = (await fetchRealIssues(app.session, app.team.id)).find((issue) => issue.title === title);
+			const persisted = (await fetchIssues(app.session, app.team.id)).find((issue) => issue.title === title);
 			expect(persisted).toBeDefined();
 			expect(persisted.assigned_to).toBe(assignee.id);
 		} finally {
@@ -265,7 +262,7 @@ test.describe('Issues — create modal (real backend)', () => {
 	});
 
 	test('creates an issue with a text attachment and persists the attachment contents', async ({ page }) => {
-		const app = await setupRealApp(page);
+		const app = await setupApp(page);
 		const title = makeUniqueIssueTitle('Attachment repro');
 		const attachmentText = 'TypeError: Cannot read properties of undefined in NotificationDrawer.open';
 
@@ -288,7 +285,7 @@ test.describe('Issues — create modal (real backend)', () => {
 			await expect(page.locator('#issue-list')).toContainText(title, { timeout: 10_000 });
 			await expect(page.locator('#detail')).toContainText(attachmentText);
 
-			const persisted = (await fetchRealIssues(app.session, app.team.id)).find((issue) => issue.title === title);
+			const persisted = (await fetchIssues(app.session, app.team.id)).find((issue) => issue.title === title);
 			expect(persisted).toBeDefined();
 			expect(persisted.description).toContain('--- Attachment: crash.log ---');
 			expect(persisted.description).toContain(attachmentText);
@@ -298,11 +295,11 @@ test.describe('Issues — create modal (real backend)', () => {
 	});
 });
 
-test.describe('Issues — edit (real backend)', () => {
+test.describe('Issues — edit', () => {
 	test('saves edits and the updated title shows in the list', async ({ page }) => {
-		const app = await setupRealApp(page);
+		const app = await setupApp(page);
 		const original = makeUniqueIssueTitle('Login button bug');
-		await createRealIssue(app.session, app.team.id, {
+		await createIssue(app.session, app.team.id, {
 			title: original,
 			description: 'login button broken in firefox',
 			priority: 'Critical',
@@ -323,7 +320,7 @@ test.describe('Issues — edit (real backend)', () => {
 
 			await expect(page.locator('#issue-list')).toContainText(updated, { timeout: 10_000 });
 
-			const issues = await fetchRealIssues(app.session, app.team.id);
+			const issues = await fetchIssues(app.session, app.team.id);
 			const persisted = issues.find((issue) => issue.title === updated);
 			expect(persisted).toBeDefined();
 			expect(persisted).toMatchObject({
@@ -337,9 +334,9 @@ test.describe('Issues — edit (real backend)', () => {
 	});
 
 	test('refuses to save when title or description is cleared', async ({ page }) => {
-		const app = await setupRealApp(page);
+		const app = await setupApp(page);
 		const original = makeUniqueIssueTitle('Edit guard');
-		await createRealIssue(app.session, app.team.id, {
+		await createIssue(app.session, app.team.id, {
 			title: original,
 			description: 'Will try to clear the title and confirm save is blocked.',
 		});
@@ -360,11 +357,11 @@ test.describe('Issues — edit (real backend)', () => {
 	});
 });
 
-test.describe('Issues — delete (real backend)', () => {
+test.describe('Issues — delete', () => {
 	test('deletes an issue from the detail pane and it disappears from the list', async ({ page }) => {
-		const app = await setupRealApp(page);
+		const app = await setupApp(page);
 		const title = makeUniqueIssueTitle('Delete me');
-		await createRealIssue(app.session, app.team.id, {
+		await createIssue(app.session, app.team.id, {
 			title,
 			description: 'About to be deleted via the UI.',
 		});
@@ -379,7 +376,7 @@ test.describe('Issues — delete (real backend)', () => {
 			await page.locator('#confirm-delete').click();
 
 			await expect(page.locator('#issue-list')).not.toContainText(title, { timeout: 10_000 });
-			const issues = await fetchRealIssues(app.session, app.team.id);
+			const issues = await fetchIssues(app.session, app.team.id);
 			expect(issues.find((issue) => issue.title === title)).toBeUndefined();
 		} finally {
 			await app.cleanup();
@@ -387,9 +384,9 @@ test.describe('Issues — delete (real backend)', () => {
 	});
 });
 
-test.describe('Issues — keyboard navigation (real backend)', () => {
+test.describe('Issues — keyboard navigation', () => {
 	test('pressing j moves the selected row down', async ({ page }) => {
-		const ctx = await setupRealAppWithIssues(page, issueSeeds());
+		const ctx = await setupAppWithIssues(page, issueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 			const rows = page.locator('.issue-row');
