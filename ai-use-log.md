@@ -53,6 +53,46 @@
 
 ### Amormio:
 
+#### AI Tool(s) / LLM(s) used
+- ChatGPT, Deepseek, Cursor
+
+#### Purpose
+- ChatGPT and Deepseek:
+  - Sprint 0 research stage (e.g. references, existing issue trackers, ...)
+  - formatting markdown files (e.g. sprint plans from google docs)
+  - prototyping early examples of backend schema 
+  - understanding how to setup Cloudflare Worker
+- Cursor:
+  - code generation 
+  - understanding certain code I wasn't familiar with (e.g. frontend code, certain backend code)
+  - formatting markdown files
+    - combining existing repo docs and refining to migrate into Wiki
+
+#### Results 
+- Pros?
+ - Speed up process of finding references for research 
+ - saved time through markdown file formatting
+ - gave a good idea of what our backend schema could look like based on our project vision
+ - helped me understand backend setup for our project
+ - code generation was mainly for fixing bugs while simultaneously asking for understanding on confusion points like SQL code; helped fix backend endpoint bugs considering we knew what was missing/incorrect
+
+- Cons?
+  - researching references with AI didn't let me know about Beads (had to learn from Professor Powell himself), mostly about other products like Jira
+  - generated code would sometimes be overkill or not match our product requirements
+  - formatted markdown files would often be too verbose and assumed things about our project vision
+
+- Did you review the AI output?
+  - I had to review and edit the formatted markdown files most of the time as it was often too verbose and had slight mistakes
+  - for larger generated code, I took pretty long reviewing it to understand it matched what we needed
+
+- Did you fully copy paste the output or did you make any changes?
+  - for markdown files, I typically copy pasted to a markdown file in our repo and edited it there
+  - I copy pasted code snippets that were just several lines long for bug fixes, and for larger code only if I saw that it didn't have unnecessary features/considerations
+    - also manually tested with curl commands (before we had unit tests) to our endpoints with local db setup to ensure expected output
+
+#### Related Files
+- most of the codebase, with heavier code generation to fix issues with the backend endpoints
+
 ---
 
 ### Anchita:
