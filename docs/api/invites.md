@@ -1,12 +1,3 @@
-ex pattern to document the sections:
-1. the endpoint (this is x endpoint )
-2. method and url path and what it does
-3. params (e.g. team_id required)
-4. example request line like GET /invites HTTP/1.1
-5. example response
-6. explain purpose/why we need this path
-7. repeat for all
-
 ## 1. GET /invites
 - **This is the list pending invites endpoint**
 - **Method and URL Path:** GET /invites - returns all pending invites for the authenticated user
