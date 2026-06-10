@@ -45,7 +45,7 @@ export default [
 		},
 	},
 	{
-		ignores: ['node_modules/', 'dist/', 'build/', 'coverage/', '.wrangler/', 'research/'],
+		ignores: ['node_modules/', 'dist/', 'build/', 'coverage/', '**/.wrangler/**', 'research/'],
 	},
 	eslintConfigPrettier,
 ];

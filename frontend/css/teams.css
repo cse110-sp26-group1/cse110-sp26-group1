@@ -1,3 +1,6 @@
+/* teams.css */
+
+/* body */
 body {
 	min-height: 100vh;
 }
@@ -7,14 +10,18 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 1rem 2rem;
+	min-height: 4rem;
+	box-sizing: border-box;
+	padding: 0.571rem 1rem;
 	border-bottom: 0.071rem solid var(--line);
 	background: var(--bg);
 	position: sticky;
 	top: 0;
 	z-index: 5;
+	gap: 0.857rem;
 }
 
+/* brand */
 .brand {
 	display: flex;
 	align-items: center;
@@ -31,7 +38,8 @@ body {
 	gap: 0.714rem;
 }
 
-/* layout */
+/* Teams dashboardlayout */
+
 main {
 	max-width: min(77.143rem, 100%);
 	margin: 0 auto;
@@ -53,11 +61,6 @@ main {
 	letter-spacing: -0.02em;
 }
 
-.hero p {
-	margin: 0;
-	color: var(--muted);
-}
-
 /* controls row */
 .hero-actions {
 	display: flex;
@@ -76,6 +79,7 @@ main {
 	gap: 1rem;
 }
 
+/* team card */
 team-card {
 	/* Let the custom element wrapper disappear so its template participates in the grid. */
 	display: contents;
@@ -125,30 +129,6 @@ team-card {
 	flex: 0 0 auto;
 }
 
-.team-mark.c1 {
-	background: oklch(92% 0.04 38deg);
-	color: oklch(40% 0.12 38deg);
-	border-color: oklch(85% 0.05 38deg);
-}
-
-.team-mark.c2 {
-	background: oklch(92% 0.04 200deg);
-	color: oklch(38% 0.1 200deg);
-	border-color: oklch(85% 0.05 200deg);
-}
-
-.team-mark.c3 {
-	background: oklch(93% 0.04 130deg);
-	color: oklch(38% 0.1 130deg);
-	border-color: oklch(85% 0.05 130deg);
-}
-
-.team-mark.c4 {
-	background: oklch(92% 0.04 320deg);
-	color: oklch(40% 0.1 320deg);
-	border-color: oklch(85% 0.05 320deg);
-}
-
 .team h2 {
 	margin: 0;
 	font-size: 1.107rem;
@@ -186,39 +166,6 @@ team-card {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.members {
-	display: inline-flex;
-}
-
-.members .avatar {
-	margin-left: -0.571rem;
-	background: var(--surface);
-}
-
-.members .avatar:first-child {
-	margin-left: 0;
-}
-
-.members .more {
-	margin-left: -0.571rem;
-	width: 2rem;
-	height: 2rem;
-	border-radius: 50%;
-	background: var(--surface-2);
-	color: var(--muted);
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 0.786rem;
-	font-weight: 600;
-	border: 0.071rem solid var(--line);
-}
-
-.last-active {
-	font-size: 0.857rem;
-	color: var(--muted);
 }
 
 /* "create new" card */
@@ -303,4 +250,18 @@ team-card {
 .invite strong {
 	font-weight: 600;
 	color: var(--ink);
+}
+
+.member-stack {
+	display: flex;
+	padding: 0;
+	gap: 0;
+}
+
+.member-stack .avatar {
+	margin-left: -0.429rem;
+}
+
+.member-stack .avatar:first-child {
+	margin-left: 0;
 }

@@ -17,13 +17,19 @@ That should start the API at:
 
 **http://localhost:8787**
 
-Temporarily change `frontend/js/api.js` (around line 2) to:
+Temporarily change `API_BASE` in `frontend/js/constants.js`:
 
 ```javascript
-const API_BASE = 'http://localhost:8787';
+export const API_BASE = 'http://localhost:8787';
 ```
 
-(Comment out or replace the production `API_BASE` while testing locally.)
+Or, without editing the file, set an override in the browser console before loading the app:
+
+```javascript
+localStorage.setItem('allegro_api_base', 'http://localhost:8787');
+```
+
+Revert the constant change or clear `allegro_api_base` when done testing locally.
 
 ## Terminal 2: frontend
 

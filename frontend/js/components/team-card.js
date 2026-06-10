@@ -1,6 +1,5 @@
-import { getUserInitials } from '../user-profile.js';
-
-const templateUrl = new URL('../../html/components/team-card.html', import.meta.url);
+import { loadHtmlTemplate } from './load-template.js';
+import { getUserInitials, getUserDisplayName } from '../helpers.js';
 
 let teamCardTemplate;
 
@@ -10,37 +9,20 @@ let teamCardTemplate;
  */
 async function loadTeamCardTemplate() {
 	if (teamCardTemplate) return teamCardTemplate;
-
-	const response = await fetch(templateUrl);
-	if (!response.ok) {
-		throw new Error(`Failed to load team card template (${response.status})`);
-	}
-
-	const html = await response.text();
-	const doc = new DOMParser().parseFromString(html, 'text/html');
-	teamCardTemplate = doc.getElementById('team-card-template');
-
-	if (!teamCardTemplate) {
-		throw new Error('team-card-template not found in team-card.html');
-	}
-
+	teamCardTemplate = await loadHtmlTemplate(import.meta.url, '../../html/components/team-card.html', 'team-card-template');
 	return teamCardTemplate;
 }
 
-/**
- * Team workspace card shown on the teams dashboard grid.
- */
+/** Team workspace card shown on the teams dashboard grid. */
 class TeamCard extends HTMLElement {
-	/**
-	 * @returns {string[]}
-	 */
+	/** @returns {string[]} */
 	static get observedAttributes() {
-		return ['team-id', 'name', 'mark', 'color', 'role', 'bio', 'user-initials'];
+		return ['team-id', 'name', 'mark', 'color', 'role', 'bio', 'members'];
 	}
 
 	#rendered = false;
 
-	/** @returns {void} */
+	/** Clones the team card template on first connect. */
 	connectedCallback() {
 		if (this.#rendered) {
 			this.#update();
@@ -53,12 +35,12 @@ class TeamCard extends HTMLElement {
 		this.#update();
 	}
 
-	/** @returns {void} */
+	/** Re-renders when an observed attribute changes. */
 	attributeChangedCallback() {
 		if (this.#rendered) this.#update();
 	}
 
-	/** @returns {void} */
+	/** Syncs template nodes from element attributes. */
 	#update() {
 		const teamId = this.getAttribute('team-id') ?? '';
 		const name = this.getAttribute('name') ?? '';
@@ -66,14 +48,15 @@ class TeamCard extends HTMLElement {
 		const color = this.getAttribute('color') ?? '0';
 		const role = this.getAttribute('role') ?? 'Member';
 		const bio = this.getAttribute('bio') ?? '';
-		const userInitials = this.getAttribute('user-initials') ?? getUserInitials();
 
 		const link = this.querySelector('a.team');
 		const teamMark = this.querySelector('.team-mark');
 		const title = this.querySelector('h2');
 		const subtitleEl = this.querySelector('.slug');
 		const bioEl = this.querySelector('.team-bio');
-		const avatarEl = this.querySelector('.avatar');
+
+		const oldAvatarEl = this.querySelector('.avatar');
+		if (oldAvatarEl) oldAvatarEl.remove();
 
 		if (link) link.href = `tracker.html?team_id=${teamId}`;
 
@@ -87,8 +70,6 @@ class TeamCard extends HTMLElement {
 
 		if (subtitleEl) subtitleEl.textContent = role === 'admin' ? 'Workspace Admin' : 'Workspace Member';
 
-		if (avatarEl) avatarEl.textContent = userInitials;
-
 		if (bioEl) {
 			const trimmedBio = bio.trim();
 			if (trimmedBio) {
@@ -97,6 +78,34 @@ class TeamCard extends HTMLElement {
 			} else {
 				bioEl.textContent = 'No bio yet.';
 				bioEl.classList.add('empty');
+			}
+		}
+
+		const membersAttr = this.getAttribute('members');
+		if (membersAttr) {
+			try {
+				const members = JSON.parse(membersAttr);
+
+				const membersHtml = members
+					.map((m) => {
+						const memberName = getUserDisplayName(m);
+						return `<div class="avatar sm" title="${memberName}">${getUserInitials(m)}</div>`;
+					})
+					.join('');
+
+				let membersContainer = this.querySelector('.member-stack');
+
+				if (!membersContainer) {
+					membersContainer = document.createElement('div');
+					membersContainer.className = 'member-stack';
+					membersContainer.style.marginTop = '1rem';
+
+					if (link) link.appendChild(membersContainer);
+				}
+
+				membersContainer.innerHTML = membersHtml;
+			} catch (err) {
+				console.error('Failed to parse team members for card', err);
 			}
 		}
 	}

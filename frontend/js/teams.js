@@ -1,13 +1,17 @@
-import { fetchTeams, createTeam, requireAuth, acceptInvite, rejectInvite, fetchInvites } from './api.js';
-import { getUserInitials } from './user-profile.js';
+import { fetchTeams, createTeam, requireAuth, acceptInvite, rejectInvite, fetchInvites, fetchTeamMembers } from './api.js';
+import { formatRelativeDate, showToast, getTeamMark, initTheme, initUserMenu } from './helpers.js';
+import { TEAM_MARK_HUES } from './constants.js';
 
 import './components/team-card.js';
+import './components/invite-row.js';
 
-requireAuth(); // forces the user to sign up if this page is accessed without credentials
+initTheme();
+initUserMenu();
 
 const backdrop = document.getElementById('create-backdrop');
 const teamNameEl = document.getElementById('team-name');
-const toast = document.getElementById('toast');
+
+const MAX_BIO_LENGTH = 50;
 
 /**
  * Opens the create-team modal and focuses the team-name input.
@@ -25,9 +29,11 @@ function closeModal() {
 }
 
 document.getElementById('create-team').addEventListener('click', openModal);
-document.getElementById('create-team-2').addEventListener('click', (e) => {
-	e.preventDefault();
-	openModal();
+document.getElementById('team-grid').addEventListener('click', (e) => {
+	if (e.target.closest('#create-team-2')) {
+		e.preventDefault();
+		openModal();
+	}
 });
 document.getElementById('cancel-create').addEventListener('click', closeModal);
 backdrop.addEventListener('click', (e) => {
@@ -36,22 +42,12 @@ backdrop.addEventListener('click', (e) => {
 	}
 });
 
-/**
- * Shows a temporary status message.
- *
- * @param {string} msg Message to display.
- */
-function showToast(msg) {
-	toast.textContent = msg;
-	toast.classList.add('show');
-	clearTimeout(showToast._t);
-	showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
-}
-
 document.getElementById('confirm-create').addEventListener('click', async () => {
 	const nameEl = document.getElementById('team-name');
+	const bioEl = document.getElementById('team-bio');
 
 	const name = nameEl.value.trim();
+	const bio = bioEl.value.trim();
 
 	if (!name) {
 		nameEl.focus();
@@ -66,6 +62,7 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 	try {
 		const newTeam = await createTeam({
 			team_name: name,
+			bio: bio,
 		});
 
 		showToast(`Workspace created! Redirecting...`);
@@ -89,6 +86,7 @@ document.getElementById('confirm-create').addEventListener('click', async () => 
 async function loadInvites() {
 	const section = document.getElementById('invites-section');
 	if (!section) return;
+	section.querySelectorAll('invite-row').forEach((row) => row.remove());
 
 	let invites;
 	try {
@@ -105,28 +103,15 @@ async function loadInvites() {
 
 	section.hidden = false;
 
-	const list = invites
-		.map(
-			(inv) => `
-		<div class="invite" data-invite-id="${inv.id}">
-		<div class="info">
-			<div class="team-mark">${inv.team_name.substring(0, 2).toUpperCase()}</div>
-			<div>
-			<p><strong>${inv.team_name}</strong> · invited by ${inv.inviter_username}</p>
-			<p>Invited ${inv.created_at}</p>
-			</div>
-		</div>
-		<div class="actions">
-			<button class="btn sm decline-btn" data-invite-id="${inv.id}">Decline</button>
-			<button class="btn primary sm accept-btn" data-invite-id="${inv.id}">Accept</button>
-		</div>
-		</div>
-	`,
-		)
-		.join('');
+	invites.forEach((inv) => {
+		const row = document.createElement('invite-row');
+		row.setAttribute('invite-id', String(inv.id));
+		row.setAttribute('team-name', inv.team_name);
+		row.setAttribute('inviter-name', inv.inviter_username);
+		row.setAttribute('invite-date', formatRelativeDate(inv.created_at));
 
-	// stay in HTML while the rows reflect the latest API state.
-	section.querySelector('h3').insertAdjacentHTML('afterend', list);
+		section.appendChild(row);
+	});
 
 	section.querySelectorAll('.accept-btn').forEach((btn) => {
 		btn.addEventListener('click', async (e) => {
@@ -136,8 +121,8 @@ async function loadInvites() {
 			try {
 				await acceptInvite(inviteId);
 				showToast('Invitation accepted!');
-				e.target.closest('.invite').remove();
-				initTeamsPage();
+				e.target.closest('invite-row').remove();
+				await initTeamsPage();
 			} catch {
 				showToast('Failed to accept invite.');
 				e.target.textContent = 'Accept';
@@ -154,9 +139,10 @@ async function loadInvites() {
 			e.target.disabled = true;
 			try {
 				await rejectInvite(inviteId);
-				e.target.closest('.invite').remove();
+				e.target.closest('invite-row').remove();
 				showToast('Invitation declined.');
-				if (!section.querySelectorAll('.invite').length) section.hidden = true;
+				const remaining = section.querySelectorAll('invite-row').length;
+				if (!remaining) section.hidden = true;
 			} catch {
 				showToast('Failed to decline invite.');
 				e.target.textContent = 'Decline';
@@ -175,28 +161,36 @@ async function initTeamsPage() {
 		const grid = document.getElementById('team-grid');
 		const createBtnHtml = grid.querySelector('.team.new').outerHTML;
 
-		const teamCards = teams.map((team) => {
-			const card = document.createElement('team-card');
-			card.setAttribute('team-id', String(team.id));
-			card.setAttribute('name', team.team_name);
+		const teamCards = await Promise.all(
+			teams.map(async (team, index) => {
+				const card = document.createElement('team-card');
+				card.setAttribute('team-id', String(team.id));
+				card.setAttribute('name', team.team_name);
 
-			const words = team.team_name.trim().split(' ');
-			const mark = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : team.team_name.substring(0, 2).toUpperCase();
-			card.setAttribute('mark', mark);
-			card.setAttribute('color', '220');
-			card.setAttribute('role', team.role);
-			card.setAttribute('bio', team.bio ?? '');
-			card.setAttribute('user-initials', getUserInitials());
-			return card;
-		});
+				card.setAttribute('mark', getTeamMark(team.team_name));
+				card.setAttribute('color', String(TEAM_MARK_HUES[index % TEAM_MARK_HUES.length]));
+				card.setAttribute('role', team.role);
+
+				let bioText = team.bio ?? '';
+				if (bioText.length > MAX_BIO_LENGTH) {
+					// bio truncation
+					bioText = bioText.substring(0, MAX_BIO_LENGTH).trim() + '...';
+				}
+				card.setAttribute('bio', bioText);
+				try {
+					const members = await fetchTeamMembers(team.id);
+					const topMembers = members.slice(0, 4);
+					card.setAttribute('members', JSON.stringify(topMembers));
+				} catch {
+					card.setAttribute('members', '[]');
+				}
+
+				return card;
+			}),
+		);
 
 		grid.replaceChildren(...teamCards);
 		grid.insertAdjacentHTML('beforeend', createBtnHtml);
-
-		document.getElementById('create-team-2').addEventListener('click', (e) => {
-			e.preventDefault();
-			openModal();
-		});
 
 		await loadInvites();
 	} catch {
@@ -204,4 +198,7 @@ async function initTeamsPage() {
 	}
 }
 
-initTeamsPage();
+(async () => {
+	if (!(await requireAuth())) return;
+	await initTeamsPage();
+})();
