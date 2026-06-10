@@ -8,7 +8,7 @@ The D1 database is accessed through `env.DB` in every route handler. You never w
 
 ---
 
-## The four operations
+## The six operations
 
 **SELECT one row:**
 
@@ -54,6 +54,17 @@ const { meta } = await env.DB.prepare(
 // meta.last_row_id — ID of the newly inserted row
 ```
 
+**INSERT and get the new row's ID directly (RETURNING):**
+
+```js
+const row = await env.DB.prepare(
+    'INSERT INTO issues (team_id, created_by, title) VALUES (?, ?, ?) RETURNING id'
+).bind(teamId, userId, title).first();
+
+// row.id — the new row's ID, returned inline without needing meta.last_row_id
+// Use this when you need the ID immediately in the same response
+```
+
 **Check if a row exists:**
 
 ```js
@@ -62,6 +73,22 @@ const member = await env.DB.prepare(
 ).bind(userId, teamId).first();
 
 if (!member) return Response.json({ error: 'Forbidden' }, { status: 403 });
+```
+
+**Batch multiple writes atomically:**
+
+```js
+await env.DB.batch([
+    env.DB.prepare(
+        'INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)'
+    ).bind(teamId, userId, 'member'),
+    env.DB.prepare(
+        "UPDATE invites SET status = 'accepted' WHERE id = ?"
+    ).bind(inviteId),
+]);
+
+// Both statements run together — if one fails, neither is committed
+// Use this any time two writes must succeed or fail as a unit
 ```
 
 ---
@@ -88,6 +115,32 @@ Whatever the column is named in `schema.sql` is how you access it in code:
 | `expires_at`    | `session.expires_at` |
 | `password_hash` | `user.password_hash` |
 
+
+---
+
+## JSON string fields
+
+Some columns are stored as JSON strings in the database. You must serialize on write and parse on read — otherwise you get a raw string instead of an array.
+
+Affected columns: `issues.tags`, `issues.stack_trace`, `issues.affected_files`
+
+```js
+// Writing — serialize before binding
+const tags = JSON.stringify(['ui', 'backend']);
+await env.DB.prepare('INSERT INTO issues (tags, ...) VALUES (?, ...)')
+    .bind(tags, ...)
+    .run();
+
+// Reading — parse after fetching
+const issue = await env.DB.prepare('SELECT * FROM issues WHERE id = ?')
+    .bind(issueId)
+    .first();
+
+issue.tags           // '["ui","backend"]'  ← raw string from D1
+JSON.parse(issue.tags)  // ['ui', 'backend'] ← what you actually want
+```
+
+All other columns are plain scalars (integers, text, timestamps) and need no extra handling.
 
 ---
 

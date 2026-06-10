@@ -240,3 +240,24 @@ I used the AI tools for explanation, code generation, and debugging. First, I us
 ---
 
 ### Noah:
+
+### Team Member
+- Noah
+
+### AI Tool(s) / LLM(s) used
+- Claude Code (claude-sonnet-4-6)
+
+### Purpose
+- Scaffolded the backend auth system (PBKDF2 hashing, `requireAuth` middleware, session management, auth endpoints)
+- Setting up auth routing, CORS, and DB query patterns
+- Writing and organizing developer documentation across `docs/` and `issue-tracker-api/`
+
+### Results
+- All output reviewed and adjusted before accepting
+- Docs were iteratively refined based on feedback throughout
+
+### Related Files
+- `issue-tracker-api/src/lib/auth.js`
+- `issue-tracker-api/routes/auth.js`
+- `issue-tracker-api/src/index.js`
+- `docs/backend/auth.md`, `docs/api/auth.md`, `docs/backend/routes.md`, `docs/backend/db.md`
