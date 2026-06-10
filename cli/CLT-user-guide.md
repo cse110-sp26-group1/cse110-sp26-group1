@@ -1,4 +1,4 @@
-# Allegro CLI User Guide
+# Allegro CLT User Guide
 
 `allegro` is a command-line tool for working with teams and issues in the
 Allegro issue tracker. This guide is for a human preparing an agent to use the

@@ -14,47 +14,74 @@ import {
 	setupApp,
 	setupAppWithIssues,
 } from '../helpers/api.js';
-
-/**
- * Issue payloads spanning statuses, priorities, tags, and categories.
- * @returns {object[]}
- */
-function issueSeeds() {
-	return [
-		{
-			title: makeUniqueIssueTitle('Login button not clickable'),
-			description: 'The big blue login button is unresponsive in Firefox.',
-			priority: 'Critical',
-			category: 'Bug',
-			tags: ['ui', 'authentication'],
-		},
-		{
-			title: makeUniqueIssueTitle('Dashboard charts slow to load'),
-			description: 'Charts take 6+ seconds to render with 1000 issues.',
-			status: 'In Progress',
-			priority: 'High',
-			category: 'Bug',
-			tags: ['performance'],
-		},
-		{
-			title: makeUniqueIssueTitle('Add CSV export to issues'),
-			description: 'Users want to export the filtered issue list as CSV.',
-			priority: 'Medium',
-			category: 'Feature',
-			tags: ['enhancement'],
-		},
-		{
-			title: makeUniqueIssueTitle('Audit deprecated API usage'),
-			description: 'Replace remaining calls to deprecated /v1 endpoints.',
-			status: 'Resolved',
-			priority: 'Low',
-			category: 'Task',
-			tags: ['backend'],
-		},
-	];
-}
+import { issueSeeds } from '../helpers/seeds.js';
 
 test.describe('Issues — listing and detail', () => {
+	test('dragging the divider resizes the list and detail columns', async ({ page }) => {
+		const ctx = await setupAppWithIssues(page, issueSeeds());
+		try {
+			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
+			await expect(page.locator('.issue-row')).toHaveCount(4, { timeout: 10_000 });
+
+			const divider = page.locator('#divider');
+			const content = page.locator('#content');
+
+			const getColumns = () => content.evaluate((el) => el.style.gridTemplateColumns);
+
+			await page.evaluate(() => localStorage.removeItem('detailWidth'));
+
+			const dividerBox = await divider.boundingBox();
+			const contentBox = await content.boundingBox();
+			const startX = dividerBox.x + dividerBox.width / 2;
+			const centerY = dividerBox.y + dividerBox.height / 2;
+
+			// Drag all the way left
+			await page.mouse.move(startX, centerY);
+			await page.mouse.down();
+			await page.mouse.move(contentBox.x, centerY, { steps: 20 });
+			await page.mouse.up();
+			const leftColumns = await getColumns();
+			expect(leftColumns).toBeTruthy();
+
+			// Drag all the way right (re-fetch divider position after first drag)
+			const dividerBox2 = await divider.boundingBox();
+			const startX2 = dividerBox2.x + dividerBox2.width / 2;
+			await page.mouse.move(startX2, centerY);
+			await page.mouse.down();
+			await page.mouse.move(contentBox.x + contentBox.width, centerY, { steps: 20 });
+			await page.mouse.up();
+			const rightColumns = await getColumns();
+			expect(rightColumns).toBeTruthy();
+
+			expect(leftColumns).not.toBe(rightColumns);
+		} finally {
+			await ctx.cleanup();
+		}
+	});
+
+	test('Details button toggles the detail pane open and closed', async ({ page }) => {
+		const app = await setupApp(page);
+		try {
+			await page.goto(`/html/tracker.html?team_id=${app.team.id}`);
+
+			const content = page.locator('#content');
+			const toggleBtn = page.locator('#toggle-detail');
+
+			// Pane starts open — no collapsed-detail class
+			await expect(content).not.toHaveClass(/collapsed-detail/);
+
+			// First click collapses it
+			await toggleBtn.click();
+			await expect(content).toHaveClass(/collapsed-detail/);
+
+			// Second click restores it
+			await toggleBtn.click();
+			await expect(content).not.toHaveClass(/collapsed-detail/);
+		} finally {
+			await app.cleanup();
+		}
+	});
+
 	test('renders issues grouped by priority with the correct total', async ({ page }) => {
 		const ctx = await setupAppWithIssues(page, issueSeeds());
 		try {

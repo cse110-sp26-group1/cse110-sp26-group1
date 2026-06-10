@@ -4,7 +4,6 @@ import { test, expect } from '@playwright/test';
 import {
 	createTeam,
 	inviteUser,
-	makeUniqueIssueTitle,
 	makeUniqueTeamName,
 	makeUniqueUser,
 	registerUser,
@@ -12,42 +11,11 @@ import {
 	setBrowserSession,
 	setupAppWithIssues,
 } from '../helpers/api.js';
-
-/**
- * Three predictable issue payloads — Critical / High / Medium — used to drive
- * the mobile drawer, search relocation, and master/detail tests.
- * @returns {object[]}
- */
-function threeIssueSeeds() {
-	return [
-		{
-			title: makeUniqueIssueTitle('Login button not clickable'),
-			description: 'Big blue login button is dead.',
-			priority: 'Critical',
-			category: 'Bug',
-			tags: ['ui'],
-		},
-		{
-			title: makeUniqueIssueTitle('Dashboard charts slow to load'),
-			description: 'Charts take 6+ seconds.',
-			status: 'In Progress',
-			priority: 'High',
-			category: 'Bug',
-			tags: ['performance'],
-		},
-		{
-			title: makeUniqueIssueTitle('Add CSV export to issues'),
-			description: 'Users want CSV.',
-			priority: 'Medium',
-			category: 'Feature',
-			tags: ['enhancement'],
-		},
-	];
-}
+import { mobileIssueSeeds } from '../helpers/seeds.js';
 
 test.describe('Mobile — tracker sidebar drawer', () => {
 	test('sidebar starts closed; toggle opens it as an overlay; backdrop closes it', async ({ page }) => {
-		const ctx = await setupAppWithIssues(page, threeIssueSeeds());
+		const ctx = await setupAppWithIssues(page, mobileIssueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 
@@ -77,7 +45,7 @@ test.describe('Mobile — tracker sidebar drawer', () => {
 	});
 
 	test('search input lives inside the sidebar drawer on mobile (relocated from the topbar)', async ({ page }) => {
-		const ctx = await setupAppWithIssues(page, threeIssueSeeds());
+		const ctx = await setupAppWithIssues(page, mobileIssueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 
@@ -99,7 +67,7 @@ test.describe('Mobile — tracker sidebar drawer', () => {
 
 test.describe('Mobile — tracker master/detail', () => {
 	test('tapping a row shows the issue detail full-screen; back button returns to the list', async ({ page }) => {
-		const ctx = await setupAppWithIssues(page, threeIssueSeeds());
+		const ctx = await setupAppWithIssues(page, mobileIssueSeeds());
 		try {
 			await page.goto(`/html/tracker.html?team_id=${ctx.team.id}`);
 
@@ -145,7 +113,7 @@ test.describe('Mobile — teams page', () => {
 
 			const section = page.locator('#invites-section');
 			await expect(section).toBeVisible();
-			await expect(section.locator('.invite')).toHaveCount(1);
+			await expect(section.locator('invite-row')).toHaveCount(1);
 
 			await newTeam.click();
 			await expect(page.locator('#create-backdrop')).toHaveClass(/open/);
