@@ -208,7 +208,7 @@ The purpose is so that `main` is kept clean and our github page hosting the fron
 
 1. Add handler in `routes/<resource>.js` (use `requireAuth` where needed).
 2. Import and register prefix in `src/index.js` (see `ROUTES.md`).
-3. Document in `issue-tracker-api/ROUTES.md` / `docs/api/`.
+3. Document in `docs/api/`.
 4. Add Vitest unit test cases in `test/`.
 5. Test with curl against `localhost:8787`.
 
@@ -251,13 +251,13 @@ The purpose is so that `main` is kept clean and our github page hosting the fron
 
 ---
 
-## Related docs (update later on after repo reorganization)
+## Related documentation
 
-- [Product overview](../architecture/overview.md)
-- [Database architecture](../architecture/database.md)
-- [Cloudflare testing guide](../../research/backend-demos/cloudflare-testing-guide.md)
-- [AUTH.md](../../issue-tracker-api/AUTH.md)
-- [DB.md](../../issue-tracker-api/DB.md)
-- [ROUTES.md](../../issue-tracker-api/ROUTES.md)
-- [Auth doc](./auth.md)
+- [Product overview](../architecture/overview.md) — system architecture and design principles
+- [Database architecture](../architecture/database.md) — table structure and relationships
+- [Cloudflare testing guide](../../research/backend-demos/cloudflare-testing-guide.md) — how to test with Wrangler locally
+- [Auth middleware](./auth.md) — how to protect a route
+- [Database reference](./db.md) — how to query the database
+- [API routing](./routes.md) — routing pattern and how to add a new route
+- [Auth middleware](./auth.md) — auth system deep dive
 
