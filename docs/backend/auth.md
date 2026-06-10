@@ -106,6 +106,39 @@ fetch('http://localhost:8787/...', {
 
 ---
 
+## Edge cases
+
+### Handled
+
+| Case | Behavior |
+|---|---|
+| Computer sleeps / user away | Token persists in localStorage, session still valid on return. If session expiry passed, user gets 401 and must log in again. |
+| User deletes localStorage | Frontend loses token, effectively logged out client-side. Session row expires naturally in DB. No security risk. |
+| User opens a second tab | Both tabs share the same localStorage and token. No duplicate session created. |
+| User logs in on a different device | Each device gets its own session row. Both valid simultaneously. Logout on one device does not affect the other. |
+| Invalid token on logout | Returns 401 instead of false success — `meta.changes === 0` check handles this. |
+| Duplicate email on register | Returns 409 — existing user check prevents duplicate accounts. |
+| Password complexity | Minimum 8 characters enforced. Whitespace-only passwords rejected. |
+| Expired session accumulation | On each login, all expired sessions for that user are deleted before the new session is inserted. |
+| Concurrent login race condition | Two simultaneous logins from the same user could insert two sessions. Acceptable at this scale — both expire naturally. |
+| Multiple active sessions per user | A user logged in on two devices has two session rows. Harmless — both expire naturally. |
+
+### Not handled
+
+**1. Brute force login attempts**
+Nothing stops repeated password guesses against `POST /auth/login`. No rate limiting or account lockout after failed attempts.
+- Fix: set up Cloudflare rate limiting, or track failed attempts per email in the DB and lock after N failures.
+
+**2. No account deletion**
+There is no endpoint for a user to delete their own account. User rows persist in the DB indefinitely.
+- Fix: add a `DELETE /users/me` endpoint that removes the user row and cascades to their sessions and team memberships.
+
+**3. No token refresh**
+When the session expires the user gets a 401 with no warning. No silent refresh flow exists.
+- Fix: add a `POST /auth/refresh` endpoint that extends `expires_at` on the existing session. Frontend calls it once per calendar day on page load.
+
+---
+
 ## Related documentation
 
 - [Auth endpoints](../api/auth.md) — endpoint request/response reference
