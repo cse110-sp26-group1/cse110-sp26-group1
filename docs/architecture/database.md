@@ -225,3 +225,18 @@ Sessions are used to verify identity across protected backend routes without req
 We chose session-based authentication because it is reliable, secure, and appropriate for our current application scale.
 
 Using persistent sessions also simplifies communication between the frontend, backend, and future CLI tooling where authenticated agents may act on behalf of users through authorized session tokens.
+
+---
+
+## Schema diagram
+
+![Database schema](./database-schema.svg)
+
+---
+
+## Related documentation
+
+- [Database reference](../backend/db.md) — how to query the database in route handlers (`env.DB`, `.first()`, `.all()`, `.run()`, batch)
+- [Auth middleware](../backend/auth.md) — auth middleware and session model
+- [API routing](../backend/routes.md) — how requests are routed to handlers
+- [schema.sql](../../issue-tracker-api/schema.sql) — full table definitions
