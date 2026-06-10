@@ -40,7 +40,39 @@
 - used ai to help research and create about how to create a eyeball toggle for login pages. Accessible Rich Internet Applications(aria) is industry standard for accessibility. 
 - used ai to help verify if keeping it a seperate file is better or to just intergrate it into login/sigup.
 - still hand checked to verify everything and handwrote all of the comments for toggle password.
+#### AI Tool(s) / LLM(s) used
+- Claude code
+- Codex
+- Cursor
 
+#### Purpose
+- Claude and Codex:
+  - Primarily for code creation for the frotnend features and e2e testing
+  - Research about certain fixes that needed to be fixed
+  - Prototyping our AIT
+  - Understanding large files
+  - Used the Codex code review feature to see if im missing anything such as security issues
+
+- Cursor:
+  - Markdown file formating
+
+#### Results 
+- Pros?
+  - Helped speed up the learning process and code creation process
+  - Helped saved time transfering everything from a google doc into markdown format
+  - When prompted, found the bugs quicker than I could
+- Cons?
+  - generated code, when not prompted well, created poor quality code that I had to go back and reprompt it to make it understand what I wanted
+  - Somtimes had to give it a picture refrence on where things should be for it to understand it better(had to create visiuals)
+  - When formating Markdown files, it would somtimes change some of the context and gave incorrect results
+- Did you review the AI output?
+  - Generally yes. I would check to see what it did then document it into a google doc for future refrence. For the e2e testing, I would have it document it into the document on what needed to be changed next.
+- Did you fully copy paste the output or did you make any changes?
+  - For Markdown files, I would copy and paste it but hand review it to make sure it didnt put any misinformation
+  - I made sure to review the AI generated code and locally test before pushing to the repo. If anything didnt seem correct, I would prompt it to make a change. I also did smaller fixes myself (such as bolding something, changing the order, ect.)
+
+#### Related Files
+- e2e testing files, frontend, and formating markdown files.
 ---
 
 ### Amberly:
@@ -52,6 +84,46 @@
 ---
 
 ### Amormio:
+
+#### AI Tool(s) / LLM(s) used
+- ChatGPT, Deepseek, Cursor
+
+#### Purpose
+- ChatGPT and Deepseek:
+  - Sprint 0 research stage (e.g. references, existing issue trackers, ...)
+  - formatting markdown files (e.g. sprint plans from google docs)
+  - prototyping early examples of backend schema 
+  - understanding how to setup Cloudflare Worker
+- Cursor:
+  - code generation 
+  - understanding certain code I wasn't familiar with (e.g. frontend code, certain backend code)
+  - formatting markdown files
+    - combining existing repo docs and refining to migrate into Wiki
+
+#### Results 
+- Pros?
+ - Speed up process of finding references for research 
+ - saved time through markdown file formatting
+ - gave a good idea of what our backend schema could look like based on our project vision
+ - helped me understand backend setup for our project
+ - code generation was mainly for fixing bugs while simultaneously asking for understanding on confusion points like SQL code; helped fix backend endpoint bugs considering we knew what was missing/incorrect
+
+- Cons?
+  - researching references with AI didn't let me know about Beads (had to learn from Professor Powell himself), mostly about other products like Jira
+  - generated code would sometimes be overkill or not match our product requirements
+  - formatted markdown files would often be too verbose and assumed things about our project vision
+
+- Did you review the AI output?
+  - I had to review and edit the formatted markdown files most of the time as it was often too verbose and had slight mistakes
+  - for larger generated code, I took pretty long reviewing it to understand it matched what we needed
+
+- Did you fully copy paste the output or did you make any changes?
+  - for markdown files, I typically copy pasted to a markdown file in our repo and edited it there
+  - I copy pasted code snippets that were just several lines long for bug fixes, and for larger code only if I saw that it didn't have unnecessary features/considerations
+    - also manually tested with curl commands (before we had unit tests) to our endpoints with local db setup to ensure expected output
+
+#### Related Files
+- most of the codebase, with heavier code generation to fix issues with the backend endpoints
 
 ---
 
@@ -115,7 +187,49 @@ Cons:
 
 ---
 
-### Jerry:
+### Jerry
+
+#### AI Tool(s) / LLM(s) Used
+
+* Cursor: Composer 2
+* Cursor: Claude Opus 4.8
+
+#### Purpose
+
+I used the AI tools for explanation, code generation, and debugging. First, I used them to better understand the profile structure and the overall organization of the project. I also used them to generate code, but after the code was generated, I manually reviewed it line by line before deciding whether it should be included in the project. In addition, I used the tools for debugging by asking them to identify potential issues, explain the cause of the problem, and describe the reasoning behind the suggested solution.
+
+#### Results
+
+**Pros**
+
+* The tools were helpful for identifying bugs and potential issues in the code.
+* They generated useful code that gave me a good starting point.
+* They improved my efficiency by helping me understand and implement things faster.
+* They helped clarify the logic and structure of the project.
+
+**Cons**
+
+* The generated output still required manual correction and careful review.
+* Sometimes the tools generated errors or code that did not fully match the project requirements.
+* If my prompt was not detailed enough, the output could include things I did not want or miss important context.
+
+**Review Process**
+
+* Yes, I reviewed the AI-generated output.
+* After the tools generated explanations or code, I manually checked the output to make sure it matched the project requirements.
+* For generated code, I reviewed it line by line and checked whether it introduced errors, unnecessary changes, or anything inconsistent with the existing codebase.
+
+**Use of AI Output**
+
+* I did not fully copy and paste the AI output without review.
+* I used the AI-generated output as a reference or starting point, then manually tested, modified, and corrected it before including it in the project.
+* I also asked follow-up questions to understand why certain changes were suggested before deciding whether to use them.
+
+#### Related Files
+
+* `cli/`
+* `issue-tracker-api/llm.js`
+* `frontend/`
 
 ---
 

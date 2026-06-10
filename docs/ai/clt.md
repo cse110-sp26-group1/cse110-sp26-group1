@@ -4,12 +4,12 @@ This document explains about the Allegro Command-Line Tool.
 
 **Related files:**
 
-- [CLT-user-guide](https://github.com/cse110-sp26-group1/cse110-sp26-group1/blob/main/cli/CLT-user-guide.md)
+- [clt-user-guide](https://github.com/cse110-sp26-group1/cse110-sp26-group1/blob/main/cli/CLT-user-guide.md)
 - [SKILL.md](https://github.com/cse110-sp26-group1/cse110-sp26-group1/blob/main/cli/SKILL.md)
 
 **Purpose:**
 
-**CLT-user-guide:** To guide the user through the installation process of our tool, explaining how the agent can get enough information/context about the issue so that it can work on resolving it which will later be updated in the UI, and the commands that are available to the agent once the command-line tool is installed.
+**clt-user-guide:** To guide the user through the installation process of our tool, explaining how the agent can get enough information/context about the issue so that it can work on resolving it which will later be updated in the UI, and the commands that are available to the agent once the command-line tool is installed.
 
 **SKILL.md:** To guide the agent about how it would go about fixing the issue locally on the user's computer by getting enough context from our command-line tool. It lists the steps that need to be taken by the agent which can help it get enough context about what the issue is and work on fixing the issue in the user's codebase. After fixing the issue, it is also mentioned that the agent has to update fields that were necessary for resolution and the UI is updated accordingly.
 
@@ -57,26 +57,26 @@ const id;              // stores the issue id passed as a positional argument
 
 ## `index.js` — Functions
 
-**`function printUsage()`**
+`**function printUsage()**`
 Prints the supported command-line tool commands and their usage.
 
-**`function buildQueryString(queryFlags)`**
+`**function buildQueryString(queryFlags)**`
 Creates a query string from the provided flags to get information from the backend API.
 
-**`function parseArrayFlag(sourceFlags, key)`**
+`**function parseArrayFlag(sourceFlags, key)**`
 Parses the key-value pair for the given key as a JSON array for the command-line tool.
 
-**`function formatIssueList(issues, statusFilterApplied)`**
+`**function formatIssueList(issues, statusFilterApplied)**`
 Formats multiple issues, especially for the `list_issues` command, to show a brief summary with only the `id`, `title`, `summary`, `category`, `tags`, and `status` fields, and by default hides resolved and closed issues unless a status filter is applied.
 
-**`function formatIssue(issue)`**
+`**function formatIssue(issue)**`
 Formats a single issue, especially for the `get_issue` command.
 
-**`function getToken()`**
+`**function getToken()**`
 Returns the token from the `config.json` file.
 
-**`function promptForPassword()`**
+`**function promptForPassword()**`
 Prompts the user for their password during login and masks the input in the terminal.
 
-**`async function request(method, endpoint, body = null)`**
+`**async function request(method, endpoint, body = null)**`
 Sends authenticated requests to the backend API and parses the response.
