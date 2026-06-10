@@ -187,7 +187,49 @@ Cons:
 
 ---
 
-### Jerry:
+### Jerry
+
+#### AI Tool(s) / LLM(s) Used
+
+* Cursor: Composer 2
+* Cursor: Claude Opus 4.8
+
+#### Purpose
+
+I used the AI tools for explanation, code generation, and debugging. First, I used them to better understand the profile structure and the overall organization of the project. I also used them to generate code, but after the code was generated, I manually reviewed it line by line before deciding whether it should be included in the project. In addition, I used the tools for debugging by asking them to identify potential issues, explain the cause of the problem, and describe the reasoning behind the suggested solution.
+
+#### Results
+
+**Pros**
+
+* The tools were helpful for identifying bugs and potential issues in the code.
+* They generated useful code that gave me a good starting point.
+* They improved my efficiency by helping me understand and implement things faster.
+* They helped clarify the logic and structure of the project.
+
+**Cons**
+
+* The generated output still required manual correction and careful review.
+* Sometimes the tools generated errors or code that did not fully match the project requirements.
+* If my prompt was not detailed enough, the output could include things I did not want or miss important context.
+
+**Review Process**
+
+* Yes, I reviewed the AI-generated output.
+* After the tools generated explanations or code, I manually checked the output to make sure it matched the project requirements.
+* For generated code, I reviewed it line by line and checked whether it introduced errors, unnecessary changes, or anything inconsistent with the existing codebase.
+
+**Use of AI Output**
+
+* I did not fully copy and paste the AI output without review.
+* I used the AI-generated output as a reference or starting point, then manually tested, modified, and corrected it before including it in the project.
+* I also asked follow-up questions to understand why certain changes were suggested before deciding whether to use them.
+
+#### Related Files
+
+* `cli/`
+* `issue-tracker-api/llm.js`
+* `frontend/`
 
 ---
 
