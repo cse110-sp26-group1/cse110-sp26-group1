@@ -49,6 +49,7 @@
   - Prototyping our AIT
   - Understanding large files
   - Used the Codex code review feature to see if im missing anything such as security issues
+  - find potential bugs 
 
 - Cursor:
   - Markdown file formating
