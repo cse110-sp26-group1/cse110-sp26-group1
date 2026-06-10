@@ -18,4 +18,7 @@ Team-based issue tracker for developers who want AI-assisted issue creation *wit
 - [Team Page](admin/team.md)
 - [Team Status Video 1](https://www.youtube.com/watch?v=6gJ4FE0Xw8E)
 - [Allegro](https://cse110-sp26-group1.github.io/cse110-sp26-group1/html/login.html)
+- [Final Public Video](https://www.youtube.com/watch?v=vL93TBGQNiE)
+- [Final Private Video]()
+
 

@@ -40,7 +40,39 @@
 - used ai to help research and create about how to create a eyeball toggle for login pages. Accessible Rich Internet Applications(aria) is industry standard for accessibility. 
 - used ai to help verify if keeping it a seperate file is better or to just intergrate it into login/sigup.
 - still hand checked to verify everything and handwrote all of the comments for toggle password.
+#### AI Tool(s) / LLM(s) used
+- Claude code
+- Codex
+- Cursor
 
+#### Purpose
+- Claude and Codex:
+  - Primarily for code creation for the frotnend features and e2e testing
+  - Research about certain fixes that needed to be fixed
+  - Prototyping our AIT
+  - Understanding large files
+  - Used the Codex code review feature to see if im missing anything such as security issues
+
+- Cursor:
+  - Markdown file formating
+
+#### Results 
+- Pros?
+  - Helped speed up the learning process and code creation process
+  - Helped saved time transfering everything from a google doc into markdown format
+  - When prompted, found the bugs quicker than I could
+- Cons?
+  - generated code, when not prompted well, created poor quality code that I had to go back and reprompt it to make it understand what I wanted
+  - Somtimes had to give it a picture refrence on where things should be for it to understand it better(had to create visiuals)
+  - When formating Markdown files, it would somtimes change some of the context and gave incorrect results
+- Did you review the AI output?
+  - Generally yes. I would check to see what it did then document it into a google doc for future refrence. For the e2e testing, I would have it document it into the document on what needed to be changed next.
+- Did you fully copy paste the output or did you make any changes?
+  - For Markdown files, I would copy and paste it but hand review it to make sure it didnt put any misinformation
+  - I made sure to review the AI generated code and locally test before pushing to the repo. If anything didnt seem correct, I would prompt it to make a change. I also did smaller fixes myself (such as bolding something, changing the order, ect.)
+
+#### Related Files
+- e2e testing files, frontend, and formating markdown files.
 ---
 
 ### Amberly:
