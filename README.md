@@ -2,6 +2,8 @@
 
 Team-based issue tracker for developers who want AI-assisted issue creation *without* giving up complete control of the workflow to agents. Humans manage issues in the web UI and can use their agents to work on and update those issues through our CLI tool.
 
+Note: The Allegro UI hosted GitHub page is currently being flagged as dangerous for users. For testing purposes, turn off safe browsing.
+
 ## Table of Contents
 
 - [User Guide](https://github.com/cse110-sp26-group1/Allegro-CLT/blob/main/README.md) — workflows and CLI tool setup end users
