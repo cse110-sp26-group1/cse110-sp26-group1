@@ -37,3 +37,14 @@
   - **Node.js:** Evaluated as a backend environment but halted due to specific project constraints and limitations.
   - **Standard SQLite:** Originally considered for the database, but once the decision to use Cloudflare Workers was finalized, adopting Cloudflare's native D1 (which is SQLite-backed) became the more cohesive choice.
 - **Consequences:** The primary trade-off is the loss of local execution. Relying entirely on Cloudflare Workers and D1 means the team cannot easily run or test the environment locally during development.
+
+--- 
+
+## 4. Agent Interaction Interface
+
+- **Status:** Accepted
+- **Context:** The project requires an interface that is accessible in the terminal so that any AI agent can access the tools we provide in the dual-interface setup.
+- **Decision:** The project will have a user's AI agents interact with the service through a command-line tool.
+- **Alternatives Considered:**
+  - **Command-line Interface** Originally considered because of the idea that a human might potentially want to use the terminal interface. Decided against because designing the interface to be human usable as well was a stretch goal that we decided would not be reached.
+- **Consequences:** The primary trade-off is that the terminal interface of the application is now explicitly designed for the agent, rather than being friendly to both human and AI users, although it helps us decrease the amount of time that would be required for implementation.
