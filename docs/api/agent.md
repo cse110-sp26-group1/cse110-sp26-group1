@@ -58,7 +58,7 @@ Authorization: Bearer <session_token>
 
 ### Purpose
 
-The agent needs to read the full issue before it can begin working on a fix. This route gives it everything in one call — the description, stack trace, affected files, and any prior hypothesis — so it has complete context without needing multiple requests.
+The agent needs to read the full issue before it can begin working on a fix. This route gives it everything in one call: the description, stack trace, affected files, and any prior hypothesis, so it has complete context without needing multiple requests.
 
 ---
 
@@ -194,4 +194,4 @@ Content-Type: application/json
 
 ### Purpose
 
-As the agent investigates and works through a fix, it needs to progressively update the issue with what it finds — refining the hypothesis, logging which files are affected, updating the status as it moves from investigation to resolution, and recording how many tokens it consumed. This route allows those incremental updates without letting the agent overwrite human-controlled fields like the original description or who the issue is assigned to.
+As the agent investigates and works through a fix, it needs to progressively update the issue with what it finds by refining the hypothesis, logging which files are affected, and updating the status as it moves from investigation to resolution. This route allows those incremental updates without letting the agent overwrite human-controlled fields like the original description or who the issue is assigned to.
