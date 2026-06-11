@@ -4,7 +4,7 @@ Team-based issue tracker for developers who want AI-assisted issue creation *wit
 
 ## Table of Contents
 
-- [User Guide](USER_GUIDE.md) — workflows and CLI tool setup end users
+- [User Guide](https://github.com/cse110-sp26-group1/Allegro-CLT/blob/main/README.md) — workflows and CLI tool setup end users
 - [Contributing](CONTRIBUTING.md) — branches, commits, PRs, local dev entry
 - [Wiki Home](https://github.com/org/repo/wiki) — architecture, API, backend, frontend, process
     - [Product overview](https://github.com/.../wiki/Product-Overview)
