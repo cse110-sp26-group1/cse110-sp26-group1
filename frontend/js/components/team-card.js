@@ -1,6 +1,5 @@
-import { getUserInitials } from '../user-profile.js';
-
-const templateUrl = new URL('../../html/components/team-card.html', import.meta.url);
+import { loadHtmlTemplate } from './load-template.js';
+import { getUserInitials, getUserDisplayName } from '../helpers.js';
 
 let teamCardTemplate;
 
@@ -10,38 +9,20 @@ let teamCardTemplate;
  */
 async function loadTeamCardTemplate() {
 	if (teamCardTemplate) return teamCardTemplate;
-
-	const response = await fetch(templateUrl);
-	if (!response.ok) {
-		throw new Error(`Failed to load team card template (${response.status})`);
-	}
-
-	const html = await response.text();
-	const doc = new DOMParser().parseFromString(html, 'text/html');
-	teamCardTemplate = doc.getElementById('team-card-template');
-
-	if (!teamCardTemplate) {
-		throw new Error('team-card-template not found in team-card.html');
-	}
-
+	teamCardTemplate = await loadHtmlTemplate(import.meta.url, '../../html/components/team-card.html', 'team-card-template');
 	return teamCardTemplate;
 }
 
-/**
- * Team workspace card shown on the teams dashboard grid.
- */
+/** Team workspace card shown on the teams dashboard grid. */
 class TeamCard extends HTMLElement {
-	/**
-	 * @returns {string[]}
-	 */
+	/** @returns {string[]} */
 	static get observedAttributes() {
-		// Added status attributes to support issue-aware dashboard
-		return ['team-id', 'name', 'mark', 'color', 'role', 'open', 'prog', 'done', 'user-initials'];
+		return ['team-id', 'name', 'mark', 'color', 'role', 'bio', 'members'];
 	}
 
 	#rendered = false;
 
-	/** @returns {void} */
+	/** Clones the team card template on first connect. */
 	connectedCallback() {
 		if (this.#rendered) {
 			this.#update();
@@ -54,30 +35,28 @@ class TeamCard extends HTMLElement {
 		this.#update();
 	}
 
-	/** @returns {void} */
+	/** Re-renders when an observed attribute changes. */
 	attributeChangedCallback() {
 		if (this.#rendered) this.#update();
 	}
 
-	/** @returns {void} */
+	/** Syncs template nodes from element attributes. */
 	#update() {
 		const teamId = this.getAttribute('team-id') ?? '';
 		const name = this.getAttribute('name') ?? '';
 		const mark = this.getAttribute('mark') ?? '';
 		const color = this.getAttribute('color') ?? '0';
 		const role = this.getAttribute('role') ?? 'Member';
-
-		// Status values
-		const openCount = this.getAttribute('open') ?? '0';
-		const progCount = this.getAttribute('prog') ?? '0';
-		const doneCount = this.getAttribute('done') ?? '0';
-		const userInitials = this.getAttribute('user-initials') ?? getUserInitials();
+		const bio = this.getAttribute('bio') ?? '';
 
 		const link = this.querySelector('a.team');
 		const teamMark = this.querySelector('.team-mark');
 		const title = this.querySelector('h2');
 		const subtitleEl = this.querySelector('.slug');
-		const avatarEl = this.querySelector('.avatar');
+		const bioEl = this.querySelector('.team-bio');
+
+		const oldAvatarEl = this.querySelector('.avatar');
+		if (oldAvatarEl) oldAvatarEl.remove();
 
 		if (link) link.href = `tracker.html?team_id=${teamId}`;
 
@@ -91,21 +70,43 @@ class TeamCard extends HTMLElement {
 
 		if (subtitleEl) subtitleEl.textContent = role === 'admin' ? 'Workspace Admin' : 'Workspace Member';
 
-		// Ensure initials match the current user
-		if (avatarEl) avatarEl.textContent = userInitials;
+		if (bioEl) {
+			const trimmedBio = bio.trim();
+			if (trimmedBio) {
+				bioEl.textContent = trimmedBio;
+				bioEl.classList.remove('empty');
+			} else {
+				bioEl.textContent = 'No bio yet.';
+				bioEl.classList.add('empty');
+			}
+		}
 
-		// Enabling stats display
-		const statsEl = this.querySelector('.stats');
-		if (statsEl) {
-			statsEl.style.display = 'grid'; // Remove 'none' to show counts
+		const membersAttr = this.getAttribute('members');
+		if (membersAttr) {
+			try {
+				const members = JSON.parse(membersAttr);
 
-			const openEl = this.querySelector('.open-count');
-			const progEl = this.querySelector('.prog-count');
-			const doneEl = this.querySelector('.done-count');
+				const membersHtml = members
+					.map((m) => {
+						const memberName = getUserDisplayName(m);
+						return `<div class="avatar sm" title="${memberName}">${getUserInitials(m)}</div>`;
+					})
+					.join('');
 
-			if (openEl) openEl.textContent = openCount;
-			if (progEl) progEl.textContent = progCount;
-			if (doneEl) doneEl.textContent = doneCount;
+				let membersContainer = this.querySelector('.member-stack');
+
+				if (!membersContainer) {
+					membersContainer = document.createElement('div');
+					membersContainer.className = 'member-stack';
+					membersContainer.style.marginTop = '1rem';
+
+					if (link) link.appendChild(membersContainer);
+				}
+
+				membersContainer.innerHTML = membersHtml;
+			} catch (err) {
+				console.error('Failed to parse team members for card', err);
+			}
 		}
 	}
 }

@@ -8,8 +8,8 @@ export const ALLOWED_ROLES = ['admin', 'member'];
 
 /**
  * Validates and normalizes a role string for inserts (e.g. invite accept).
- * @param {string | undefined} role - Role from request body; omitted uses default.
- * @param {TeamRole} [defaultRole='member'] - Used when `role` is undefined.
+ * @param {string | undefined} role Role from request body.
+ * @param {TeamRole} [defaultRole='member'] Default role.
  * @returns {{ role: TeamRole } | { error: Response }}
  */
 export function validateRole(role, defaultRole = 'member') {
@@ -29,9 +29,9 @@ export function validateRole(role, defaultRole = 'member') {
 
 /**
  * Ensures `userId` belongs to `teamId`. Use after `requireAuth`.
- * @param {{ DB: D1Database }} env - Worker env (`env.DB` from index.js).
- * @param {number} userId - Authenticated user id from `requireAuth`.
- * @param {number} teamId - Team scope for the operation.
+ * @param {{ DB: D1Database }} env Worker env.
+ * @param {number} userId Authenticated user id.
+ * @param {number} teamId Team scope.
  * @returns {Promise<{ role: TeamRole } | { error: Response }>}
  */
 export async function requireTeamMember(env, userId, teamId) {
@@ -47,9 +47,9 @@ export async function requireTeamMember(env, userId, teamId) {
 
 /**
  * Ensures `userId` is an **admin** of `teamId`. Use for invites, team delete, remove member.
- * @param {{ DB: D1Database }} env
- * @param {number} userId
- * @param {number} teamId
+ * @param {{ DB: D1Database }} env Worker env.
+ * @param {number} userId User id.
+ * @param {number} teamId Team id.
  * @returns {Promise<{ role: 'admin' } | { error: Response }>}
  */
 export async function requireTeamAdmin(env, userId, teamId) {

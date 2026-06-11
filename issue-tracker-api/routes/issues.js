@@ -21,7 +21,7 @@ const ALLOWED_TAGS = [
 const ALLOWED_DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Unknown'];
 
 /**
- * @param {unknown} tags
+ * @param {unknown} tags Tags payload.
  * @returns {string | null} Error message, or null if valid / omitted.
  */
 function getTagsValidationError(tags) {
@@ -37,7 +37,7 @@ function getTagsValidationError(tags) {
 }
 
 /**
- * @param {unknown} tags
+ * @param {unknown} tags Tags payload.
  * @returns {string[]}
  */
 function sanitizeTags(tags) {
@@ -48,10 +48,11 @@ function sanitizeTags(tags) {
 /**
  * Picks the user value if present, otherwise the LLM value if it's in the
  * allowed enum list, otherwise the fallback. Empty strings/null are skipped.
- * @param userVal
- * @param llmVal
- * @param allowed
- * @param fallback
+ * @param {string | undefined | null} userVal User value.
+ * @param {string | undefined | null} llmVal LLM value.
+ * @param {string[]} allowed Allowed values.
+ * @param {string} fallback Fallback value.
+ * @returns {string}
  */
 function pickEnum(userVal, llmVal, allowed, fallback) {
 	if (userVal && allowed.includes(userVal)) return userVal;
@@ -62,8 +63,9 @@ function pickEnum(userVal, llmVal, allowed, fallback) {
 /**
  * Coerces a value into an array. The LLM parser may return a string, null, or
  * an array; user input may already be an array.
- * @param userVal
- * @param llmVal
+ * @param {unknown} userVal User value.
+ * @param {unknown} llmVal LLM value.
+ * @returns {unknown[]}
  */
 function coerceArray(userVal, llmVal) {
 	if (Array.isArray(userVal)) return userVal;
@@ -74,8 +76,9 @@ function coerceArray(userVal, llmVal) {
 /**
  * Returns user value if non-empty string, else LLM value if non-empty (and not
  * the literal "null" sentinel from the parser), else null.
- * @param userVal
- * @param llmVal
+ * @param {unknown} userVal User value.
+ * @param {unknown} llmVal LLM value.
+ * @returns {string | null}
  */
 function coerceText(userVal, llmVal) {
 	if (typeof userVal === 'string' && userVal.trim() !== '') return userVal;
@@ -86,8 +89,9 @@ function coerceText(userVal, llmVal) {
 /**
  * Stores LLM array fields (missing_information, steps_to_reproduce) as JSON
  * strings, plain text otherwise. The schema column is TEXT either way.
- * @param userVal
- * @param llmVal
+ * @param {unknown} userVal User value.
+ * @param {unknown} llmVal LLM value.
+ * @returns {string | null}
  */
 function stringifyMaybeArray(userVal, llmVal) {
 	const v = userVal ?? llmVal ?? null;
@@ -100,8 +104,9 @@ function stringifyMaybeArray(userVal, llmVal) {
 
 /**
  * Handles all /issues routes: GET (list by team or view single), POST (create), PATCH (update), DELETE (remove).
- * @param {Request} request
- * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
+ * @param {Request} request Request object.
+ * @param {{ DB: D1Database }} env Worker env.
+ * @returns {Promise<Response>}
  */
 export async function handleIssues(request, env) {
 	const url = new URL(request.url);
@@ -286,6 +291,8 @@ export async function handleIssues(request, env) {
 				error_message: formData.get('error_message'),
 			};
 
+			body.test_mode = formData.get('test_mode') === 'true';
+
 			const stackTraceRaw = formData.get('stack_trace');
 			if (stackTraceRaw) {
 				try {
@@ -340,6 +347,9 @@ export async function handleIssues(request, env) {
 		const membership = await requireTeamMember(env, auth.userId, parsedTeamId);
 		if (membership.error) return membership.error;
 
+		const teamRecord = await env.DB.prepare('SELECT bio FROM teams WHERE id = ?').bind(parsedTeamId).first();
+		const teamBioContext = teamRecord?.bio ? `\n\n--- Team Context ---\n${teamRecord.bio}` : '';
+
 		// Point 2 Change: Mid-flight workspace membership validation when an assignment is requested during initialization
 		//Checks valid assigned member for new issue
 		// Validate assigned_to field if provided (automatically handles both JSON and Multipart via body.assigned_to)
@@ -382,9 +392,24 @@ export async function handleIssues(request, env) {
 		// raw title + description. Failures (missing key, network, parse error)
 		// are non-fatal — we just fall back to user-supplied values + defaults.
 		let llm = {};
-		if (env.DEEPSEEK_API) {
+
+		if (body.test_mode) {
+			// Predictable mock payload for testing
+			llm = {
+				summary: '[TEST MODE] Predictable summary generated without hitting the LLM.',
+				status: 'Open',
+				priority: 'Low',
+				category: 'Task',
+				difficulty: 'Easy',
+				tags: ['testing'],
+				hypothesis: 'This issue was processed using the predictable test bypass.',
+				steps_to_reproduce: ['1. Enable test_mode', '2. Submit issue', '3. Receive mock data'],
+				expected_behavior: 'The LLM tool call is bypassed entirely.',
+				actual_behavior: 'Predictable mock data is seamlessly returned.',
+			};
+		} else if (env.DEEPSEEK_API) {
 			try {
-				const rawInput = `${body.title.trim()}\n\n${body.description.trim()}`;
+				const rawInput = `${body.title.trim()}\n\n${body.description.trim()}${teamBioContext}`;
 				llm = await processIssue(rawInput, env.DEEPSEEK_API);
 			} catch (error) {
 				console.error('LLM enrichment failed:', error?.message ?? error);

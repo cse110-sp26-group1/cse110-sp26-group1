@@ -1,6 +1,6 @@
 import { requireAuth } from '../src/lib/auth.js';
 import { createInvite, resolveInvitedUserId } from '../src/lib/invites.js';
-import { requireTeamAdmin, requireTeamMember } from '../src/lib/teams.js';
+import { requireTeamAdmin, requireTeamMember, validateRole } from '../src/lib/teams.js';
 
 /**
  * Handles all /teams routes.
@@ -12,6 +12,7 @@ import { requireTeamAdmin, requireTeamMember } from '../src/lib/teams.js';
  * PATCH  /teams/:teamId
  * DELETE /teams/:teamId
  * GET    /teams/:teamId/members
+ * PATCH  /teams/:teamId/members/:userId
  * DELETE /teams/:teamId/members/:userId
  * DELETE /teams/:teamId/leave
  * POST   /teams/:teamId/invite
@@ -101,15 +102,16 @@ export async function handleTeams(request, env) {
 		}
 
 		const now = new Date().toISOString();
+		const bio = body.bio && typeof body.bio === 'string' ? body.bio.trim() : null;
 
 		// Create the team first.
 		const result = await env.DB.prepare(
 			`
-                INSERT INTO teams (team_name, created_at)
-                VALUES (?, ?)
+                INSERT INTO teams (team_name, bio, created_at)
+                VALUES (?, ?, ?)
             `,
 		)
-			.bind(body.team_name.trim(), now)
+			.bind(body.team_name.trim(), bio, now)
 			.run();
 
 		const newTeamId = result.meta.last_row_id;
@@ -134,8 +136,8 @@ export async function handleTeams(request, env) {
 	}
 
 	// PATCH /teams/:teamId
-	// Renames a team.
-	// Only a team admin may rename the team.
+	// Updates team_name and/or bio. At least one field is required.
+	// Only a team admin may update the team.
 	if (method === 'PATCH' && teamId && !subresource) {
 		const auth = await requireAuth(request, env);
 		if (auth.error) return auth.error;
@@ -148,8 +150,19 @@ export async function handleTeams(request, env) {
 
 		const body = await request.json();
 
-		if (!body.team_name || typeof body.team_name !== 'string' || body.team_name.trim() === '') {
-			return Response.json({ error: 'team_name is required' }, { status: 400 });
+		const hasTeamName = Object.hasOwn(body, 'team_name');
+		const hasBio = Object.hasOwn(body, 'bio');
+
+		if (!hasTeamName && !hasBio) {
+			return Response.json({ error: 'At least one of team_name or bio is required' }, { status: 400 });
+		}
+
+		if (hasTeamName && (typeof body.team_name !== 'string' || body.team_name.trim() === '')) {
+			return Response.json({ error: 'team_name must be a non-empty string' }, { status: 400 });
+		}
+
+		if (hasBio && body.bio !== null && typeof body.bio !== 'string') {
+			return Response.json({ error: 'bio must be a string or null' }, { status: 400 });
 		}
 
 		const adminCheck = await requireTeamAdmin(env, auth.userId, parsedTeamId);
@@ -161,19 +174,35 @@ export async function handleTeams(request, env) {
 			return Response.json({ error: 'Team not found' }, { status: 404 });
 		}
 
+		const updates = [];
+		const values = [];
+
+		if (hasTeamName) {
+			updates.push('team_name = ?');
+			values.push(body.team_name.trim());
+		}
+
+		if (hasBio) {
+			updates.push('bio = ?');
+			const bioValue = body.bio === null ? null : typeof body.bio === 'string' ? body.bio.trim() || null : null;
+			values.push(bioValue);
+		}
+
+		values.push(parsedTeamId);
+
 		await env.DB.prepare(
 			`
                 UPDATE teams
-                SET team_name = ?
+                SET ${updates.join(', ')}
                 WHERE id = ?
             `,
 		)
-			.bind(body.team_name.trim(), parsedTeamId)
+			.bind(...values)
 			.run();
 
 		return Response.json({
 			success: true,
-			message: 'Team renamed',
+			message: 'Team updated',
 		});
 	}
 
@@ -244,6 +273,81 @@ export async function handleTeams(request, env) {
 			.all();
 
 		return Response.json(results);
+	}
+
+	// PATCH /teams/:teamId/members/:userId
+	// Updates a member's role. Only a team admin may change roles.
+	if (method === 'PATCH' && teamId && subresource === 'members' && memberUserId) {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		const parsedTeamId = Number(teamId);
+		const parsedUserId = Number(memberUserId);
+
+		if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
+			return Response.json({ error: 'Invalid team ID format. Must be a positive integer.' }, { status: 400 });
+		}
+
+		if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+			return Response.json({ error: 'Invalid user ID format. Must be a positive integer.' }, { status: 400 });
+		}
+
+		const body = await request.json();
+		const roleResult = validateRole(body.role);
+		if (roleResult.error) return roleResult.error;
+
+		const adminCheck = await requireTeamAdmin(env, auth.userId, parsedTeamId);
+		if (adminCheck.error) return adminCheck.error;
+
+		const targetMembership = await env.DB.prepare(
+			`
+                SELECT role
+                FROM team_members
+                WHERE team_id = ? AND user_id = ?
+            `,
+		)
+			.bind(parsedTeamId, parsedUserId)
+			.first();
+
+		if (!targetMembership) {
+			return Response.json({ error: 'Member not found in team' }, { status: 404 });
+		}
+
+		if (targetMembership.role === 'admin' && roleResult.role === 'member') {
+			const { results: admins } = await env.DB.prepare(
+				`
+                    SELECT user_id
+                    FROM team_members
+                    WHERE team_id = ? AND role = 'admin'
+                `,
+			)
+				.bind(parsedTeamId)
+				.all();
+
+			if (admins.length <= 1) {
+				return Response.json(
+					{
+						error: 'Cannot demote the only admin. Promote another member first.',
+					},
+					{ status: 409 },
+				);
+			}
+		}
+
+		await env.DB.prepare(
+			`
+                UPDATE team_members
+                SET role = ?
+                WHERE team_id = ? AND user_id = ?
+            `,
+		)
+			.bind(roleResult.role, parsedTeamId, parsedUserId)
+			.run();
+
+		return Response.json({
+			success: true,
+			message: 'Member role updated',
+		});
 	}
 
 	// DELETE /teams/:teamId/members/:userId
@@ -404,5 +508,5 @@ export async function handleTeams(request, env) {
 		return createInvite(env, auth.userId, parsedTeamId, resolved.invitedUserId);
 	}
 
-	return Response.json({ error: 'Not Found' }, { status: 404 });
+	return Response.json({ error: `Not Found: ${method} ${url.pathname}` }, { status: 404 });
 }

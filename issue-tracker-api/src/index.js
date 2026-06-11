@@ -20,8 +20,16 @@ import { handleInvites } from '../routes/invites.js';
 import { handleTeams } from '../routes/teams.js';
 import { handleAuth } from '../routes/auth.js';
 
+/**
+ * @typedef {object} Env
+ * @property {D1Database} DB
+ */
+
 const ALLOWED_ORIGINS = [
 	'http://localhost:3000',
+	'http://127.0.0.1:3000',
+	'http://localhost:4173',
+	'http://127.0.0.1:4173',
 	'https://cse110-sp26-group1.github.io',
 	// 'https://issue-tracker-api.your-subdomain.workers.dev',
 ];
@@ -30,6 +38,33 @@ const CORS_HEADERS = {
 	'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
 	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
+
+/**
+ * Verifies that the Worker is serving traffic and its D1 schema is available.
+ * @param {Env} env - Worker environment.
+ * @returns {Promise<Response>} Health response.
+ */
+async function handleHealth(env) {
+	try {
+		const row = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'users'").first();
+
+		if (!row) {
+			return Response.json({ ok: false, service: 'ok', db: 'missing-schema' }, { status: 503 });
+		}
+
+		return Response.json({ ok: true, service: 'ok', db: 'ok' });
+	} catch (error) {
+		return Response.json(
+			{
+				ok: false,
+				service: 'ok',
+				db: 'error',
+				error: error?.message || 'D1 health check failed',
+			},
+			{ status: 503 },
+		);
+	}
+}
 
 /**
  * Wraps a Response with the appropriate CORS headers based on the request origin.
@@ -74,6 +109,10 @@ export default {
 
 		const url = new URL(request.url);
 		const path = url.pathname;
+
+		if (path === '/health') {
+			return withCors(await handleHealth(env), request);
+		}
 
 		if (path.startsWith('/auth')) {
 			return withCors(await handleAuth(request, env), request);

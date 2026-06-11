@@ -1,3 +1,6 @@
+/* teams.css */
+
+/* body */
 body {
 	min-height: 100vh;
 }
@@ -7,14 +10,18 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 1rem 2rem;
+	min-height: 4rem;
+	box-sizing: border-box;
+	padding: 0.571rem 1rem;
 	border-bottom: 0.071rem solid var(--line);
 	background: var(--bg);
 	position: sticky;
 	top: 0;
 	z-index: 5;
+	gap: 0.857rem;
 }
 
+/* brand */
 .brand {
 	display: flex;
 	align-items: center;
@@ -31,7 +38,8 @@ body {
 	gap: 0.714rem;
 }
 
-/* layout */
+/* Teams dashboardlayout */
+
 main {
 	max-width: min(77.143rem, 100%);
 	margin: 0 auto;
@@ -53,12 +61,7 @@ main {
 	letter-spacing: -0.02em;
 }
 
-.hero p {
-	margin: 0;
-	color: var(--muted);
-}
-
-/* search row */
+/* controls row */
 .hero-actions {
 	display: flex;
 	gap: 0.571rem;
@@ -69,16 +72,6 @@ main {
 	font-size: 0.893rem;
 }
 
-.search-row {
-	display: flex;
-	gap: 0.714rem;
-	margin-bottom: 1.714rem;
-}
-
-.search-row .input {
-	max-width: min(22.857rem, 100%);
-}
-
 /* team grid */
 .grid {
 	display: grid;
@@ -86,6 +79,7 @@ main {
 	gap: 1rem;
 }
 
+/* team card */
 team-card {
 	/* Let the custom element wrapper disappear so its template participates in the grid. */
 	display: contents;
@@ -135,30 +129,6 @@ team-card {
 	flex: 0 0 auto;
 }
 
-.team-mark.c1 {
-	background: oklch(92% 0.04 38deg);
-	color: oklch(40% 0.12 38deg);
-	border-color: oklch(85% 0.05 38deg);
-}
-
-.team-mark.c2 {
-	background: oklch(92% 0.04 200deg);
-	color: oklch(38% 0.1 200deg);
-	border-color: oklch(85% 0.05 200deg);
-}
-
-.team-mark.c3 {
-	background: oklch(93% 0.04 130deg);
-	color: oklch(38% 0.1 130deg);
-	border-color: oklch(85% 0.05 130deg);
-}
-
-.team-mark.c4 {
-	background: oklch(92% 0.04 320deg);
-	color: oklch(40% 0.1 320deg);
-	border-color: oklch(85% 0.05 320deg);
-}
-
 .team h2 {
 	margin: 0;
 	font-size: 1.107rem;
@@ -174,72 +144,28 @@ team-card {
 	margin-top: 0.143rem;
 }
 
-.stats {
-	/* Stats markup remains in the template for future data, but team-card.js hides it today. */
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 0.286rem;
+.team-bio {
+	margin: 0;
 	padding: 0.714rem 0;
 	border-top: 0.071rem solid var(--line);
+	font-size: 0.929rem;
+	line-height: 1.45;
+	color: var(--ink-2);
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
 }
 
-.stats .stat {
-	display: flex;
-	flex-direction: column;
-}
-
-.stats .stat .n {
-	font-size: 1.286rem;
-	font-weight: 600;
-	letter-spacing: -0.01em;
-}
-
-.stats .stat .l {
-	font-family: var(--mono);
-	font-size: 0.714rem;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
+.team-bio.empty {
 	color: var(--muted);
-	margin-top: 0.143rem;
+	font-style: italic;
 }
 
 .team-foot {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.members {
-	display: inline-flex;
-}
-
-.members .avatar {
-	margin-left: -0.571rem;
-	background: var(--surface);
-}
-
-.members .avatar:first-child {
-	margin-left: 0;
-}
-
-.members .more {
-	margin-left: -0.571rem;
-	width: 2rem;
-	height: 2rem;
-	border-radius: 50%;
-	background: var(--surface-2);
-	color: var(--muted);
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 0.786rem;
-	font-weight: 600;
-	border: 0.071rem solid var(--line);
-}
-
-.last-active {
-	font-size: 0.857rem;
-	color: var(--muted);
 }
 
 /* "create new" card */
@@ -326,34 +252,16 @@ team-card {
 	color: var(--ink);
 }
 
-/* Task 4: Consistent UI for sorting indicators on the teams page */
-.sort-item {
+.member-stack {
 	display: flex;
-	align-items: center;
-	padding: 0.429rem 0.857rem;
-	font-size: 0.929rem;
-	border-radius: var(--r-1);
-	cursor: pointer;
-	color: var(--ink-2);
+	padding: 0;
+	gap: 0;
 }
 
-/* The circle indicator to be used in the "Sort: recent" dropdown */
-.sort-item .circle {
-	width: 0.714rem;
-	height: 0.714rem;
-	border-radius: 50%;
-	border: 0.107rem solid var(--line-strong);
-	margin-right: 0.714rem;
-	flex-shrink: 0;
+.member-stack .avatar {
+	margin-left: -0.429rem;
 }
 
-/* Logic for the filled-in circle when a sort is selected */
-.sort-item.active {
-	background: var(--surface-3);
-	font-weight: 500;
-}
-
-.sort-item.active .circle {
-	background: currentcolor;
-	border-color: transparent;
+.member-stack .avatar:first-child {
+	margin-left: 0;
 }

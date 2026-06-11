@@ -1,4 +1,4 @@
-import { hashPassword, verifyPassword, sessionExpiresAt } from '../src/lib/auth.js';
+import { hashPassword, verifyPassword, sessionExpiresAt, requireAuth } from '../src/lib/auth.js';
 
 /**
  * Handles all /auth routes:
@@ -6,14 +6,15 @@ import { hashPassword, verifyPassword, sessionExpiresAt } from '../src/lib/auth.
  * POST /auth/register
  * POST /auth/login
  * POST /auth/logout
+ * GET  /auth/validate
  *
  * @param {Request} request - The incoming Worker request.
  * @param {{ DB: D1Database }} env - Worker environment with a D1 database binding.
  * @returns {Promise<Response>}
- *   201 — user registered successfully
- *   200 — user logged in successfully
+ *   201 — user registered: { success: true, token, expires_at, user: { username, email, first_name, last_name } }
+ *   200 — user logged in: { token, expires_at, user: { username, email, first_name, last_name } } | logged out | token validated
  *   400 — missing/invalid required fields, or no session token on logout
- *   401 — invalid credentials, invalid session token, or already-expired session
+ *   401 — invalid credentials, invalid or expired session token
  *   409 — email or username already in use
  *   404 — route not matched
  */
@@ -23,9 +24,7 @@ export async function handleAuth(request, env) {
 
 	// POST /auth/register
 	// Inserts new user row -> Creates new token/expiration date -> Inserts new session row -> Returns response
-	//
-	// Returns, status code 201, success true, a token, and token expiration date:
-	// success: 201 { success: true, token, expires_at }
+	// success: 201 { success: true, token, expires_at, user: { username, email, first_name, last_name } }
 	if (url.pathname === '/auth/register' && method === 'POST') {
 		const body = await request.json();
 
@@ -73,7 +72,16 @@ export async function handleAuth(request, env) {
 
 		// if a match was found, reject to avoid duplicate accounts.
 		if (existing) {
-			return Response.json({ error: 'Email or username is already in use' }, { status: 409 });
+			const emailTaken = existing.email === email;
+			const usernameTaken = existing.username === username;
+
+			if (emailTaken && usernameTaken) {
+				return Response.json({ error: 'Both this email and username are already in use' }, { status: 409 });
+			} else if (emailTaken) {
+				return Response.json({ error: 'This email is already registered to another account' }, { status: 409 });
+			} else {
+				return Response.json({ error: 'This username is already taken' }, { status: 409 });
+			}
 		}
 
 		// hash the password before storing, never store plaintext.
@@ -95,11 +103,14 @@ export async function handleAuth(request, env) {
 		// insert new row into the sessions table that references the new user's id.
 		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(row.id, token, expires_at).run();
 
-		return Response.json({ success: true, token, expires_at }, { status: 201 });
+		return Response.json(
+			{ success: true, token, expires_at, user: { username, email, first_name: firstName, last_name: lastName } },
+			{ status: 201 },
+		);
 	}
 
 	// POST /auth/login
-	// success: 201 { token, expires_at }
+	// success: 200 { token, expires_at, user: { username, email, first_name, last_name } }
 	if (url.pathname === '/auth/login' && method === 'POST') {
 		const body = await request.json();
 
@@ -120,13 +131,18 @@ export async function handleAuth(request, env) {
 
 		const email = body.email.trim();
 
-		// look up the user row that matches the user's email, return just the user id and password hash to the user variable.
-		const user = await env.DB.prepare('SELECT id, password_hash FROM users WHERE email = ?').bind(email).first();
+		// look up the user row that matches the user's email.
+		const user = await env.DB.prepare('SELECT id, username, email, password_hash, first_name, last_name FROM users WHERE email = ?')
+			.bind(email)
+			.first();
 
 		// if no user was found matching that email or password is incorrect, return error.
 		if (!user || !(await verifyPassword(body.password, user.password_hash))) {
 			return Response.json({ error: 'Invalid email or password' }, { status: 401 });
 		}
+
+		// clean up any expired sessions for this user before creating a new one.
+		await env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND expires_at < datetime('now')").bind(user.id).run();
 
 		// create new token and expiration date
 		const token = crypto.randomUUID();
@@ -135,7 +151,10 @@ export async function handleAuth(request, env) {
 		// insert new row into the sessions table that references the user's id.
 		await env.DB.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').bind(user.id, token, expires_at).run();
 
-		return Response.json({ token, expires_at }, { status: 200 });
+		return Response.json(
+			{ token, expires_at, user: { username: user.username, email: user.email, first_name: user.first_name, last_name: user.last_name } },
+			{ status: 200 },
+		);
 	}
 
 	// POST /auth/logout
@@ -160,6 +179,15 @@ export async function handleAuth(request, env) {
 		}
 
 		return Response.json({ success: true });
+	}
+
+	// GET /auth/validate
+	// success: 200 { valid: true }
+	if (url.pathname === '/auth/validate' && method === 'GET') {
+		const auth = await requireAuth(request, env);
+		if (auth.error) return auth.error;
+
+		return Response.json({ valid: true });
 	}
 
 	return Response.json({ error: 'Not Found' }, { status: 404 });

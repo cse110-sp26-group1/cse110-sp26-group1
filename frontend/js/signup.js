@@ -1,6 +1,5 @@
-import { createAccount, login, requireNoAuth, getPostAuthRedirect } from './api.js';
-import { saveStoredUser, userFromApiProfile } from './user-profile.js';
-import { initPasswordToggles } from './view-password.js';
+import { createAccount, requireNoAuth, getPostAuthRedirect } from './api.js';
+import { initPasswordToggles, saveStoredUser, userFromApiProfile } from './helpers.js';
 
 requireNoAuth();
 initPasswordToggles(); // wires up the eye button next to the password field
@@ -19,14 +18,19 @@ if (loginLink && redirectParam) {
 	loginLink.href = `login.html?redirect=${encodeURIComponent(redirectParam)}`;
 }
 
+const errorEl = document.getElementById('auth-error');
+const submitBtn = document.getElementById('submit-btn');
+
 /**
- * Handles create-account form submit. Registers the user, then immediately
- * logs in to obtain a session token before redirecting to teams.
+ * Handles create-account form submit. Registers the user, stores the session
+ * token returned by the API, then redirects to the post-auth destination.
  *
  * @param {SubmitEvent} e Browser submit event from the signup form.
+ * @returns {Promise<void>}
  */
 async function handleSignupSubmit(e) {
 	e.preventDefault();
+	errorEl.hidden = true; // Clear previous errors
 
 	const first_name = firstEl.value.trim();
 	const last_name = lastEl.value.trim();
@@ -55,14 +59,18 @@ async function handleSignupSubmit(e) {
 		return;
 	}
 
-	try {
-		await createAccount({ username, first_name, last_name, email, password });
+	const originalText = submitBtn.textContent;
+	submitBtn.textContent = 'Creating account...';
+	submitBtn.disabled = true;
 
-		// temp code since the signup endpoint does not return a token
-		// fix once the endpoint is fixed
-		// Until then, a second login call keeps the signup flow consistent
-		// with normal session storage on the login page.
-		const { token, expires_at, user } = await login(email, password);
+	try {
+		const { token, expires_at, user } = await createAccount({
+			username,
+			first_name,
+			last_name,
+			email,
+			password,
+		});
 
 		localStorage.setItem('allegro_token', token);
 		localStorage.setItem('allegro_token_expires', expires_at);
@@ -75,19 +83,25 @@ async function handleSignupSubmit(e) {
 
 		location.href = getPostAuthRedirect();
 	} catch (err) {
-		if (err.message?.includes('409')) {
-			usernameEl.setCustomValidity('Username or email is already in use');
-			usernameEl.reportValidity();
-		} else {
-			passwordEl.setCustomValidity(err.message ?? 'Sign-up failed');
-			passwordEl.reportValidity();
+		// Map backend errors to friendly UI copy
+		let msg = err.message || 'Sign-up failed. Please try again.';
+		if (err.status === 409 || msg.includes('409') || msg.toLowerCase().includes('already in use')) {
+			msg = 'That username or email is already in use. Please try another.';
+		} else if (err.status === 400 || msg.includes('400')) {
+			msg = 'Please check your information and try again.';
 		}
+
+		errorEl.textContent = msg;
+		errorEl.hidden = false;
+	} finally {
+		submitBtn.textContent = originalText;
+		submitBtn.disabled = false;
 	}
 }
 
 authForm.addEventListener('submit', handleSignupSubmit);
 
-// reset validity so user can try again
-// Browser custom validity persists until explicitly cleared.
-usernameEl.addEventListener('input', () => usernameEl.setCustomValidity(''));
-passwordEl.addEventListener('input', () => passwordEl.setCustomValidity(''));
+// Hide the error banner as soon as they start typing to fix their mistake
+authForm.querySelectorAll('.input').forEach((input) => {
+	input.addEventListener('input', () => (errorEl.hidden = true));
+});

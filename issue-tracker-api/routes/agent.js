@@ -10,6 +10,21 @@ const ISSUE_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 /** @type {string[]} Valid issue category values. */
 const ALLOWED_CATEGORIES = ['Bug', 'Feature', 'Task'];
 
+/** @type {string[]} Valid issue tag values. */
+const ALLOWED_TAGS = [
+	'ui',
+	'backend',
+	'database',
+	'authentication',
+	'performance',
+	'security',
+	'testing',
+	'documentation',
+	'integration',
+	'enhancement',
+	'research',
+];
+
 /**
  * Fields the agent is explicitly not allowed to set or update.
  * - `id`, `team_id`, `created_by`, `created_at`, `updated_at` are immutable
@@ -147,6 +162,19 @@ export async function handleAgents(request, env) {
 			return Response.json({ error: 'Invalid token_usage. Must be an integer.' }, { status: 400 });
 		}
 
+		if (body.tags !== undefined) {
+			if (!Array.isArray(body.tags) || !body.tags.every((tag) => typeof tag === 'string')) {
+				return Response.json({ error: 'Invalid tags. Must be an array of strings.' }, { status: 400 });
+			}
+			const invalidTags = body.tags.filter((tag) => !ALLOWED_TAGS.includes(tag));
+			if (invalidTags.length > 0) {
+				return Response.json(
+					{ error: `Invalid tag(s): ${invalidTags.join(', ')}. Must be one of: ${ALLOWED_TAGS.join(', ')}` },
+					{ status: 400 },
+				);
+			}
+		}
+
 		const now = new Date().toISOString();
 
 		// Insert all fields the agent provides. Array fields are stringified for storage.
@@ -249,6 +277,19 @@ export async function handleAgents(request, env) {
 
 		if (body.token_usage !== undefined && !Number.isInteger(body.token_usage)) {
 			return Response.json({ error: 'Invalid token_usage. Must be an integer.' }, { status: 400 });
+		}
+
+		if (body.tags !== undefined) {
+			if (!Array.isArray(body.tags) || !body.tags.every((tag) => typeof tag === 'string')) {
+				return Response.json({ error: 'Invalid tags. Must be an array of strings.' }, { status: 400 });
+			}
+			const invalidTags = body.tags.filter((tag) => !ALLOWED_TAGS.includes(tag));
+			if (invalidTags.length > 0) {
+				return Response.json(
+					{ error: `Invalid tag(s): ${invalidTags.join(', ')}. Must be one of: ${ALLOWED_TAGS.join(', ')}` },
+					{ status: 400 },
+				);
+			}
 		}
 
 		const now = new Date().toISOString();

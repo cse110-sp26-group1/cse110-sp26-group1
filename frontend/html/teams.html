@@ -4,32 +4,24 @@
 		<meta charset="utf-8" />
 		<title>Your teams - Allegro</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<script>
-			// Keep this before CSS so the saved theme is applied before first paint.
-			try {
-				if (localStorage.getItem('theme') === 'dark') {
-					document.documentElement.classList.add('dark');
-				}
-			} catch {
-				/* localStorage unavailable */
-			}
-		</script>
+		<link rel="icon" href="../imgs/file.svg" type="image/svg+xml" />
+		<script src="../js/theme-init.js"></script>
 		<link rel="stylesheet" href="../css/global.css" />
 		<link rel="stylesheet" href="../css/teams.css" />
 	</head>
 	<body>
 		<header class="topbar">
 			<div class="brand">
-				<div class="logo"></div>
+				<img class="logo" src="../imgs/file.svg" alt="" width="24" height="24" decoding="async" aria-hidden="true" />
 				<span class="name">Allegro</span>
 			</div>
 			<div class="user-menu">
 				<button class="btn ghost icon theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme"></button>
-				<!-- User avatar + sign-out dropdown (wired in user-menu.js) -->
+				<!-- User avatar + sign-out dropdown -->
 				<div class="user-switch" id="user-switch">
 					<button
 						type="button"
-						class="avatar user-avatar"
+						class="avatar sm user-avatar"
 						id="user-avatar"
 						aria-haspopup="true"
 						aria-expanded="false"
@@ -48,22 +40,7 @@
 					<h1>Your teams</h1>
 				</div>
 				<div class="hero-actions">
-					<a href="join.html" class="btn" id="view-invites">Pending invites</a>
 					<button class="btn primary" id="create-team">+ New team</button>
-				</div>
-			</div>
-
-			<div class="search-row">
-				<input class="input" placeholder="Search teams…" />
-
-				<!-- Unified Sorting Dropdown UI -->
-				<div style="position: relative">
-					<button class="btn" id="sort-teams-trigger">Sort: recent ▾</button>
-					<div class="user-dropdown" id="sort-teams-menu" style="min-width: 11.429rem; right: 0">
-						<div class="sort-item active"><span class="circle"></span> Recent</div>
-						<div class="sort-item"><span class="circle"></span> Alphabetical</div>
-						<div class="sort-item"><span class="circle"></span> Activity</div>
-					</div>
 				</div>
 			</div>
 
@@ -77,25 +54,25 @@
 				</button>
 			</div>
 
-			<section class="invites" id="invites-section">
+			<section class="invites" id="invites-section" hidden>
 				<h3>Pending invitations</h3>
 			</section>
 		</main>
 
 		<div class="backdrop" id="create-backdrop">
-			<div class="modal">
+			<div class="modal modal-small">
 				<div class="modal-head">
 					<h3>Create a new team</h3>
-					<p>You'll be the first member. Invite others after.</p>
 				</div>
 				<div class="modal-body">
 					<div class="field">
-						<label>Team name <span class="req">*</span></label>
+						<label for="team-name">Team name <span class="req">*</span></label>
 						<input class="input" id="team-name" placeholder="e.g. Roost Robotics" />
 					</div>
 					<div class="field">
-						<label>Short bio <span class="optional-label">(optional)</span></label>
+						<label for="team-bio">Short bio <span class="optional-label">(optional)</span></label>
 						<textarea class="textarea" id="team-bio" placeholder="What does this team work on?"></textarea>
+						<div class="hint">This is used to give the AI summarization layer extra context about your stack and goals.</div>
 					</div>
 				</div>
 				<div class="modal-foot">
@@ -107,9 +84,6 @@
 
 		<div class="toast" id="toast"></div>
 
-		<script src="../js/theme.js"></script>
-		<!-- Shared topbar user menu (avatar dropdown, sign out) -->
-		<script type="module" src="../js/user-menu.js"></script>
 		<script type="module" src="../js/teams.js"></script>
 	</body>
 </html>
