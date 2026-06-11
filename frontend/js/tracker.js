@@ -76,7 +76,7 @@ const deleteBackdrop = document.getElementById('delete-backdrop');
 
 // === Team settings === //
 /**
- * @param {'admin' | 'member'} role
+ * @param {'admin' | 'member'} role Team role to label.
  * @returns {string}
  */
 function roleLabel(role) {
@@ -91,7 +91,7 @@ function isTeamAdmin() {
 }
 
 /**
- * @param {{ username?: string, email?: string }} member
+ * @param {{ username?: string, email?: string }} member Team member to compare against the stored user.
  * @returns {boolean}
  */
 function isCurrentMember(member) {
